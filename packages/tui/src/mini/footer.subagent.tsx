@@ -107,9 +107,11 @@ export function RunFooterSubagentBody(props: {
     if (tab()?.status !== "running") return undefined
     return props.interrupt?.()
   })
-  const count = () => (props.total() > 1 && props.index() > 0 ? `${props.index()} of ${props.total()}` : "")
+  const count = () =>
+    props.total() > 1 && props.index() > 0 ? t("{{index}} of {{total}}", { index: props.index(), total: props.total() }) : ""
   const headerControlsWidth = () =>
-    (interruptHint() ? stringWidth(`${interruptHint()} interrupt`) + 1 : 0) + (count() ? stringWidth(count()) + 1 : 0)
+    (interruptHint() ? stringWidth(t("{{key}} interrupt", { key: interruptHint()! })) + 1 : 0) +
+    (count() ? stringWidth(count()) + 1 : 0)
   const headerControls = () => !compact() && stringWidth(title()) + 2 + headerControlsWidth() <= width() - 4
   const titleWidth = () => Math.max(1, width() - (compact() ? 2 : 6) - (headerControls() ? headerControlsWidth() : 0))
 

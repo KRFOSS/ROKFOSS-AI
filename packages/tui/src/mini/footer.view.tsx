@@ -236,12 +236,15 @@ export function RunFooterView(props: RunFooterViewProps) {
   const footerStatus = createMemo(() => {
     const current = model()?.model ?? props.state().model.trim()
     const variant = props.currentVariant()
-    const details = [busy() ? "running" : "idle", `agent ${props.currentAgent()}`]
+    const details = [busy() ? t("running") : t("idle"), t("agent {{name}}", { name: props.currentAgent() })]
     if (current) details.push(variant ? `${current} ${t(variant)}` : current)
     if (contextUsage()) details.push(contextUsage())
     if (cost()) details.push(cost())
-    if (queuedPrompts().length > 0) details.push(`${queuedPrompts().length} pending`)
-    if (activeTabs().length > 0) details.push(`${activeTabs().length} subagent${activeTabs().length === 1 ? "" : "s"}`)
+    if (queuedPrompts().length > 0) details.push(t("{{count}} pending", { count: queuedPrompts().length }))
+    if (activeTabs().length > 0)
+      details.push(
+        t(activeTabs().length === 1 ? "{{count}} subagent" : "{{count}} subagents", { count: activeTabs().length }),
+      )
     return details.join(props.mono ? " - " : " · ")
   })
   const permission = createMemo<Extract<FooterView, { type: "permission" }> | undefined>(() => {
@@ -485,7 +488,7 @@ export function RunFooterView(props: RunFooterViewProps) {
       mono: props.mono,
       status: {
         text: statusText(),
-        expanded: footerDetails() && busy() && interruptLabel() ? `${interruptLabel()} interrupt` : undefined,
+        expanded: footerDetails() && busy() && interruptLabel() ? t("{{key}} interrupt", { key: interruptLabel() }) : undefined,
       },
       escape: shell() && !takeover() ? { key: "esc", label: t("normal") } : undefined,
       work: contextHintCandidates(),
