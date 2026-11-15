@@ -328,8 +328,13 @@ export function RunFooterView(props: RunFooterViewProps) {
         (error) => error,
       )
       if (!error) return true
+      // The action word is translated on its own so the status line stays one dictionary entry; the label names
+      // the action (`undo`, `delete`, `steer`, `queue`), not the sentence.
       props.onStatus(
-        `failed to ${failureLabel ?? (action === "cancel" ? "delete" : action)} pending prompt: ${errorMessage(error)}`,
+        t("failed to {{action}} pending prompt: {{error}}", {
+          action: t(failureLabel ?? (action === "cancel" ? "delete" : action)),
+          error: errorMessage(error),
+        }),
       )
       return false
     })
@@ -398,13 +403,16 @@ export function RunFooterView(props: RunFooterViewProps) {
   const statusText = createMemo(() => {
     if (exiting() || (busy() && armed())) {
       const key = exiting() ? clearShortcut() : interruptLabel()
-      const action = exiting() ? "exit" : "stop"
-      if (!key) return exiting() ? "Exit pending" : "Stop pending"
+      // The action is a word of its own: Korean puts it in front of the key hint, so it cannot be spliced in.
+      const verb = exiting() ? t("exit") : t("interrupt")
+      const action = exiting() ? t("exit") : t("stop")
+      if (!key) return exiting() ? t("Exit pending") : t("Stop pending")
+      // Each phrase is shorter than the one before it; the first that fits the status width is drawn.
       const phrases = [
-        `Press ${key} again to ${exiting() ? "exit" : "interrupt"}`,
-        `${key} again to ${exiting() ? "exit" : "interrupt"}`,
-        `${key} again: ${action}`,
-        `${key} ${action}`,
+        t("Press {{key}} again to {{action}}", { key, action: verb }),
+        t("{{key}} again to {{action}}", { key, action: verb }),
+        t("{{key}} again: {{action}}", { key, action }),
+        t("{{key}} {{action}}", { key, action }),
       ]
       return phrases.find((text) => stringWidth(text) <= statusWidth()) ?? phrases[phrases.length - 1]!
     }
@@ -412,8 +420,8 @@ export function RunFooterView(props: RunFooterViewProps) {
     if (notice()) return notice()
     if (!footerDetails()) return shell() ? t("Shell") : ""
     if (busy()) {
-      if (stateStatus() === "reconnecting") return "reconnecting"
-      return interruptLabel() ? `${interruptLabel()} stop` : "Running"
+      if (stateStatus() === "reconnecting") return t("reconnecting")
+      return interruptLabel() ? t("{{key}} stop", { key: interruptLabel() }) : t("Running")
     }
     return stateStatus() || (shell() ? t("Shell") : "")
   })

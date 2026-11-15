@@ -426,7 +426,7 @@ export function RunCommandMenuBody(props: {
       {
         action: "status",
         category: t("Session"),
-        display: "Show status",
+        display: t("Show status"),
         keywords: "status activity model context usage footer",
       },
       ...(props.subagents().length > 0
@@ -521,7 +521,7 @@ export function RunCommandMenuBody(props: {
         footer: "/settings",
         keywords: "/settings settings preferences configuration",
       },
-      { action: "exit", category: t("System"), display: "Exit", footer: "/exit", keywords: "/exit exit" },
+      { action: "exit", category: t("System"), display: t("Exit"), footer: "/exit", keywords: "/exit exit" },
     ]
   })
   const pick = (item: CommandEntry) => {
@@ -681,7 +681,7 @@ export function RunAgentSelectBody(props: {
         rows={controller.menu.limit}
         limit={controller.menu.limit()}
         compact={controller.layout().compact}
-        empty="No agents found"
+        empty={t("No agents found")}
         border={false}
         paddingLeft={panelPad(props.mono)}
         paddingRight={panelPad(props.mono)}
@@ -706,7 +706,7 @@ export function RunSettingsBody(props: {
     {
       category: t("Transcript"),
       display: t("Verbosity"),
-      footer: saving() === "verbosity" ? "saving" : verbosityLabel(matchMiniVerbosity(props.settings())),
+      footer: saving() === "verbosity" ? t("saving") : verbosityLabel(matchMiniVerbosity(props.settings())),
       footerTone: saving() === "verbosity" ? "running" : "selection",
       keywords: `verbosity quiet default everything custom noise ${verbosityLabel(matchMiniVerbosity(props.settings()))}`,
       key: "verbosity",
@@ -714,7 +714,7 @@ export function RunSettingsBody(props: {
     {
       category: t("Transcript"),
       display: t("Thinking"),
-      footer: saving() === "thinking" ? "saving" : props.settings().thinking,
+      footer: saving() === "thinking" ? t("saving") : props.settings().thinking,
       footerTone: saving() === "thinking" ? "running" : "selection",
       keywords: `thinking reasoning ${props.settings().thinking}`,
       key: "thinking",
@@ -722,7 +722,7 @@ export function RunSettingsBody(props: {
     {
       category: t("Transcript"),
       display: t("Tools"),
-      footer: saving() === "tools" ? "saving" : props.settings().tools,
+      footer: saving() === "tools" ? t("saving") : props.settings().tools,
       footerTone: saving() === "tools" ? "running" : "selection",
       keywords: `tools files skills activity work steps intermediate ${props.settings().tools}`,
       key: "tools",
@@ -730,46 +730,46 @@ export function RunSettingsBody(props: {
     {
       category: t("Transcript"),
       display: t("Shell"),
-      footer: saving() === "shell_output" ? "saving" : props.settings().shell_output,
+      footer: saving() === "shell_output" ? t("saving") : props.settings().shell_output,
       footerTone: saving() === "shell_output" ? "running" : "selection",
       keywords: `shell tool command output ${props.settings().shell_output}`,
       key: "shell_output",
     },
     {
       category: t("Transcript"),
-      display: "Turn summary",
-      footer: saving() === "turn_summary" ? "saving" : props.settings().turn_summary,
+      display: t("Turn summary"),
+      footer: saving() === "turn_summary" ? t("saving") : props.settings().turn_summary,
       footerTone: saving() === "turn_summary" ? "running" : "selection",
       keywords: `turn summary agent model duration ${props.settings().turn_summary}`,
       key: "turn_summary",
     },
     {
       category: t("Terminal"),
-      display: "Footer details",
-      footer: saving() === "footer" ? "saving" : props.settings().footer,
+      display: t("Footer details"),
+      footer: saving() === "footer" ? t("saving") : props.settings().footer,
       footerTone: saving() === "footer" ? "running" : "selection",
       keywords: `footer status activity model context usage ${props.settings().footer}`,
       key: "footer",
     },
     {
       category: t("Terminal"),
-      display: "Splash",
-      footer: saving() === "splash" ? "saving" : props.settings().splash,
+      display: t("Splash"),
+      footer: saving() === "splash" ? t("saving") : props.settings().splash,
       footerTone: saving() === "splash" ? "running" : "selection",
       keywords: `splash entry exit banner ${props.settings().splash}`,
       key: "splash",
     },
     {
       category: t("Terminal"),
-      display: "Monochrome UI",
-      footer: saving() === "mono" ? "saving" : t(props.settings().mono ? "on" : "off"),
+      display: t("Monochrome UI"),
+      footer: saving() === "mono" ? t("saving") : t(props.settings().mono ? "on" : "off"),
       footerTone: saving() === "mono" ? "running" : "selection",
       keywords: `mono monochrome ascii legacy compat terminal ${props.settings().mono ? "on" : "off"}`,
       key: "mono",
     },
     {
       category: t("Terminal"),
-      display: "Work spinner",
+      display: t("Work spinner"),
       icon: (color) => (
         <OneCellSpinner
           animation={props.mono ? SEED_MONO : WORK_SPINNERS[props.settings().work_spinner]}
@@ -781,7 +781,7 @@ export function RunSettingsBody(props: {
       ),
       footer:
         saving() === "work_spinner"
-          ? "saving"
+          ? t("saving")
           : props.settings().work_spinner.replace("block-", "").replaceAll("-", " "),
       footerTone: saving() === "work_spinner" ? "running" : "selection",
       keywords: `work spinner animation ${props.settings().work_spinner}`,
@@ -837,7 +837,7 @@ export function RunSettingsBody(props: {
       theme={props.theme}
       inputRef={controller.inputRef}
       onQuery={controller.setQuery}
-      hint="left/right change"
+      hint={t("left/right change")}
       mono={props.mono}
     >
       <RunFooterMenu
@@ -848,7 +848,7 @@ export function RunSettingsBody(props: {
         rows={controller.menu.limit}
         limit={controller.menu.limit()}
         compact={controller.layout().compact}
-        empty="No settings found"
+        empty={t("No settings found")}
         border={false}
         paddingLeft={panelPad(props.mono)}
         paddingRight={panelPad(props.mono)}
@@ -932,7 +932,7 @@ export function RunSubagentSelectBody(props: {
         rows={controller.menu.rows}
         limit={controller.menu.limit()}
         compact={controller.layout().compact}
-        empty="No subagents found"
+        empty={t("No subagents found")}
         border={false}
         paddingLeft={panelPad(props.mono)}
         paddingRight={panelPad(props.mono)}
@@ -1027,7 +1027,7 @@ export function RunQueuedPromptSelectBody(props: {
         rows={controller.menu.rows}
         limit={controller.menu.limit()}
         compact={controller.layout().compact}
-        empty="No pending prompts"
+        empty={t("No pending prompts")}
         border={false}
         paddingLeft={panelPad(props.mono)}
         paddingRight={panelPad(props.mono)}
@@ -1193,7 +1193,7 @@ export function RunModelSelectBody(props: {
         rows={controller.menu.limit}
         limit={controller.menu.limit()}
         compact={controller.layout().compact}
-        empty={props.providers() ? t("No results found") : "Models loading"}
+        empty={props.providers() ? t("No results found") : t("Models loading")}
         border={false}
         paddingLeft={panelPad(props.mono)}
         paddingRight={panelPad(props.mono)}

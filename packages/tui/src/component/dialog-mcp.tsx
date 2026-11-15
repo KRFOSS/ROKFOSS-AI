@@ -20,18 +20,18 @@ function statusError(status: McpServer["status"]) {
 
 function Status(props: { status: McpServer["status"]; loading: boolean }) {
   if (props.loading || props.status.status === "pending") {
-    return <>Connecting …</>
+    return <>{t("Connecting …")}</>
   }
   if (props.status.status === "connected") {
-    return <span style={{ attributes: TextAttributes.BOLD }}>Connected ✓</span>
+    return <span style={{ attributes: TextAttributes.BOLD }}>{t("Connected ✓")}</span>
   }
   if (props.status.status === "failed") {
-    return <>Failed !</>
+    return <>{t("Failed !")}</>
   }
   if (props.status.status === "needs_auth") {
-    return <>Sign in required →</>
+    return <>{t("Sign in required →")}</>
   }
-  return <>Disabled ○</>
+  return <>{t("Disabled ○")}</>
 }
 
 export function DialogMcp(props: { initialServer?: string; details?: boolean } = {}) {
@@ -170,8 +170,8 @@ export function DialogMcp(props: { initialServer?: string; details?: boolean } =
           <DialogErrorDetails
             title={t("MCP server: {{name}}", { name: server().name })}
             error={statusError(server().status) ?? t("Unknown MCP connection error")}
-            context={`Status: ${server().status.status}\nConfiguration: mcp.servers.${server().name}${
-              server().integrationID ? `\nIntegration: ${server().integrationID}` : ""
+            context={`${t("Status:")} ${server().status.status}\n${t("Configuration:")} mcp.servers.${server().name}${
+              server().integrationID ? `\n${t("Integration:")} ${server().integrationID}` : ""
             }`}
             onBack={() => {
               setDetail(undefined)

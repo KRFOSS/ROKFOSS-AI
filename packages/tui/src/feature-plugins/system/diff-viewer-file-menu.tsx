@@ -15,7 +15,7 @@ export function DiffFileMenu(props: {
   const dimensions = useTerminalDimensions()
   const theme = props.context.theme
   const [hovered, setHovered] = createSignal(false)
-  const label = () => (props.reviewed ? "Mark incomplete" : "Mark complete")
+  const label = () => t(props.reviewed ? "Mark incomplete" : "Mark complete")
   const width = () => Math.min(19, dimensions().width)
   const run = () => {
     props.onClose()

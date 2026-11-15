@@ -114,7 +114,7 @@ export function ShellTab(props: { sessionID: string }) {
   return (
     <Show when={composer.active("shell")}>
       <scrollbox scrollbarOptions={{ visible: false }} maxHeight={5} ref={(r: ScrollBoxRenderable) => (scroll = r)}>
-        <Show when={entries().length > 0} fallback={<text fg={theme.text.muted}> No shell commands</text>}>
+        <Show when={entries().length > 0} fallback={<text fg={theme.text.muted}> {t("No shell commands")}</text>}>
           <For each={entries()}>
             {(shell, index) => {
               const active = createMemo(() => index() === store.selected)

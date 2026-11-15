@@ -1,3 +1,4 @@
+import { currentLanguage } from "../i18n"
 import { stringWidth } from "./string-width"
 
 export function titlecase(str: string) {
@@ -16,7 +17,27 @@ export function datetime(input: number): string {
   return `${localTime} · ${localDate}`
 }
 
+/**
+ * Korean counts step by ten thousand rather than by thousand, so the English "K" shorthand reads as a
+ * foreign unit next to Korean labels: 8,400 is written out, 12,345 is "1.2만", 120,000,000 is "1.2억".
+ */
+const KOREAN_SCALES = [
+  { unit: "조", size: 1_000_000_000_000 },
+  { unit: "억", size: 100_000_000 },
+  { unit: "만", size: 10_000 },
+] as const
+
 export function number(num: number): string {
+  if (currentLanguage() === "ko") {
+    // Nobody writes 천 as a shorthand below 만, so small counts keep grouped digits.
+    if (num < 10_000) return num.toLocaleString("ko-KR")
+    const scale = KOREAN_SCALES.find((item) => num >= item.size)
+    if (!scale) return num.toLocaleString("ko-KR")
+    const value = num / scale.size
+    // One decimal keeps a footer short; past a hundred the fraction is noise and the text too wide.
+    const rounded = value < 100 ? value.toFixed(1).replace(/\.0$/, "") : String(Math.round(value))
+    return rounded + scale.unit
+  }
   // 999950+ would round to "1000.0K"
   if (num >= 999950) {
     return (num / 1000000).toFixed(1) + "M"

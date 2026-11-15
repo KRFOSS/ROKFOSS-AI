@@ -36,7 +36,7 @@ export function permissionPresentation(
     const diff = text(first.patch) || text(first.diff) || text(metadata.diff) || undefined
     return {
       icon: "→",
-      title: `Edit ${formatPath(file)}`,
+      title: t("Edit {{path}}", { path: formatPath(file) }),
       lines: [],
       diff,
       patch: diff ? undefined : text(input.patchText) || undefined,
@@ -50,7 +50,7 @@ export function permissionPresentation(
     return {
       icon: "→",
       title: `${title} ${formatPath(value)}`,
-      lines: value ? [`Path: ${formatPath(value)}`] : [],
+      lines: value ? [t("Path: {{path}}", { path: formatPath(value) })] : [],
     }
   }
 
@@ -113,7 +113,7 @@ export function permissionPresentation(
       title: `LSP ${operation}${file ? ` ${formatPath(file)}${position ? `:${position}` : ""}` : ""}`,
       lines: [
         ...(input.operation ? [`Operation: ${operation}`] : []),
-        ...(file ? [`Path: ${formatPath(file)}`] : []),
+        ...(file ? [t("Path: {{path}}", { path: formatPath(file) })] : []),
         ...(position ? [`Position: ${position}`] : []),
       ],
     }
@@ -140,7 +140,7 @@ export function permissionPresentation(
   return {
     icon: "⚙",
     title: t("Call tool {{tool}}", { tool: source.action }),
-    lines: [`Tool: ${source.action}`],
+    lines: [t("Tool: {{tool}}", { tool: source.action })],
   }
 }
 
@@ -155,9 +155,12 @@ function wildcardDirectory(value: string) {
 export function permissionAlwaysLines(input: { action: string; save?: ReadonlyArray<string> }): string[] {
   const save = input.save ?? []
   if (save.length === 1 && save[0] === "*") {
-    return [`This will always allow ${input.action} for this project.`]
+    return [t("This will always allow {{action}} for this project.", { action: input.action })]
   }
-  return ["This will always allow the following patterns for this project.", ...save.map((item) => `- ${item}`)]
+  return [
+    t("This will always allow the following patterns for this project."),
+    ...save.map((item) => `- ${item}`),
+  ]
 }
 
 export function permissionOptionLabel(option: "once" | "always" | "reject" | "confirm" | "cancel") {

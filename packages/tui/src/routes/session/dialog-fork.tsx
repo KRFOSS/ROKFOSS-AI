@@ -78,7 +78,7 @@ export function DialogFork(props: { sessionID: string; messageID?: string; onMov
       when={!pending()}
       fallback={
         <DialogLayout inset={DIALOG_LIST_INSET} header={<DialogHeader title={t("Fork session")} />}>
-          <Spinner>Forking session…</Spinner>
+          <Spinner>{t("Forking session…")}</Spinner>
         </DialogLayout>
       }
     >

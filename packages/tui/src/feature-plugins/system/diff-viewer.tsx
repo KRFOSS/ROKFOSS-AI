@@ -274,10 +274,10 @@ function DiffBaseDialog(props: {
     <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
       <text fg={branches.error ? theme.text.feedback.error.base : theme.text.muted}>
         {branches.loading
-          ? "Loading branches…"
+          ? t("Loading branches…")
           : branches.error
-            ? "Could not load branches. Reopen the picker to try again."
-            : "No branches found"}
+            ? t("Could not load branches. Reopen the picker to try again.")
+            : t("No branches found")}
       </text>
     </box>
   )
@@ -849,7 +849,7 @@ export function DiffViewerContent(props: {
         >
           {props.compact ? "?" : shortcut()}
           <Show when={!props.compact}>
-            <span style={props.muted ? {} : { fg: theme.text.muted }}> {props.label ?? "help"}</span>
+            <span style={props.muted ? {} : { fg: theme.text.muted }}> {props.label ?? t("help")}</span>
           </Show>
         </text>
       )}
@@ -1236,10 +1236,10 @@ function DiffViewerHelpDialog(props: { context: Plugin.Context; single: boolean;
         { shortcut: () => props.context.keymap.shortcuts("diff.previous_file").join(" / "), label: t("Previous file") },
         {
           shortcut: shortcut("diff.mark_reviewed"),
-          label: props.single ? "Review + next / reopen" : "Review + collapse / reopen",
+          label: props.single ? t("Review + next / reopen") : t("Review + collapse / reopen"),
         },
         { shortcut: shortcut("diff.next_hunk", "diff.previous_hunk"), label: t("Next / previous change") },
-        { shortcut: () => "right-click", label: t("File menu (heading or tree)") },
+        { shortcut: () => t("right-click"), label: t("File menu (heading or tree)") },
       ],
     },
     {
@@ -1269,7 +1269,7 @@ function DiffViewerHelpDialog(props: { context: Plugin.Context; single: boolean;
   return (
     <DialogLayout
       header={
-        <DialogHeader title={t("Diff shortcuts")} closeLabel="esc close" onClose={() => props.context.ui.dialog.clear()} />
+        <DialogHeader title={t("Diff shortcuts")} closeLabel={t("esc close")} onClose={() => props.context.ui.dialog.clear()} />
       }
     >
       <scrollbox
@@ -1296,7 +1296,7 @@ function DiffViewerHelpDialog(props: { context: Plugin.Context; single: boolean;
                   {(row) => (
                     <box flexDirection="row" gap={2}>
                       <text fg={theme.text.base} width={17} flexShrink={0}>
-                        {row.shortcut() || "unbound"}
+                        {row.shortcut() || t("unbound")}
                       </text>
                       <text fg={theme.text.muted} flexGrow={1} minWidth={0}>
                         {row.label}

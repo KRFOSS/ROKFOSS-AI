@@ -64,8 +64,8 @@ export function limitLabel(usage: ModelUsage | undefined, model: ModelInfo) {
   if (!usage) return undefined
   const level = usageLevel(usage, model)
   if (level === "plenty") return undefined
-  if (level === "reached") return { text: "Limit reached", danger: true }
-  return { text: `${formatDollars(usage.left)} left`, danger: level === "out" }
+  if (level === "reached") return { text: t("Limit reached"), danger: true }
+  return { text: t("{{amount}} left", { amount: formatDollars(usage.left) }), danger: level === "out" }
 }
 
 /** `/usage`: the models the workspace limits, with what each has left. */
@@ -96,8 +96,8 @@ export function DialogUsage() {
           <DialogSelect
             title="Usage"
             description={[
-              info().workspace.name ? `Workspace: ${info().workspace.name}` : undefined,
-              rows().length > 0 ? `Resets ${formatReset(resets())}` : undefined,
+              info().workspace.name ? t("Workspace: {{name}}", { name: info().workspace.name }) : undefined,
+              rows().length > 0 ? t("Resets {{time}}", { time: formatReset(resets()) }) : undefined,
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -105,7 +105,10 @@ export function DialogUsage() {
             options={rows().map((row) => ({
               title: row.model.name,
               value: key(row.model),
-              footer: selected() === key(row.model) ? `${formatDollars(row.usage.left)} left` : undefined,
+              footer:
+                selected() === key(row.model)
+                  ? t("{{amount}} left", { amount: formatDollars(row.usage.left) })
+                  : undefined,
               footerColor: row.level === "out" || row.level === "reached" ? theme.text.feedback.error.base : undefined,
               onSelect: () => dialog.replace(() => <DialogUsageModel model={row.model} />),
             }))}
@@ -113,7 +116,9 @@ export function DialogUsage() {
             emptyView={
               <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
                 <text fg={theme.text.muted} wrapMode="word">
-                  No limits apply to your models. Paid models stop only if the workspace runs out of credits.
+                  {t(
+                    "No limits apply to your models. Paid models stop only if the workspace runs out of credits.",
+                  )}
                 </text>
               </box>
             }
@@ -123,7 +128,7 @@ export function DialogUsage() {
       <Match when={limits.info() === null}>
         <DialogLayout header={<DialogHeader title="Usage" />}>
           <text fg={theme.text.muted} wrapMode="word">
-            Sign in to OpenCode Console with /connect to see your workspace's usage limits.
+            {t("Sign in to OpenCode Console with /connect to see your workspace's usage limits.")}
           </text>
         </DialogLayout>
       </Match>
@@ -155,21 +160,21 @@ export function DialogUsageModel(props: { model: ModelInfo }) {
         <DialogHeader
           titleView={
             <text fg={theme.text.base}>
-              <span style={{ fg: theme.text.muted }}>Usage › </span>
+              <span style={{ fg: theme.text.muted }}>{t("Usage")} › </span>
               {props.model.name}
             </text>
           }
         />
       }
     >
-      <Show when={usage()} fallback={<text fg={theme.text.muted}>No limits apply to {props.model.name}.</text>}>
+      <Show when={usage()} fallback={<text fg={theme.text.muted}>{t("No limits apply to {{name}}.", { name: props.model.name })}</text>}>
         {(value) => (
           <box gap={1}>
             <box>
               <text fg={short() ? theme.text.feedback.error.base : theme.text.base} attributes={TextAttributes.BOLD}>
-                {formatDollars(value().left)} remaining
+                {t("{{amount}} remaining", { amount: formatDollars(value().left) })}
               </text>
-              <text fg={theme.text.muted}>Resets {formatReset(value().resetsAt)}</text>
+              <text fg={theme.text.muted}>{t("Resets {{time}}", { time: formatReset(value().resetsAt) })}</text>
             </box>
             <box>
               <text fg={theme.text.muted}>{t("Limits")}</text>
@@ -189,7 +194,10 @@ export function DialogUsageModel(props: { model: ModelInfo }) {
                       >
                         {index() === 0 ? "•" : "-"}{" "}
                       </span>
-                      {formatDollars(item.spent)} used of {formatDollars(item.budget.limit)}
+                      {t("{{spent}} used of {{limit}}", {
+                        spent: formatDollars(item.spent),
+                        limit: formatDollars(item.budget.limit),
+                      })}
                     </text>
                     <box paddingLeft={2}>
                       <text fg={theme.text.muted} wrapMode="word">
@@ -236,16 +244,19 @@ export function useUsageAlerts(sessionID: () => string) {
     warned.add(key)
     if (level === "reached") {
       toast.show({
-        title: `${model.name} limit reached`,
-        message: `Resets ${formatReset(usage.resetsAt)}`,
+        title: t("{{name}} limit reached", { name: model.name }),
+        message: t("Resets {{time}}", { time: formatReset(usage.resetsAt) }),
         variant: "error",
         action: { label: "Switch model", run: () => keymap.dispatch("model.list") },
       })
       return
     }
     toast.show({
-      title: `Running low on ${model.name}`,
-      message: `${formatDollars(usage.left)} left · resets ${formatReset(usage.resetsAt)}`,
+      title: t("Running low on {{name}}", { name: model.name }),
+      message: t("{{amount}} left · resets {{time}}", {
+        amount: formatDollars(usage.left),
+        time: formatReset(usage.resetsAt),
+      }),
       variant: "warning",
       action: { label: "View usage", run: () => keymap.dispatch("usage.show") },
     })
@@ -261,19 +272,19 @@ export function useLimitNotice(message: () => SessionMessageAssistant) {
     const error = value.error
     if (!error) return
     const reset = refusalReset(error) ?? retryReset(error, value.time.completed ?? value.time.created)
-    const resets = reset === undefined ? "" : `Resets ${formatReset(reset)}. `
+    const resets = reset === undefined ? "" : `${t("Resets {{time}}", { time: formatReset(reset) })}. `
     const name =
       limits.models().find((item) => item.providerID === value.model.providerID && item.id === value.model.id)?.name ??
       value.model.id
     if (error.type === "provider.go-limit")
       return {
         title: `OpenCode Go ${[goLimitName(error), t("usage limit reached")].filter(Boolean).join(" ")}`,
-        body: `${resets}Switch to a free model with`,
+        body: `${resets}${t("Switch to a free model with")}`,
         key: shortcut() ?? "/models",
         link: { label: t("Or turn on Extra Usage on your Go page to keep going now:"), href: goLimitLink(error) },
       }
     if (error.type === "provider.model-budget-limit")
-      return { title: t("{{name}} usage limit reached", { name }), body: `${resets}Switch model with`, key: shortcut() ?? "/models" }
+      return { title: t("{{name}} usage limit reached", { name }), body: `${resets}${t("Switch model with")}`, key: shortcut() ?? "/models" }
     if (error.type === "provider.budget-limit")
       return {
         title: t("Usage limit reached"),
@@ -312,7 +323,8 @@ export function UsageLimitNotice(props: {
           {(key) => (
             <>
               {" "}
-              <span style={{ fg: theme.text.base }}>{key()}</span> to continue.
+              <span style={{ fg: theme.text.base }}>{key()}</span>{" "}
+              {t("to continue.")}
             </>
           )}
         </Show>
