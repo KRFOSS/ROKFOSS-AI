@@ -2105,7 +2105,7 @@ function AssistantFooter(props: { message: SessionMessageAssistant }) {
             <span style={{ fg: theme.text.muted }}> · {Locale.duration(duration())}</span>
           </Show>
           <Show when={config.data.session.tps && tokensPerSecond()}>
-            {(value) => <span style={{ fg: theme.text.muted }}> · {value().toFixed(1)} tok/s</span>}
+            {(value) => <span style={{ fg: theme.text.muted }}> · {t("{{rate}} tok/s", { rate: value().toFixed(1) })}</span>}
           </Show>
           <Show when={interrupted()}>
             <span style={{ fg: theme.text.muted }}> · interrupted</span>

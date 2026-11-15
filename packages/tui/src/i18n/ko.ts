@@ -1207,4 +1207,10 @@ export const dict: Dictionary = {
   "vs {{base}}": "{{base}} 기준",
   "{{project}} / Worktrees": "{{project}} / 작업 트리",
   "{{runtime}} plugin error": "{{runtime}} 플러그인 오류",
+
+  // --- model switch toasts, throughput ---------------------------------------------------------
+  "Switched model to {{model}}": "모델 전환: {{model}}",
+  "Switched variant to {{variant}}": "추론 단계 변경: {{variant}}",
+  "{{rate}} tok/s": "{{rate}} 토큰/초",
+  "default": "기본",
 }
