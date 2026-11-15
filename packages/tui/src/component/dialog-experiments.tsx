@@ -40,8 +40,10 @@ export function DialogExperiments() {
 
   const options = createMemo(() =>
     experiments.map((experiment) => ({
-      title: experiment.title,
-      searchText: experiment.description,
+      // Translated here, not in the module-level array: the memo tracks the language signal, so a
+      // language change repaints the list instead of leaving the copy frozen at import time.
+      title: t(experiment.title),
+      searchText: t(experiment.description),
       footer: enabled(experiment) ? "on" : "off",
       value: experiment,
     })),
@@ -64,7 +66,7 @@ export function DialogExperiments() {
 
   return (
     <DialogSelect
-      title="Experiments"
+      title={t("Experiments")}
       options={options()}
       renderFilter={experiments.length > 0}
       onMove={(option) => setSelected(option.value)}
@@ -74,7 +76,7 @@ export function DialogExperiments() {
           <text fg={theme.text.muted}>{t("No experiments available")}</text>
         </box>
       }
-      footerHints={experiments.length > 0 && !newDesigns() ? [{ title: "change", label: "←/→" }] : []}
+      footerHints={experiments.length > 0 && !newDesigns() ? [{ title: t("change"), label: "←/→" }] : []}
       bindings={
         experiments.length > 0
           ? [

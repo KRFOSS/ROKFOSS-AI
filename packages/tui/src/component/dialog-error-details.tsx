@@ -8,6 +8,7 @@ import { useLocation } from "../context/location"
 import { useRoute } from "../context/route"
 import { getScrollAcceleration } from "../util/scroll"
 import { useTheme } from "../context/theme"
+import { t } from "../i18n"
 import { emptyPrompt } from "../prompt/history"
 import { DIALOG_INSET, DialogFooter, DialogHeader, DialogLayout, dialogWidth, useDialog } from "../ui/dialog"
 import { FilePath } from "../ui/file-path"
@@ -55,17 +56,17 @@ export function DialogErrorDetails(props: {
   Keymap.createLayer(() => ({
     mode: "modal",
     commands: [
-      { bind: "escape", title: "Back", group: "Dialog", run: props.onBack },
-      { bind: "c", title: "Copy details", group: "Dialog", run: copy },
-      { bind: "i", title: "Investigate error", group: "Dialog", run: investigate },
+      { bind: "escape", title: t("Back"), group: "Dialog", run: props.onBack },
+      { bind: "c", title: t("Copy details"), group: "Dialog", run: copy },
+      { bind: "i", title: t("Investigate error"), group: "Dialog", run: investigate },
     ],
   }))
 
   const actions = () => [
-    { title: "investigate", key: "i", onTrigger: investigate },
+    { title: t("investigate"), key: "i", onTrigger: investigate },
     copied()
-      ? { title: "✓ copied", color: theme.text.feedback.success.base, onTrigger: copy }
-      : { title: "copy details", key: "c", onTrigger: copy },
+      ? { title: `✓ ${t("copied")}`, color: theme.text.feedback.success.base, onTrigger: copy }
+      : { title: t("copy details"), key: "c", onTrigger: copy },
   ]
 
   useKeyboard((event) => {

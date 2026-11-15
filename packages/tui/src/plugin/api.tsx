@@ -44,6 +44,7 @@ import { useStorage } from "../context/storage"
 import { useSessionTabs } from "../context/session-tabs"
 import { useOptionalPanel } from "../context/panel"
 import { useLocal } from "../context/local"
+import { t } from "../i18n"
 import { errorMessage } from "../util/error"
 import { abbreviateHome } from "../util/path-format"
 
@@ -144,7 +145,7 @@ export function createPluginContext(input: {
       host.toast.show({
         ...toast,
         title: toast.title ?? host.data.session.get(sessionID)?.title,
-        action: { label: "Open", run: () => host.route.navigate({ type: "session", sessionID }) },
+        action: { label: t("Open"), run: () => host.route.navigate({ type: "session", sessionID }) },
       })
     },
   }
@@ -459,7 +460,7 @@ export function PluginBoundary(props: ParentProps<{ id: string; where: string; o
         onMount(() => {
           toast.show({
             variant: "error",
-            title: "Plugin",
+            title: t("Plugin"),
             message: `${props.id} crashed in ${props.where}: ${errorMessage(error)}`,
           })
           props.onCrash?.()

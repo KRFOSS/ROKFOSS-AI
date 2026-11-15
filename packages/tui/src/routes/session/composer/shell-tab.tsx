@@ -8,6 +8,7 @@ import { Keymap } from "../../../context/keymap"
 import { useComposerTab } from "./context"
 import { useDialog } from "../../../ui/dialog"
 import { DialogShellOutput } from "../../../component/dialog-shell-output"
+import { t } from "../../../i18n"
 
 export function ShellTab(props: { sessionID: string }) {
   const data = useData()
@@ -49,12 +50,12 @@ export function ShellTab(props: { sessionID: string }) {
   onMount(() => {
     const cleanup = composer.register({
       id: "shell",
-      label: "Shell",
+      label: t("Shell"),
       hints: () =>
         selectedEntry()
           ? [
-              { label: "output", shortcut: shortcuts.get("composer.shell.select") ?? "" },
-              { label: "kill", shortcut: shortcuts.get("composer.shell.kill") ?? "" },
+              { label: t("output"), shortcut: shortcuts.get("composer.shell.select") ?? "" },
+              { label: t("kill"), shortcut: shortcuts.get("composer.shell.kill") ?? "" },
             ]
           : [],
     })
@@ -68,7 +69,7 @@ export function ShellTab(props: { sessionID: string }) {
     commands: [
       {
         id: "composer.shell.up",
-        title: "Previous shell",
+        title: t("Previous shell"),
         group: "Composer",
         run() {
           if (store.selected === 0) {
@@ -80,7 +81,7 @@ export function ShellTab(props: { sessionID: string }) {
       },
       {
         id: "composer.shell.down",
-        title: "Next shell",
+        title: t("Next shell"),
         group: "Composer",
         run() {
           const list = entries()
@@ -90,13 +91,13 @@ export function ShellTab(props: { sessionID: string }) {
       },
       {
         id: "composer.shell.select",
-        title: "View shell output",
+        title: t("View shell output"),
         group: "Composer",
         run: open,
       },
       {
         id: "composer.shell.kill",
-        title: "Kill shell command",
+        title: t("Kill shell command"),
         group: "Composer",
         run() {
           const entry = selectedEntry()

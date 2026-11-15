@@ -49,6 +49,7 @@ import { useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
 import { DialogSessionRename } from "./dialog-session-rename"
 import { Keymap } from "../context/keymap"
+import { t } from "../i18n"
 import "./spinner-renderable"
 import { SPINNER_FRAMES } from "./spinner-frames"
 import { SessionTabsRailControls, SessionTabHalfRow } from "./session-tabs-rail"
@@ -378,7 +379,7 @@ function TabContextMenu(props: { state: TabContextMenuState; tabs: SessionTabsCo
   onCleanup(Keymap.use().mode.push("menu"))
   Keymap.createLayer(() => ({
     mode: "menu",
-    commands: [{ bind: "escape,ctrl+c", title: "Close tab menu", group: "Tabs", run: props.onClose }],
+    commands: [{ bind: "escape,ctrl+c", title: t("Close tab menu"), group: "Tabs", run: props.onClose }],
   }))
   const actions = createMemo<Array<{ title: string; run?: () => void }>>(() => {
     const sessionID = props.state.sessionID
@@ -389,29 +390,29 @@ function TabContextMenu(props: { state: TabContextMenuState; tabs: SessionTabsCo
       ...(sessionID
         ? [
             {
-              title: "Rename",
+              title: t("Rename"),
               run: () =>
                 props.tabs.rename ? props.tabs.rename(sessionID) : DialogSessionRename.show(dialog, sessionID, title),
             },
             {
-              title: "Copy session ID",
+              title: t("Copy session ID"),
               run: () =>
                 void clipboard
                   .write(sessionID)
-                  .then(() => toast.show({ message: "Session ID copied to clipboard", variant: "info" }))
+                  .then(() => toast.show({ message: t("Session ID copied to clipboard"), variant: "info" }))
                   .catch(toast.error),
             },
-            { title: "Close", run: () => props.tabs.close(sessionID) },
+            { title: t("Close"), run: () => props.tabs.close(sessionID) },
           ]
         : []),
       ...(!sessionID && props.tabs.reopen
         ? [
-            { title: "Recently closed tabs" },
+            { title: t("Recently closed tabs") },
             ...closed.map((tab) => ({
-              title: tab.title || "Untitled session",
+              title: tab.title || t("Untitled session"),
               run: () => props.tabs.reopen?.(tab.sessionID),
             })),
-            ...(closed.length === 0 ? [{ title: "No recently closed tabs" }] : []),
+            ...(closed.length === 0 ? [{ title: t("No recently closed tabs") }] : []),
           ]
         : []),
     ]
@@ -747,7 +748,7 @@ function VerticalSessionTabs(props: {
               const restingTitleWidth = () => Math.max(1, width() - prefixWidth() - 1)
               const hoveredTitleWidth = () => Math.max(1, restingTitleWidth() - 1)
               const titleWidth = () => (hovered() === tab.sessionID ? hoveredTitleWidth() : restingTitleWidth())
-              const title = () => (props.controller ? undefined : session()?.title) ?? tab.title ?? "Untitled session"
+              const title = () => (props.controller ? undefined : session()?.title) ?? tab.title ?? t("Untitled session")
               const scrolling = () => marquee.active() === tab.sessionID
               const visibleTitleParts = createMemo(() =>
                 scrolling()
@@ -1247,7 +1248,7 @@ function VerticalSessionTabs(props: {
                 {Locale.truncateWidth(
                   data?.session.get(sessionID())?.title ??
                     items().find((tab) => tab.sessionID === sessionID())?.title ??
-                    "Untitled session",
+                    t("Untitled session"),
                   tooltipWidth() - 2,
                 )}
               </text>
@@ -1569,7 +1570,7 @@ function HorizontalSessionTabs(props: {
           const glowColor = createMemo(() => tint(background(), feedbackColor() ?? unreadColor(), glowLevel()))
           const glows = () =>
             Boolean(status().attention || (!selected() && !status().busy && status().unread !== undefined))
-          const title = () => data?.session.get(tab.sessionID)?.title ?? tab.title ?? "Untitled session"
+          const title = () => data?.session.get(tab.sessionID)?.title ?? tab.title ?? t("Untitled session")
           const tabNumber = createMemo(() => items().findIndex((item) => item.sessionID === tab.sessionID) + 1)
           const numberWidth = () => Math.max(2, String(items().length).length)
           // Hovering reveals the close mark, so the title's right bound shifts left of it.

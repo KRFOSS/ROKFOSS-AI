@@ -3,6 +3,7 @@ import { useLocal } from "../context/local"
 import { DialogSelect } from "../ui/dialog-select"
 import { useDialog } from "../ui/dialog"
 import { useNewDesigns } from "../config"
+import { t } from "../i18n"
 
 export function DialogVariant() {
   const local = useLocal()
@@ -12,7 +13,7 @@ export function DialogVariant() {
   const options = createMemo(() => [
     {
       value: "default",
-      title: "Default",
+      title: t("Default"),
       onSelect: () => {
         dialog.clear()
         local.model.variant.set(undefined)

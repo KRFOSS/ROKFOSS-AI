@@ -107,7 +107,8 @@ export function DialogRai() {
         title: t("High-speed output"),
         category: t("Options"),
         // The gateway accepts the tier for every model but its upstream decides; codex answered `default` live.
-        description: t("Applies only where the model's upstream supports it."),
+        // Short on purpose: the list is narrow and a sentence-length hint is truncated mid-word.
+        description: t("Ignored by some models."),
         footer: current.fast ? t("on") : t("off"),
         onSelect: () => void toggleFast(),
       },

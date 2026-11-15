@@ -8,6 +8,7 @@ import { usePlugin } from "../../plugin/context"
 import { DialogSelect, type DialogSelectOption } from "../../ui/dialog-select"
 import { useDialog } from "../../ui/dialog"
 import { errorMessage } from "../../util/error"
+import { t } from "../../i18n"
 
 const id = "opencode.plugins"
 
@@ -185,14 +186,14 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
         when={detail()}
         fallback={
           <DialogSelect
-            title="Plugins"
+            title={t("Plugins")}
             options={options()}
             locked={locked()}
             preserveSelection={true}
             bindings={[
               {
                 bind: "ctrl+a",
-                title: "Toggle internal plugins",
+                title: t("Toggle internal plugins"),
                 group: "Plugins",
                 run: () => {
                   setShowInternal((value) => !value)
@@ -244,7 +245,7 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
                 onTrigger: (option) => toggle(entries().find((entry) => entry.key === option.value)),
               },
               {
-                title: "update",
+                title: t("update"),
                 command: "dialog.plugins.update",
                 side: "right",
                 hidden: !updatable(focusedEntry()),
@@ -335,7 +336,7 @@ function Commands(props: { context: Plugin.Context }) {
     commands: [
       {
         id: "plugins.list",
-        title: "Plugins",
+        title: t("Plugins"),
         group: "System",
         slash: { name: "plugins" },
         palette: true,

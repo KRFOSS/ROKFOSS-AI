@@ -33,6 +33,7 @@ import { RunFormBody } from "./footer.form"
 import { createFormBodyState, type FormBodyState } from "./form.shared"
 import { footerStatuslinePolicy } from "./footer.width"
 import { Keymap } from "../context/keymap"
+import { t } from "../i18n"
 import type { ClipboardService } from "../context/clipboard"
 import { modelInfo } from "./variant.shared"
 import { monoShortcut } from "./mono"
@@ -409,12 +410,12 @@ export function RunFooterView(props: RunFooterViewProps) {
     }
 
     if (notice()) return notice()
-    if (!footerDetails()) return shell() ? "Shell" : ""
+    if (!footerDetails()) return shell() ? t("Shell") : ""
     if (busy()) {
       if (stateStatus() === "reconnecting") return "reconnecting"
       return interruptLabel() ? `${interruptLabel()} stop` : "Running"
     }
-    return stateStatus() || (shell() ? "Shell" : "")
+    return stateStatus() || (shell() ? t("Shell") : "")
   })
   const agentStatus = createMemo(() => {
     if (!footerDetails() || !prompt() || shell()) return undefined
@@ -466,7 +467,7 @@ export function RunFooterView(props: RunFooterViewProps) {
   const commandHint = createMemo(() => {
     if (!prompt() || takeover() || shell()) return
     if (command()) {
-      return { key: command(), label: "menu" }
+      return { key: command(), label: t("menu") }
     }
   })
   const statuslineLayout = createMemo(() => {
@@ -478,7 +479,7 @@ export function RunFooterView(props: RunFooterViewProps) {
         text: statusText(),
         expanded: footerDetails() && busy() && interruptLabel() ? `${interruptLabel()} interrupt` : undefined,
       },
-      escape: shell() && !takeover() ? { key: "esc", label: "normal" } : undefined,
+      escape: shell() && !takeover() ? { key: "esc", label: t("normal") } : undefined,
       work: contextHintCandidates(),
       model: info ? { name: info.model, variant: info.variant } : undefined,
       agent: agentStatus(),
@@ -543,7 +544,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     commands: [
       {
         id: "app.clear",
-        title: "Clear screen",
+        title: t("Clear screen"),
         group: "System",
         run: clearScreen,
       },
@@ -555,13 +556,13 @@ export function RunFooterView(props: RunFooterViewProps) {
     commands: [
       {
         id: "command.palette.show",
-        title: "Open command palette",
+        title: t("Open command palette"),
         group: "Prompt",
         run: openCommand,
       },
       {
         id: "variant.cycle",
-        title: "Cycle model variant",
+        title: t("Cycle model variant"),
         group: "Model",
         run: props.onCycle,
       },
@@ -573,7 +574,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     commands: [
       {
         id: "session.child.first",
-        title: "View subagents",
+        title: t("View subagents"),
         group: "Session",
         run: openSubagentMenu,
       },
@@ -585,7 +586,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     commands: [
       {
         id: "session.queued_prompts",
-        title: "View pending prompts",
+        title: t("View pending prompts"),
         group: "Prompt",
         run: openQueuedMenu,
       },
@@ -602,7 +603,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     commands: [
       {
         id: "composer.subagent.interrupt",
-        title: "Interrupt subagent",
+        title: t("Interrupt subagent"),
         group: "Session",
         run: () => {
           const current = selectedTab()

@@ -6,6 +6,7 @@ import { Show, createEffect, createSignal, onMount, type JSX } from "solid-js"
 import { Spinner } from "../component/spinner"
 import { useCursorStyle } from "../config"
 import { useRenderer } from "@opentui/solid"
+import { t } from "../i18n"
 
 export type DialogPromptAction = {
   title: string
@@ -68,7 +69,7 @@ export function DialogPrompt(props: DialogPromptProps) {
     commands: [
       {
         id: "dialog.prompt.submit",
-        title: "Submit dialog prompt",
+        title: t("Submit dialog prompt"),
         group: "Dialog",
         run: confirm,
       },

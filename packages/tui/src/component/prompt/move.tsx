@@ -8,6 +8,7 @@ import { DialogWorkspaces, type WorkspaceSelection } from "../dialog-workspaces"
 import { useData } from "../../context/data"
 import { useLocation } from "../../context/location"
 import { useRoute } from "../../context/route"
+import { t } from "../../i18n"
 
 export function usePromptMove(input: { projectID: () => string | undefined; sessionID: () => string | undefined }) {
   const dialog = useDialog()
@@ -56,7 +57,7 @@ export function usePromptMove(input: { projectID: () => string | undefined; sess
       setDestination(undefined)
       setProgress(undefined)
       setCreating(false)
-      toast.show({ title: "Creating workspace failed", message: errorMessage(err), variant: "error" })
+      toast.show({ title: t("Creating workspace failed"), message: errorMessage(err), variant: "error" })
       return
     }
   }

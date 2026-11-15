@@ -259,9 +259,9 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
           .status({ location: { directory: selected.directory } })
           .catch(() => undefined)
         const choice = await DialogWorkspaceFileChanges.show(dialog, status?.data ?? [], {
-          title: "Delete worktree?",
-          message: "This worktree has file changes. Do you want to delete it anyway?",
-          confirm: { title: "delete", key: "d" },
+          title: t("Delete worktree?"),
+          message: t("This worktree has file changes. Do you want to delete it anyway?"),
+          confirm: { title: t("delete"), key: "d" },
         })
         if (choice !== "yes") {
           reopen()
@@ -280,7 +280,7 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
         if (forcedError) {
           toast.show({
             variant: "error",
-            title: "Failed to delete worktree",
+            title: t("Failed to delete worktree"),
             message: errorMessage(forcedError),
           })
           reopen()
@@ -294,7 +294,7 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
       }
       toast.show({
         variant: "error",
-        title: "Failed to delete worktree",
+        title: t("Failed to delete worktree"),
         message: errorMessage(error),
       })
       return
@@ -375,17 +375,17 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
             ? []
             : [
                 ...(route.data.type === "session"
-                  ? [{ command: "dialog.move_session.move", title: "move", onTrigger: move }]
+                  ? [{ command: "dialog.move_session.move", title: t("move"), onTrigger: move }]
                   : []),
                 {
                   command: "dialog.move_session.new",
-                  title: "new",
+                  title: t("new"),
                   selection: "none",
                   onTrigger: () => void create(),
                 },
                 {
                   command: "dialog.move_session.delete",
-                  title: "delete",
+                  title: t("delete"),
                   disabled: (option) => {
                     const value = option?.value
                     if (!value || value.type !== "directory" || value.subdirectory) return true
@@ -395,7 +395,7 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
                 },
                 {
                   command: "dialog.move_session.refresh",
-                  title: "refresh",
+                  title: t("refresh"),
                   selection: "none",
                   onTrigger: () => void refresh().catch(toast.error),
                 },

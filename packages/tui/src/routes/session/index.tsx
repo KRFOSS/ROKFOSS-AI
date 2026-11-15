@@ -259,7 +259,7 @@ export function Session(props: {
   Keymap.createLayer(() => ({
     priority: 10,
     enabled: () => props.sidebarVisible && dimensions().width - props.verticalTabsWidth <= 120 && !disabled(),
-    commands: [{ bind: "escape,ctrl+c", title: "Close sidebar", group: "Session", run: props.onToggleSidebar }],
+    commands: [{ bind: "escape,ctrl+c", title: t("Close sidebar"), group: "Session", run: props.onToggleSidebar }],
   }))
   const contentWidth = createMemo(() => (props.width ?? dimensions().width - props.verticalTabsWidth) - 4)
   const models = createMemo(() => data.location.model.list(location()) ?? [])
@@ -791,9 +791,9 @@ export function Session(props: {
   const openQueuedPrompts = () =>
     dialog.replace(() => (
       <DialogSelect
-        title="Queued prompts"
+        title={t("Queued prompts")}
         searchInTitle
-        titlePlaceholder="Search queued prompts"
+        titlePlaceholder={t("Search queued prompts")}
         options={queuedPrompts().map((prompt, index) => ({
           title: prompt.text,
           value: prompt.id,
@@ -807,7 +807,7 @@ export function Session(props: {
         actions={[
           {
             command: "queued_prompt.delete",
-            title: "delete",
+            title: t("delete"),
             onTrigger: (option) => {
               const last = queuedPrompts().length === 1
               void mutatePending("cancel", option.value).then((cancelled) => {
@@ -817,13 +817,13 @@ export function Session(props: {
           },
           {
             command: "queued_prompt.undo",
-            title: "undo",
+            title: t("undo"),
             onTrigger: (option) => {
               const target = prompt()
               const queued = queuedPrompts().find((item) => item.id === option.value)
               if (!target || !queued) return
               if (target.mode === "shell" && target.current.text) {
-                toast.show({ message: "Leave shell mode before undoing a queued prompt", variant: "error" })
+                toast.show({ message: t("Leave shell mode before undoing a queued prompt"), variant: "error" })
                 return
               }
               void undoPending(queued.id, queued.payload, "undo")
@@ -834,7 +834,7 @@ export function Session(props: {
                 })
                 .catch((error) =>
                   toast.show({
-                    title: "Failed to undo pending prompt",
+                    title: t("Failed to undo pending prompt"),
                     message: errorMessage(error),
                     variant: "error",
                   }),
@@ -842,7 +842,7 @@ export function Session(props: {
             },
           },
         ]}
-        footerHints={[{ title: "steer", label: "enter", group: "primary" }]}
+        footerHints={[{ title: t("steer"), label: "enter", group: "primary" }]}
       />
     ))
   const alignMessage = (messageID: string, top: number) => {
@@ -927,55 +927,57 @@ export function Session(props: {
     dialog.clear()
   }
 
-  const globalCommands = [
+  // These two command lists are built on call rather than once at setup: their titles go through `t()`,
+  // and a setup-scope array would have kept whichever language was active when the session view mounted.
+  const globalCommands = () => [
     {
       id: "session.page.up",
-      title: "Page up",
+      title: t("Page up"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(-scroll.height / 2),
     },
     {
       id: "session.page.down",
-      title: "Page down",
+      title: t("Page down"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(scroll.height / 2),
     },
     {
       id: "session.line.up",
-      title: "Line up",
+      title: t("Line up"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(-1),
     },
     {
       id: "session.line.down",
-      title: "Line down",
+      title: t("Line down"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(1),
     },
     {
       id: "session.half.page.up",
-      title: "Half page up",
+      title: t("Half page up"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(-scroll.height / 4),
     },
     {
       id: "session.half.page.down",
-      title: "Half page down",
+      title: t("Half page down"),
       group: "Session",
       palette: undefined,
       run: () => moveTranscript(scroll.height / 4),
     },
   ]
 
-  const baseAndUnfocusedCommands = [
+  const baseAndUnfocusedCommands = () => [
     {
       id: "session.first",
-      title: "First message",
+      title: t("First message"),
       group: "Session",
       palette: undefined,
       run: () => {
@@ -1043,7 +1045,7 @@ export function Session(props: {
     },
     {
       id: "session.last",
-      title: "Last message",
+      title: t("Last message"),
       group: "Session",
       palette: undefined,
       run: () => {
@@ -1055,7 +1057,7 @@ export function Session(props: {
 
   const baseCommands = createMemo(() => [
     {
-      title: "Rename session",
+      title: t("Rename session"),
       id: "session.rename",
       group: "Session",
       slash: { name: "rename", arguments: true as const },
@@ -1070,7 +1072,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Jump to message",
+      title: t("Jump to message"),
       id: "session.timeline",
       group: "Session",
       slash: { name: "timeline" },
@@ -1079,7 +1081,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Fork session",
+      title: t("Fork session"),
       id: "session.fork",
       group: "Session",
       slash: { name: "fork" },
@@ -1096,7 +1098,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Compact session",
+      title: t("Compact session"),
       id: "session.compact",
       group: "Session",
       slash: {
@@ -1120,7 +1122,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Undo previous message",
+      title: t("Undo previous message"),
       id: "session.undo",
       group: "Session",
       slash: { name: "undo" },
@@ -1129,7 +1131,7 @@ export function Session(props: {
           (message): message is SessionMessageUser => message.type === "user" && !!message.text.trim(),
         )
         if (!message) {
-          toast.show({ message: "Nothing to undo", variant: "error", duration: 3000 })
+          toast.show({ message: t("Nothing to undo"), variant: "error", duration: 3000 })
           dialog.clear()
           return
         }
@@ -1147,7 +1149,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Redo",
+      title: t("Redo"),
       id: "session.redo",
       group: "Session",
       enabled: !!session()?.revert?.messageID,
@@ -1166,8 +1168,8 @@ export function Session(props: {
     {
       title: (() => {
         const next = nextThinkingMode(thinkingMode())
-        if (next === "hide") return "Collapse thinking"
-        return "Expand thinking"
+        if (next === "hide") return t("Collapse thinking")
+        return t("Expand thinking")
       })(),
       id: "session.toggle.thinking",
       group: "Session",
@@ -1182,7 +1184,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Toggle session scrollbar",
+      title: t("Toggle session scrollbar"),
       id: "session.toggle.scrollbar",
       group: "Session",
       palette: undefined,
@@ -1225,7 +1227,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Jump to last user message",
+      title: t("Jump to last user message"),
       id: "session.messages_last_user",
       group: "Session",
       palette: undefined,
@@ -1245,35 +1247,35 @@ export function Session(props: {
       },
     },
     {
-      title: "Next message",
+      title: t("Next message"),
       id: "session.message.next",
       group: "Session",
       palette: undefined,
       run: () => scrollToMessage("next", dialog),
     },
     {
-      title: "Previous message",
+      title: t("Previous message"),
       id: "session.message.previous",
       group: "Session",
       palette: undefined,
       run: () => scrollToMessage("prev", dialog),
     },
     {
-      title: "Next user message",
+      title: t("Next user message"),
       id: "session.message.user.next",
       group: "Session",
       palette: undefined,
       run: () => scrollToMessage("next", dialog, true),
     },
     {
-      title: "Previous user message",
+      title: t("Previous user message"),
       id: "session.message.user.previous",
       group: "Session",
       palette: undefined,
       run: () => scrollToMessage("prev", dialog, true),
     },
     {
-      title: "Copy last assistant message",
+      title: t("Copy last assistant message"),
       id: "messages.copy",
       group: "Session",
       slash: {
@@ -1284,7 +1286,7 @@ export function Session(props: {
           (msg) => msg.type === "assistant" || (msg.type === "compaction" && msg.status === "completed" && msg.summary.trim() !== ""),
         )
         if (!lastAssistantMessage) {
-          toast.show({ message: "No assistant messages found", variant: "error" })
+          toast.show({ message: t("No assistant messages found"), variant: "error" })
           dialog.clear()
           return
         }
@@ -1301,7 +1303,7 @@ export function Session(props: {
               : ""
         if (!text) {
           toast.show({
-            message: "No text content found in last assistant message",
+            message: t("No text content found in last assistant message"),
             variant: "error",
           })
           dialog.clear()
@@ -1310,25 +1312,25 @@ export function Session(props: {
 
         clipboard
           .write(text)
-          .then(() => toast.show({ message: "Message copied to clipboard!", variant: "success" }))
-          .catch(() => toast.show({ message: "Failed to copy to clipboard", variant: "error" }))
+          .then(() => toast.show({ message: t("Message copied to clipboard!"), variant: "success" }))
+          .catch(() => toast.show({ message: t("Failed to copy to clipboard"), variant: "error" }))
         dialog.clear()
       },
     },
     {
-      title: "Copy session ID",
+      title: t("Copy session ID"),
       id: "session.copy.id",
       group: "Session",
       run: () => {
         clipboard
           .write(route.sessionID)
-          .then(() => toast.show({ message: "Session ID copied to clipboard!", variant: "success" }))
-          .catch(() => toast.show({ message: "Failed to copy session ID", variant: "error" }))
+          .then(() => toast.show({ message: t("Session ID copied to clipboard!"), variant: "success" }))
+          .catch(() => toast.show({ message: t("Failed to copy session ID"), variant: "error" }))
         dialog.clear()
       },
     },
     {
-      title: "Copy session transcript",
+      title: t("Copy session transcript"),
       id: "session.copy",
       group: "Session",
       run: async () => {
@@ -1338,15 +1340,15 @@ export function Session(props: {
           const transcript = await client.api.experimental.session.export({ sessionID: sessionData.id })
           const content = formatSessionTranscript(transcript.info, transcript.messages, true)
           await clipboard.write(content)
-          toast.show({ message: "Session transcript copied to clipboard!", variant: "success" })
+          toast.show({ message: t("Session transcript copied to clipboard!"), variant: "success" })
         } catch {
-          toast.show({ message: "Failed to copy session transcript", variant: "error" })
+          toast.show({ message: t("Failed to copy session transcript"), variant: "error" })
         }
         dialog.clear()
       },
     },
     {
-      title: "Export session transcript",
+      title: t("Export session transcript"),
       id: "session.export",
       group: "Session",
       slash: {
@@ -1373,7 +1375,7 @@ export function Session(props: {
           if (options.action === "copy") {
             await clipboard.write(content)
             dialog.clear()
-            toast.show({ message: "Copied to clipboard", variant: "success" })
+            toast.show({ message: t("Copied to clipboard"), variant: "success" })
             return
           }
 
@@ -1384,13 +1386,13 @@ export function Session(props: {
           await writeExport(filepath, content)
           await DialogExportResult.show(dialog, filepath)
         } catch {
-          toast.show({ message: "Failed to export session", variant: "error" })
+          toast.show({ message: t("Failed to export session"), variant: "error" })
         }
         dialog.clear()
       },
     },
     {
-      title: "Background blocking tools",
+      title: t("Background blocking tools"),
       id: "session.background",
       group: "Session",
       palette: undefined,
@@ -1400,7 +1402,7 @@ export function Session(props: {
       },
     },
     {
-      title: "Toggle subagent picker",
+      title: t("Toggle subagent picker"),
       id: "session.child.first",
       group: "Session",
       run: (tab?: string) => {
@@ -1411,14 +1413,14 @@ export function Session(props: {
       },
     },
     {
-      title: "View queued prompts",
+      title: t("View queued prompts"),
       id: "session.queued_prompts",
       group: "Prompt",
       enabled: queuedPrompts().length > 0,
       run: openQueuedPrompts,
     },
     {
-      title: "Go to parent session",
+      title: t("Go to parent session"),
       id: "session.parent",
       group: "Session",
       palette: undefined,
@@ -1437,7 +1439,7 @@ export function Session(props: {
   ])
 
   const commands = createMemo(() =>
-    [...globalCommands, ...baseAndUnfocusedCommands, ...baseCommands()].map(
+    [...globalCommands(), ...baseAndUnfocusedCommands(), ...baseCommands()].map(
       (command) =>
         ({
           bind: false,
@@ -1450,17 +1452,17 @@ export function Session(props: {
   Keymap.createLayer(() => ({
     mode: "global",
     commands: commands(),
-    bindings: globalCommands.map((command) => command.id),
+    bindings: globalCommands().map((command) => command.id),
   }))
 
   Keymap.createLayer(() => ({
     mode: "composer",
     enabled: () => renderer.currentFocusedEditor === null,
-    bindings: baseAndUnfocusedCommands.map((command) => command.id),
+    bindings: baseAndUnfocusedCommands().map((command) => command.id),
   }))
 
   Keymap.createLayer(() => ({
-    bindings: [...baseAndUnfocusedCommands, ...baseCommands()].map((command) => command.id),
+    bindings: [...baseAndUnfocusedCommands(), ...baseCommands()].map((command) => command.id),
   }))
 
   createEffect(
@@ -2115,7 +2117,7 @@ function SessionNoticeMessageV2(props: { message: SessionMessageInfo }) {
   const completion = () => source() === "subagent" || source() === "shell"
   const childID = () => (source() === "subagent" ? stringValue(metadata()?.childID) : undefined)
   const state = () => stringValue(metadata()?.state)
-  const actor = () => (source() === "shell" ? "Shell" : Locale.titlecase(stringValue(metadata()?.agent) ?? "Subagent"))
+  const actor = () => (source() === "shell" ? t("Shell") : Locale.titlecase(stringValue(metadata()?.agent) ?? "Subagent"))
   const text = () => {
     if (props.message.type === "system") return props.message.description ?? "Instructions updated"
     if (props.message.type === "synthetic") return props.message.description ?? ""
@@ -2340,8 +2342,8 @@ function RevertMessage(props: {
 
 function ShellMessage(props: { message: Extract<SessionMessageInfo, { type: "shell" }> }) {
   const error = createMemo(() => {
-    if (props.message.status === "killed") return "Command cancelled"
-    if (props.message.status === "timeout") return "Command timed out"
+    if (props.message.status === "killed") return t("Command cancelled")
+    if (props.message.status === "timeout") return t("Command timed out")
     if (props.message.exit !== undefined && props.message.exit !== 0)
       return `Command exited with code ${props.message.exit}`
   })
@@ -2406,11 +2408,11 @@ function UserMessage(props: { message: SessionMessageUser }) {
             if (delivery() === "steer") {
               dialog.replace(() => (
                 <DialogSelect
-                  title="Pending steer"
+                  title={t("Pending steer")}
                   renderFilter={!newDesigns()}
                   options={[
-                    { title: "Move to queue", value: "queue" as const },
-                    { title: "Delete", value: "cancel" as const },
+                    { title: t("Move to queue"), value: "queue" as const },
+                    { title: t("Delete"), value: "cancel" as const },
                   ]}
                   onSelect={(option) => {
                     void updatePendingSteer(option.value)
@@ -3131,7 +3133,7 @@ function ShellDisplay(props: {
           when={props.command}
           fallback={
             isRunning() || props.status === "streaming" ? (
-              <Spinner color={color()}>Writing command…</Spinner>
+              <Spinner color={color()}>{t("Writing command…")}</Spinner>
             ) : (
               <text fg={theme.text.muted}>{t("Writing command…")}</text>
             )

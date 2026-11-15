@@ -34,6 +34,7 @@ import { createPluginSources } from "./source"
 import { isMissingPath } from "../util/config-directories"
 import { createMarkdownRenderer } from "./markdown"
 import { useLog, type LogTags } from "../context/log"
+import { t } from "../i18n"
 
 export interface PackageSource {
   readonly prepare: (spec: string, install?: boolean) => Promise<Host.Target>
@@ -234,7 +235,7 @@ export function PluginProvider(props: ParentProps<{ packages: PackageSource; dir
   // vanish either: the old generation may still own listeners or intervals.
   const deactivateNoisily = (id: string) =>
     deactivate(id).catch((error) =>
-      host.toast.show({ variant: "error", title: "Plugin", message: `${id}: cleanup failed: ${errorMessage(error)}` }),
+      host.toast.show({ variant: "error", title: t("Plugin"), message: `${id}: cleanup failed: ${errorMessage(error)}` }),
     )
 
   // Every lifecycle mutation — reconciles, manual dialog toggles, shutdown —
@@ -480,8 +481,8 @@ export function PluginProvider(props: ParentProps<{ packages: PackageSource; dir
         host.toast.show({
           variant: "error",
           title: `Plugin failed: ${state.target}`,
-          message: "Run /plugins to view details.",
-          action: { label: "Open plugins", run: () => host.keymap.dispatch("plugins.list") },
+          message: t("Run /plugins to view details."),
+          action: { label: t("Open plugins"), run: () => host.keymap.dispatch("plugins.list") },
         })
     setStore("states", reconcileStore(states))
     log.info("plugin reconciliation completed", { id, durationMs: Date.now() - started, plugins: desired.size })
@@ -556,7 +557,7 @@ export function PluginProvider(props: ParentProps<{ packages: PackageSource; dir
           title: failed.length === 1 ? `Plugin failed: ${serverPluginName(first)}` : `${failed.length} plugins failed`,
           message:
             (failed.length > 1 ? `${failed.map(serverPluginName).join(", ")}\n` : "") + "Run /plugins to view details.",
-          action: { label: "Open plugins", run: () => host.keymap.dispatch("plugins.list") },
+          action: { label: t("Open plugins"), run: () => host.keymap.dispatch("plugins.list") },
         })
       })
       .catch(() => undefined)

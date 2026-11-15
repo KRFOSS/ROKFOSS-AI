@@ -16,6 +16,7 @@ import path from "path"
 import stripAnsi from "strip-ansi"
 import type { SessionMessageAssistantTool } from "@opencode/client/promise"
 import { LANGUAGE_EXTENSIONS } from "../util/filetype"
+import { t } from "../i18n"
 import { Locale } from "../util/locale"
 import {
   canonicalToolName,
@@ -449,7 +450,7 @@ function runPatch(p: ToolProps): ToolInline {
   if (files === 0) {
     return {
       icon: "%",
-      title: "Patch",
+      title: t("Patch"),
     }
   }
 
@@ -462,7 +463,7 @@ function runPatch(p: ToolProps): ToolInline {
 function runTodo(p: ToolProps): ToolInline {
   return {
     icon: "#",
-    title: "Todos",
+    title: t("Todos"),
     mode: "block",
     body: parseTodos(p.frame.input.todos)
       .map((item) => `${todoMarker(item.status)} ${item.content}`)
@@ -481,7 +482,7 @@ function runQuestion(p: ToolProps): ToolInline {
 function runInvalid(p: ToolProps): ToolInline {
   return {
     icon: "✗",
-    title: "Invalid Tool",
+    title: t("Invalid Tool"),
     mode: "block",
     body: p.frame.status === "completed" ? p.frame.output : undefined,
   }

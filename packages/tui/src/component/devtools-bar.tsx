@@ -267,22 +267,22 @@ export function DevToolsBar() {
           }
         >
           {" "}
-          Server
+          {t("Server")}
         </text>
         <Show when={panel() === "server"}>
           <PanelBox>
-            <PanelTitle>Server</PanelTitle>
-            <Row label="Status" value={connected() ? "Connected" : client.connection.status()} />
+            <PanelTitle>{t("Server")}</PanelTitle>
+            <Row label={t("Status")} value={connected() ? t("Connected") : client.connection.status()} />
             <Show when={client.connection.attempt() > 0}>
-              <Row label="Reconnect" value={String(client.connection.attempt())} />
+              <Row label={t("Reconnect")} value={String(client.connection.attempt())} />
             </Show>
-            <Show when={client.connection.error()}>{(error) => <Row label="Last error" value={error()} />}</Show>
+            <Show when={client.connection.error()}>{(error) => <Row label={t("Last error")} value={error()} />}</Show>
             <Show when={server()}>
               {(value) => (
                 <>
-                  <Row label="Version" value={value().health.version} />
+                  <Row label={t("Version")} value={value().health.version} />
                   <Row label="PID" value={String(value().health.pid)} />
-                  <Row label="Address" value={value().address} />
+                  <Row label={t("Address")} value={value().address} />
                 </>
               )}
             </Show>
@@ -319,22 +319,22 @@ export function DevToolsBar() {
         <Show when={panel() === "ui"}>
           <PanelBox>
             <PanelTitle>UI</PanelTitle>
-            <Row label="Status" value={runtime()} />
+            <Row label={t("Status")} value={runtime()} />
             <ProcessStat
-              label="Loop"
+              label={t("Loop")}
               values={frontendSamples().map((sample) => sample.delay)}
               unit=" ms"
               decimals={1}
             />
             <ProcessStat label="CPU" values={frontendSamples().map((sample) => sample.cpu)} unit="%" />
             <ProcessStat
-              label="Memory"
+              label={t("Memory")}
               values={frontendSamples().map((sample) => sample.memory / 1024 / 1024)}
               unit=" MB"
               decimals={0}
             />
             <Action onClick={() => renderer.toggleDebugOverlay()} hoverBackground>
-              {debugOverlay() ? "[x]" : "[ ]"} Debug overlay
+              {debugOverlay() ? "[x]" : "[ ]"} {t("Debug overlay")}
             </Action>
           </PanelBox>
         </Show>
@@ -344,8 +344,8 @@ export function DevToolsBar() {
         <Show when={panel() === "theme"}>
           <PanelBox>
             <PanelTitle>Theme</PanelTitle>
-            <Row label="Name" value={themes.selected} />
-            <Row label="Mode" value={mode()} />
+            <Row label={t("Name")} value={themes.selected} />
+            <Row label={t("Mode")} value={mode()} />
             <For each={themePerformance()}>{(entry) => <Row label={entry.key} value={String(entry.value)} />}</For>
             <Show when={canSwitchMode()}>
               <Action onClick={() => setMode(nextMode())} hoverBackground>
@@ -389,7 +389,7 @@ export function DevToolsBar() {
                 }
                 hoverBackground
               >
-                {timing() ? "[x]" : "[ ]"} Time to first draw
+                {timing() ? "[x]" : "[ ]"} {t("Time to first draw")}
               </Action>
               <Action
                 onClick={() =>
@@ -437,7 +437,7 @@ export function DevToolsBar() {
         <text fg={theme.text.muted}>{t("Experiments")}</text>
       </BarItem>
       <box flexGrow={1} minWidth={0}>
-        <TimeToFirstDraw visible={timing()} width="100%" fg={theme.text.muted} label="Time to first draw" />
+        <TimeToFirstDraw visible={timing()} width="100%" fg={theme.text.muted} label={t("Time to first draw")} />
       </box>
     </box>
   )

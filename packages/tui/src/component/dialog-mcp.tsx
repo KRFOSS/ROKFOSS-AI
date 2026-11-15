@@ -11,6 +11,7 @@ import { useToast } from "../ui/toast"
 import { DialogErrorDetails } from "./dialog-error-details"
 import { DialogIntegration } from "./dialog-integration"
 import { useLocation } from "../context/location"
+import { t } from "../i18n"
 
 function statusError(status: McpServer["status"]) {
   if (status.status === "failed" || status.status === "needs_auth") return status.error
@@ -84,10 +85,10 @@ export function DialogMcp(props: { initialServer?: string; details?: boolean } =
 
   const toggleTitle = createMemo(() => {
     const status = focusedServer()?.status.status
-    if (status === "connected") return "disconnect"
-    if (status === "failed") return "retry"
-    if (status === "needs_auth") return "sign in"
-    return "connect"
+    if (status === "connected") return t("disconnect")
+    if (status === "failed") return t("retry")
+    if (status === "needs_auth") return t("sign in")
+    return t("connect")
   })
 
   const focusedError = createMemo(() => {
@@ -143,9 +144,9 @@ export function DialogMcp(props: { initialServer?: string; details?: boolean } =
         when={detail()}
         fallback={
           <DialogSelect
-            title="MCP servers"
+            title={t("MCP servers")}
             searchInTitle
-            titlePlaceholder="Search MCP servers"
+            titlePlaceholder={t("Search MCP servers")}
             options={options()}
             preserveSelection
             focusTarget={props.initialServer}
@@ -167,8 +168,8 @@ export function DialogMcp(props: { initialServer?: string; details?: boolean } =
       >
         {(server) => (
           <DialogErrorDetails
-            title={`MCP server: ${server().name}`}
-            error={statusError(server().status) ?? "Unknown MCP connection error"}
+            title={t("MCP server: {{name}}", { name: server().name })}
+            error={statusError(server().status) ?? t("Unknown MCP connection error")}
             context={`Status: ${server().status.status}\nConfiguration: mcp.servers.${server().name}${
               server().integrationID ? `\nIntegration: ${server().integrationID}` : ""
             }`}

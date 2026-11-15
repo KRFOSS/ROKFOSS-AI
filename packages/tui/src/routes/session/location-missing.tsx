@@ -45,12 +45,12 @@ export function SessionLocationMissing(props: { directory: string; projectID: st
               return result.directory
             })
             .catch((error) => {
-              toast.show({ title: "Creating workspace failed", message: errorMessage(error), variant: "error" })
+              toast.show({ title: t("Creating workspace failed"), message: errorMessage(error), variant: "error" })
               return undefined
             })
     if (!directory) return
     await client.api.session.move({ sessionID: props.sessionID, directory }).catch((error) => {
-      toast.show({ title: "Failed to move session", message: errorMessage(error), variant: "error" })
+      toast.show({ title: t("Failed to move session"), message: errorMessage(error), variant: "error" })
     })
   }
 
@@ -68,7 +68,7 @@ export function SessionLocationUnavailable(props: { directory: string; onMove: (
       group="Session recovery"
       choicesLabel="Recovery actions"
       instance={props.directory}
-      title="Session location unavailable"
+      title={t("Session location unavailable")}
       body={
         <box paddingLeft={1} gap={1}>
           <text fg={theme.text.muted}>{directory()}</text>

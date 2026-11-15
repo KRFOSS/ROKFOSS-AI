@@ -109,7 +109,7 @@ describe("korean dictionary", () => {
       "Subscription",
       "Options",
       "High-speed output",
-      "Applies only where the model's upstream supports it.",
+      "Ignored by some models.",
       "High-speed output enabled",
       "High-speed output disabled",
       "Using subscription {{label}}",

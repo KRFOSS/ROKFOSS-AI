@@ -96,13 +96,13 @@ export function DialogGoUpsell(props: {
   Keymap.createLayer(() => ({
     mode: "modal",
     commands: [
-      { bind: "return", title: "Confirm Go option", group: "Dialog", run: () => run(selected()) },
-      { bind: "left", title: "Previous Go option", group: "Dialog", run: () => step(-1) },
-      { bind: "up", title: "Previous Go option", group: "Dialog", run: () => step(-1) },
-      { bind: "shift+tab", title: "Previous Go option", group: "Dialog", run: () => step(-1) },
-      { bind: "right", title: "Next Go option", group: "Dialog", run: () => step(1) },
-      { bind: "down", title: "Next Go option", group: "Dialog", run: () => step(1) },
-      { bind: "tab", title: "Next Go option", group: "Dialog", run: () => step(1) },
+      { bind: "return", title: t("Confirm Go option"), group: "Dialog", run: () => run(selected()) },
+      { bind: "left", title: t("Previous Go option"), group: "Dialog", run: () => step(-1) },
+      { bind: "up", title: t("Previous Go option"), group: "Dialog", run: () => step(-1) },
+      { bind: "shift+tab", title: t("Previous Go option"), group: "Dialog", run: () => step(-1) },
+      { bind: "right", title: t("Next Go option"), group: "Dialog", run: () => step(1) },
+      { bind: "down", title: t("Next Go option"), group: "Dialog", run: () => step(1) },
+      { bind: "tab", title: t("Next Go option"), group: "Dialog", run: () => step(1) },
     ],
   }))
 

@@ -410,7 +410,7 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
                 ? [
                     {
                       bind: "left",
-                      title: "Return to projects",
+                      title: t("Return to projects"),
                       group: "Dialog",
                       run: back,
                     },
@@ -418,7 +418,7 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
                   ]
                 : []),
             ]}
-            footerHints={[...(projectID() ? [{ title: "new worktree", label: "ctrl+n" }] : [])]}
+            footerHints={[...(projectID() ? [{ title: t("new worktree"), label: "ctrl+n" }] : [])]}
             noMatchView={
               <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
                 <text fg={theme.text.muted}>

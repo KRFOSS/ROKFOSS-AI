@@ -42,12 +42,16 @@ show a SmartScreen warning because there is no code-signing certificate behind t
 
 ## Korean interface
 
-`/settings` → **Appearance** → **Language** → `한국어`, or set it in
-`~/.config/opencode/opencode.json`:
+`/settings` → **Appearance** → **Language** → `한국어`, or set it in the terminal app's own
+configuration file, `~/.config/opencode/cli.json`:
 
 ```json
 { "language": "ko" }
 ```
+
+<yellow>It belongs in `cli.json`, not `opencode.json`.</yellow> The terminal app reads its settings (theme,
+keybinds, tabs, language) from `cli.json`; `opencode.json` is the server-side configuration used for
+models and providers, and a `language` key there has no effect. `/settings` writes `cli.json` for you.
 
 No restart is needed. The dictionary lives in `packages/tui/src/i18n/ko.ts`; anything missing falls
 back to English, so an upstream string that lands without a translation still renders.

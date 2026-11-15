@@ -4,6 +4,7 @@ import { Keymap } from "../../../context/keymap"
 import { useSessionTerminals } from "../../../context/session-terminals"
 import { useTheme } from "../../../context/theme"
 import { useToast } from "../../../ui/toast"
+import { t } from "../../../i18n"
 import { useComposerTab } from "./context"
 
 export function TerminalsTab(props: { sessionID: string; visibleTerminalID?: string }) {
@@ -11,13 +12,13 @@ export function TerminalsTab(props: { sessionID: string; visibleTerminalID?: str
   const terminals = useSessionTerminals()
   const theme = useTheme()
   const toast = useToast()
-  const failure = () => toast.show({ variant: "error", message: "Unable to load terminal" })
+  const failure = () => toast.show({ variant: "error", message: t("Unable to load terminal") })
   const [selected, setSelected] = createSignal<number>()
   const session = () => terminals.get(props.sessionID)
   const entries = () => session()?.terminals ?? []
 
   onMount(() => {
-    const cleanup = composer.register({ id: "terminals", label: "Terminals" })
+    const cleanup = composer.register({ id: "terminals", label: t("Terminals") })
     onCleanup(cleanup)
   })
 
@@ -46,19 +47,19 @@ export function TerminalsTab(props: { sessionID: string; visibleTerminalID?: str
     commands: [
       {
         id: "composer.terminal.up",
-        title: "Previous terminal",
+        title: t("Previous terminal"),
         group: "Composer",
         run: () => setSelected((index) => ((index ?? 0) + entries().length) % (entries().length + 1)),
       },
       {
         id: "composer.terminal.down",
-        title: "Next terminal",
+        title: t("Next terminal"),
         group: "Composer",
         run: () => setSelected((index) => ((index ?? -1) + 1) % (entries().length + 1)),
       },
       {
         id: "composer.terminal.select",
-        title: "Select terminal",
+        title: t("Select terminal"),
         group: "Composer",
         run: select,
       },

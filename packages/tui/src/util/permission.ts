@@ -60,7 +60,7 @@ export function permissionPresentation(
     return {
       icon: "✱",
       title: `${title} "${pattern}"`,
-      lines: pattern ? [`Pattern: ${pattern}`] : [],
+      lines: pattern ? [t("Pattern: {{pattern}}", { pattern })] : [],
     }
   }
 
@@ -68,7 +68,7 @@ export function permissionPresentation(
     const command = text(input.command)
     return {
       icon: "#",
-      title: "Shell command",
+      title: t("Shell command"),
       lines: command ? [`$ ${command}`] : resources.map((item) => `- ${item}`),
     }
   }
@@ -124,7 +124,7 @@ export function permissionPresentation(
     const directory = wildcardDirectory(raw)
     return {
       icon: "←",
-      title: `Access external directory ${formatPath(directory)}`,
+      title: t("Access external directory {{path}}", { path: formatPath(directory) }),
       lines: resources.map((item) => `- ${item}`),
     }
   }
@@ -132,14 +132,14 @@ export function permissionPresentation(
   if (action === "doom_loop") {
     return {
       icon: "⟳",
-      title: "Continue after repeated failures",
-      lines: ["This keeps the session running despite repeated failures."],
+      title: t("Continue after repeated failures"),
+      lines: [t("This keeps the session running despite repeated failures.")],
     }
   }
 
   return {
     icon: "⚙",
-    title: `Call tool ${source.action}`,
+    title: t("Call tool {{tool}}", { tool: source.action }),
     lines: [`Tool: ${source.action}`],
   }
 }

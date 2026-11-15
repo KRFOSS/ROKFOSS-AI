@@ -19,10 +19,14 @@ import {
   type DialogContext,
 } from "./dialog"
 import { Locale } from "../util/locale"
+import { stringWidth } from "../util/string-width"
 import { t } from "../i18n"
 import { getScrollAcceleration } from "../util/scroll"
 import { useConfig, useCursorStyle, useNewDesigns } from "../config"
 import { moveSelection, reconcileSelection } from "./select-controller"
+
+/** Usable text columns of one row in the default 60-column dialog, after the list insets and the title padding. */
+const DEFAULT_ROW_TEXT_WIDTH = 51
 
 export interface DialogSelectProps<T> {
   title: string
@@ -912,7 +916,30 @@ function DialogSelectRow(props: {
   // Rows carry model names, session titles and paths as well as UI copy, so translation happens here, at the
   // last moment before drawing: a dictionary miss leaves the value untouched.
   const title = () => t(props.title)
-  const description = () => (props.description === undefined ? undefined : t(props.description))
+  // A model name, a path or a sentence-length hint all arrive as `title`, so the row caps it; the description is
+  // appended after the title and needs the rest of that same budget, or a long one wraps and is clipped mid-word.
+  // The default dialog is 60 columns wide and the list insets take nine of them, so text that runs past this is
+  // cut by the container instead of by `truncateWidth`, which loses the ellipsis and splits a wide character.
+  const titleWidth = () => props.titleWidth ?? DEFAULT_ROW_TEXT_WIDTH
+  const renderedTitle = createMemo(() =>
+    props.truncateTitle === false
+      ? title()
+      : props.truncateTitle === "left"
+        ? Locale.truncateLeft(title(), titleWidth())
+        : Locale.truncateWidth(title(), titleWidth()),
+  )
+  /** Room left for the description, minus the space that separates it from the title. */
+  const descriptionRoom = () => titleWidth() - stringWidth(renderedTitle()) - 1
+  const description = createMemo(() => {
+    if (props.description === undefined) return undefined
+    const value = t(props.description)
+    // A title view draws its own content, so there is no width budget to share with it.
+    if (props.titleView !== undefined) return value
+    const room = descriptionRoom()
+    // Too narrow to read: drop it instead of leaving a stray character wrapped onto a second line.
+    if (room < 8) return undefined
+    return Locale.truncateWidth(value, room)
+  })
   const footer = () => (typeof props.footer === "string" ? t(props.footer) : props.footer)
   const text = createMemo(() => {
     if (props.active) return props.activeColor ?? theme.text.action.primary.focused
@@ -959,14 +986,9 @@ function DialogSelectRow(props: {
         wrapMode="none"
         paddingLeft={3}
       >
-        {props.titleView ??
-          (props.truncateTitle === false
-            ? title()
-            : props.truncateTitle === "left"
-              ? Locale.truncateLeft(title(), props.titleWidth ?? 61)
-              : Locale.truncateWidth(title(), props.titleWidth ?? 61))}
-        <Show when={props.description}>
-          <span style={{ fg: secondary() }}>{" " + description()}</span>
+        {props.titleView ?? renderedTitle()}
+        <Show when={description()}>
+          {(value) => <span style={{ fg: secondary() }}>{" " + value()}</span>}
         </Show>
       </text>
       <Show when={props.footer}>

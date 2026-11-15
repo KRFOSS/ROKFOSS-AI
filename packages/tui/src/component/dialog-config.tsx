@@ -4,6 +4,7 @@ import { useThemes } from "../context/theme"
 import { useDialog, type DialogContext } from "../ui/dialog"
 import { DialogSelect, DialogSelectChoice } from "../ui/dialog-select"
 import { useToast } from "../ui/toast"
+import { t } from "../i18n"
 import { DialogThemeList } from "./dialog-theme-list"
 
 type Setting = {
@@ -438,7 +439,7 @@ export function DialogConfig(props: { current?: string }) {
         display(setting)
       ),
       footerOverhang: newDesigns() ? 2 : undefined,
-      detail: newDesigns() ? setting.description : undefined,
+      detail: newDesigns() ? t(setting.description) : undefined,
       value: index,
     })),
   )

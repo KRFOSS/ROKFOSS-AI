@@ -3,6 +3,7 @@ import type { Plugin } from "@opencode/plugin/tui"
 import { BoxRenderable, MouseButton } from "@opentui/core"
 import { Portal, useTerminalDimensions } from "@opentui/solid"
 import { createSignal, onCleanup } from "solid-js"
+import { t } from "../../i18n"
 
 export function DiffFileMenu(props: {
   context: Plugin.Context
@@ -24,7 +25,7 @@ export function DiffFileMenu(props: {
   props.context.keymap.layer(() => ({
     mode: "menu",
     commands: [
-      { bind: "escape,ctrl+c", title: "Close file menu", group: "Diff", run: props.onClose },
+      { bind: "escape,ctrl+c", title: t("Close file menu"), group: "Diff", run: props.onClose },
       { bind: "return", title: label(), group: "Diff", run },
     ],
   }))

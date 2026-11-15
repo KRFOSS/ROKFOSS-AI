@@ -14,6 +14,7 @@ import {
   type ScrollbackWriter,
 } from "@opentui/core"
 import { Locale } from "../util/locale"
+import { t } from "../i18n"
 import { stringWidth } from "../util/string-width"
 import { go } from "../logo"
 import { monoTruncate } from "./mono"
@@ -69,7 +70,7 @@ function cells(line: string): Cell[] {
 
 function title(text: string | undefined, mono = false): string {
   if (!text) {
-    return SPLASH_TITLE_FALLBACK
+    return t(SPLASH_TITLE_FALLBACK)
   }
 
   let value = ""
@@ -89,7 +90,7 @@ function title(text: string | undefined, mono = false): string {
   }
 
   if (!value) {
-    return SPLASH_TITLE_FALLBACK
+    return t(SPLASH_TITLE_FALLBACK)
   }
 
   return mono ? monoTruncate(value, SPLASH_TITLE_LIMIT, true) : Locale.truncate(value, SPLASH_TITLE_LIMIT)

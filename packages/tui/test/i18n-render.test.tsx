@@ -103,6 +103,30 @@ test("a toast raised by English copy reaches the screen translated", async () =>
   }
 })
 
+test("a long description is truncated rather than wrapping out of its row", async () => {
+  await using tmp = await tmpdir()
+  const { app, dialog } = await mount(tmp.path, "ko")
+  try {
+    // Long enough to exceed the row: the description shares the title's width budget, so it has to be cut
+    // with an ellipsis. Untruncated, it pushed the footer aside and wrapped a stray character onto the next line.
+    const long =
+      "모델의 업스트림이 지원하는 경우에만 적용되고 그 밖의 모델에서는 조용히 무시되므로 실제로 확인하기 전에는 알 수 없습니다"
+    void dialog.select({
+      title: "Settings",
+      options: [{ title: "High-speed output", value: "fast", category: "Options", description: long }],
+    })
+    // Wait for the row itself, not just the dialog title: the title renders a frame earlier, and asserting on a
+    // half-drawn frame made this test flaky when the whole suite ran in parallel.
+    await app.waitForFrame((frame) => frame.includes("고속 출력") && frame.includes("…"))
+    const frame = app.captureCharFrame()
+    expect(frame).toContain("고속 출력")
+    expect(frame).not.toContain(long)
+    expect(frame).toContain("…")
+  } finally {
+    app.renderer.destroy()
+  }
+})
+
 test("permission choices follow the active language", () => {
   setLanguage("ko")
   expect(permissionOptionLabel("once")).toBe("한 번만 허용")

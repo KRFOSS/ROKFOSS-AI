@@ -133,7 +133,7 @@ export function DialogSessionList() {
   })
   const quickSwitchFooterHints = createMemo(() => {
     const hint = quickSwitchHint()
-    return hint && local.session.slots().length > 0 ? [{ title: "switch", label: hint }] : []
+    return hint && local.session.slots().length > 0 ? [{ title: t("switch"), label: hint }] : []
   })
   const currentProjectName = createMemo(() => {
     const current = data.location.info(pickerLocation())
@@ -256,13 +256,13 @@ export function DialogSessionList() {
       actions={[
         {
           command: "session.pin.toggle",
-          title: "pin/unpin",
+          title: t("pin/unpin"),
           hidden: sessionTabs.enabled(),
           onTrigger: (option) => local.session.togglePin(option.value),
         },
         {
           command: "session.delete",
-          title: "delete",
+          title: t("delete"),
           onTrigger: (option: { value: string }) => {
             if (toDelete() !== option.value) {
               setToDelete(option.value)
@@ -289,14 +289,14 @@ export function DialogSessionList() {
         },
         {
           command: "session.rename",
-          title: "rename",
+          title: t("rename"),
           onTrigger: (option: { value: string; title: string }) =>
             DialogSessionRename.show(dialog, option.value, option.title),
         },
       ]}
       footerHints={[
         ...(newDesigns() ? [] : quickSwitchFooterHints()),
-        { title: allProjects() ? "current directory" : "all projects", label: "ctrl+a", side: "right" },
+        { title: allProjects() ? t("current directory") : t("all projects"), label: "ctrl+a", side: "right" },
       ]}
     />
   )

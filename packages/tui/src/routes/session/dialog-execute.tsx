@@ -87,24 +87,24 @@ export function DialogExecute(props: { part: SessionMessageAssistantTool }) {
   Keymap.createLayer(() => ({
     mode: "modal",
     commands: [
-      { bind: "up", title: "Scroll up", group: "Execute", run: () => scroll?.scrollBy(-1) },
-      { bind: "down", title: "Scroll down", group: "Execute", run: () => scroll?.scrollBy(1) },
-      { bind: "pageup", title: "Previous page", group: "Execute", run: () => scroll?.scrollBy(-maxHeight()) },
-      { bind: "pagedown", title: "Next page", group: "Execute", run: () => scroll?.scrollBy(maxHeight()) },
-      { bind: "home", title: "Scroll to code", group: "Execute", run: () => scroll?.scrollTo(0) },
-      { bind: "end", title: "Scroll to output", group: "Execute", run: () => scroll?.scrollTo(Infinity) },
-      { bind: "c", title: "Copy code", group: "Execute", run: () => copy("code") },
-      { bind: "o", title: "Copy output", group: "Execute", run: () => copy("output") },
+      { bind: "up", title: t("Scroll up"), group: "Execute", run: () => scroll?.scrollBy(-1) },
+      { bind: "down", title: t("Scroll down"), group: "Execute", run: () => scroll?.scrollBy(1) },
+      { bind: "pageup", title: t("Previous page"), group: "Execute", run: () => scroll?.scrollBy(-maxHeight()) },
+      { bind: "pagedown", title: t("Next page"), group: "Execute", run: () => scroll?.scrollBy(maxHeight()) },
+      { bind: "home", title: t("Scroll to code"), group: "Execute", run: () => scroll?.scrollTo(0) },
+      { bind: "end", title: t("Scroll to output"), group: "Execute", run: () => scroll?.scrollTo(Infinity) },
+      { bind: "c", title: t("Copy code"), group: "Execute", run: () => copy("code") },
+      { bind: "o", title: t("Copy output"), group: "Execute", run: () => copy("output") },
     ],
   }))
 
   const copyActions = () => [
     copied() === "code"
       ? { title: "✓ copied", color: theme.text.feedback.success.base, onTrigger: () => copy("code") }
-      : { title: "copy code", key: "c", onTrigger: () => copy("code") },
+      : { title: t("copy code"), key: "c", onTrigger: () => copy("code") },
     copied() === "output"
       ? { title: "✓ copied", color: theme.text.feedback.success.base, onTrigger: () => copy("output") }
-      : { title: "copy output", key: "o", onTrigger: () => copy("output") },
+      : { title: t("copy output"), key: "o", onTrigger: () => copy("output") },
   ]
 
   return (
@@ -127,9 +127,9 @@ export function DialogExecute(props: { part: SessionMessageAssistantTool }) {
         <DialogFooter
           actions={{
             secondary: [
-              { title: "scroll", key: "↑/↓" },
+              { title: t("scroll"), key: "↑/↓" },
               ...copyActions(),
-              { title: "back", key: "esc", onTrigger: () => dialog.clear() },
+              { title: t("back"), key: "esc", onTrigger: () => dialog.clear() },
             ],
           }}
         />

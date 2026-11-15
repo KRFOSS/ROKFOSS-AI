@@ -118,12 +118,12 @@ export function DialogShellOutput(props: { shell: ShellInfo; location: LocationR
             { bind: "o", title: "Copy output", group: "Shell", run: () => copy("output") },
           ]
         : []),
-      { bind: "up", title: "Scroll output up", group: "Shell", run: () => scroll?.scrollBy(-1) },
-      { bind: "down", title: "Scroll output down", group: "Shell", run: () => scroll?.scrollBy(1) },
-      { bind: "pageup", title: "Previous output page", group: "Shell", run: () => scroll?.scrollBy(-height()) },
-      { bind: "pagedown", title: "Next output page", group: "Shell", run: () => scroll?.scrollBy(height()) },
-      { bind: "home", title: "First loaded output", group: "Shell", run: () => scroll?.scrollTo(0) },
-      { bind: "end", title: "Follow shell output", group: "Shell", run: () => scroll?.scrollTo(Infinity) },
+      { bind: "up", title: t("Scroll output up"), group: "Shell", run: () => scroll?.scrollBy(-1) },
+      { bind: "down", title: t("Scroll output down"), group: "Shell", run: () => scroll?.scrollBy(1) },
+      { bind: "pageup", title: t("Previous output page"), group: "Shell", run: () => scroll?.scrollBy(-height()) },
+      { bind: "pagedown", title: t("Next output page"), group: "Shell", run: () => scroll?.scrollBy(height()) },
+      { bind: "home", title: t("First loaded output"), group: "Shell", run: () => scroll?.scrollTo(0) },
+      { bind: "end", title: t("Follow shell output"), group: "Shell", run: () => scroll?.scrollTo(Infinity) },
     ],
   }))
 

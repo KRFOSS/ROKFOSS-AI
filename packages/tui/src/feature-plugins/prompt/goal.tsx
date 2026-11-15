@@ -4,6 +4,7 @@ import { createEffect, createMemo, createSignal, on, onCleanup, Show, type Acces
 import { Keymap } from "../../context/keymap"
 import { useTheme } from "../../context/theme"
 import { DialogFooter, DialogHeader, DialogLayout, type DialogFooterAction } from "../../ui/dialog"
+import { t } from "../../i18n"
 
 /**
  * The goal `/goal` set on a Session, from the goal plugin's RPC: fetched when the Session changes or the server
@@ -120,9 +121,9 @@ function GoalDialog(props: {
     const current = goal()
     if (!current) return []
     return [
-      ...(current.status === "active" ? [{ title: "pause", key: "p", onTrigger: () => run("pause") }] : []),
-      ...(current.status === "paused" ? [{ title: "resume", key: "r", onTrigger: () => run("resume") }] : []),
-      { title: "clear", key: "x", onTrigger: () => run("clear") },
+      ...(current.status === "active" ? [{ title: t("pause"), key: "p", onTrigger: () => run("pause") }] : []),
+      ...(current.status === "paused" ? [{ title: t("resume"), key: "r", onTrigger: () => run("resume") }] : []),
+      { title: t("clear"), key: "x", onTrigger: () => run("clear") },
     ]
   })
 

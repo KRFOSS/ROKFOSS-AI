@@ -10,6 +10,7 @@ import { useTheme } from "../../../context/theme"
 import { useStorage } from "../../../context/storage"
 import { Locale } from "../../../util/locale"
 import { Keymap } from "../../../context/keymap"
+import { t } from "../../../i18n"
 import { useComposerTab } from "./context"
 import { withTimestampedFallback } from "@opencode/util/session-title-fallback"
 import { sessionFamily } from "../../../util/session"
@@ -118,12 +119,12 @@ export function SubagentsTab(props: { sessionID: string }) {
   onMount(() => {
     const cleanup = composer.register({
       id: "subagents",
-      label: "Subagents",
+      label: t("Subagents"),
       hints: () => {
         const entry = selectedEntry()
         return [
           ...(entry?.status === "running"
-            ? [{ label: "interrupt", shortcut: shortcuts.get("composer.subagent.interrupt") ?? "" }]
+            ? [{ label: t("interrupt"), shortcut: shortcuts.get("composer.subagent.interrupt") ?? "" }]
             : []),
           {
             label: `show ${filter.active ? "inactive" : "active"}`,
@@ -142,7 +143,7 @@ export function SubagentsTab(props: { sessionID: string }) {
     commands: [
       {
         id: "composer.subagent.up",
-        title: "Previous subagent",
+        title: t("Previous subagent"),
         group: "Composer",
         run() {
           if (store.selected === 0) {
@@ -154,7 +155,7 @@ export function SubagentsTab(props: { sessionID: string }) {
       },
       {
         id: "composer.subagent.down",
-        title: "Next subagent",
+        title: t("Next subagent"),
         group: "Composer",
         run() {
           const list = entries()
@@ -164,7 +165,7 @@ export function SubagentsTab(props: { sessionID: string }) {
       },
       {
         id: "composer.subagent.select",
-        title: "Navigate to subagent",
+        title: t("Navigate to subagent"),
         group: "Composer",
         run() {
           const entry = entries()[store.selected]
@@ -173,7 +174,7 @@ export function SubagentsTab(props: { sessionID: string }) {
       },
       {
         id: "composer.subagent.toggle-activity",
-        title: "Toggle active subagents",
+        title: t("Toggle active subagents"),
         group: "Composer",
         bind: "ctrl+a",
         run() {
@@ -184,7 +185,7 @@ export function SubagentsTab(props: { sessionID: string }) {
       },
       {
         id: "composer.subagent.interrupt",
-        title: "Interrupt subagent",
+        title: t("Interrupt subagent"),
         group: "Composer",
         run() {
           const entry = selectedEntry()

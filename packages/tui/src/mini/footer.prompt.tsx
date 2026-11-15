@@ -513,24 +513,24 @@ export function createPromptState(input: PromptInput): PromptState {
         action: "editor" as const,
         name: "editor",
         display: "/editor",
-        description: "compose in your external editor",
+        description: t("compose in your external editor"),
       } satisfies SlashOption,
       {
         kind: "slash",
         action: "settings" as const,
         name: "settings",
         display: "/settings",
-        description: "configure Mini transcript output",
+        description: t("configure Mini transcript output"),
       } satisfies SlashOption,
-      { kind: "slash", name: "new", display: "/new", description: "start a new session" } satisfies SlashOption,
+      { kind: "slash", name: "new", display: "/new", description: t("start a new session") } satisfies SlashOption,
       {
         kind: "slash",
         name: "compact",
         display: "/compact",
-        description: "compact older session context to free space",
+        description: t("compact older session context to free space"),
       } satisfies SlashOption,
       ...EXIT_COMMANDS.map(
-        (name) => ({ kind: "slash", name, display: `/${name}`, description: "close OpenCode" }) satisfies SlashOption,
+        (name) => ({ kind: "slash", name, display: `/${name}`, description: t("close OpenCode") }) satisfies SlashOption,
       ),
     ]
     const hidden = new Set(builtins.map((item) => item.name))
@@ -1169,7 +1169,7 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.clear",
-        title: "Clear prompt or exit",
+        title: t("Clear prompt or exit"),
         group: "Prompt",
         run() {
           if (requestExit()) return
@@ -1184,13 +1184,13 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.paste",
-        title: "Paste",
+        title: t("Paste"),
         group: "Prompt",
         run: () => paste(),
       },
       {
         id: "session.interrupt",
-        title: "Interrupt session",
+        title: t("Interrupt session"),
         group: "Session",
         run() {
           if (input.onInterrupt()) return
@@ -1206,7 +1206,7 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.queue",
-        title: "Queue prompt",
+        title: t("Queue prompt"),
         group: "Prompt",
         palette: true,
         run() {
@@ -1222,7 +1222,7 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.editor",
-        title: "Open editor",
+        title: t("Open editor"),
         group: "Prompt",
         run() {
           void openEditor()
@@ -1237,7 +1237,7 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.history.previous",
-        title: "Previous prompt history",
+        title: t("Previous prompt history"),
         group: "Prompt",
         run(_input: string | undefined, event?: KeyEvent) {
           if (!event) return false
@@ -1246,7 +1246,7 @@ export function createPromptState(input: PromptInput): PromptState {
       },
       {
         id: "prompt.history.next",
-        title: "Next prompt history",
+        title: t("Next prompt history"),
         group: "Prompt",
         run(_input: string | undefined, event?: KeyEvent) {
           if (!event) return false
@@ -1261,7 +1261,7 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         bind: "!",
-        title: "Shell mode",
+        title: t("Shell mode"),
         group: "Prompt",
         run() {
           if (shell()) return false
@@ -1278,13 +1278,13 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         bind: "escape",
-        title: "Exit shell mode",
+        title: t("Exit shell mode"),
         group: "Prompt",
         run: () => setShellMode(false),
       },
       {
         bind: "backspace",
-        title: "Exit shell mode",
+        title: t("Exit shell mode"),
         group: "Prompt",
         run() {
           if (!area || area.isDestroyed) return false
@@ -1300,25 +1300,25 @@ export function createPromptState(input: PromptInput): PromptState {
     commands: [
       {
         id: "prompt.autocomplete.prev",
-        title: "Previous autocomplete item",
+        title: t("Previous autocomplete item"),
         group: "Autocomplete",
         run: () => menu.move(-1),
       },
       {
         id: "prompt.autocomplete.next",
-        title: "Next autocomplete item",
+        title: t("Next autocomplete item"),
         group: "Autocomplete",
         run: () => menu.move(1),
       },
       {
         id: "prompt.autocomplete.hide",
-        title: "Hide autocomplete",
+        title: t("Hide autocomplete"),
         group: "Autocomplete",
         run: cancelAutocomplete,
       },
       {
         id: "prompt.autocomplete.select",
-        title: "Select autocomplete item",
+        title: t("Select autocomplete item"),
         group: "Autocomplete",
         run() {
           if (mode() === "slash" && options().length === 0) {
@@ -1330,7 +1330,7 @@ export function createPromptState(input: PromptInput): PromptState {
       },
       {
         id: "prompt.autocomplete.complete",
-        title: "Complete autocomplete item",
+        title: t("Complete autocomplete item"),
         group: "Autocomplete",
         run() {
           if (mode() === "slash" && options().length === 0) {
