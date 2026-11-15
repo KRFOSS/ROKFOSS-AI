@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: "all, or a comma separated list of targets (linux-x64, darwin-arm64, windows-x64, ...)"
+        description: "all Linux and Windows targets, or a comma separated list (linux-x64, windows-x64, ...)"
         required: false
         default: "all"
       tag:
@@ -41,6 +41,20 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Validate requested targets
+        env:
+          REQUESTED: ${{ inputs.targets }}
+        run: |
+          set -euo pipefail
+          requested="${REQUESTED// /}"
+          if [ -z "$requested" ] || [ "$requested" = all ]; then exit 0; fi
+          IFS=',' read -ra targets <<< "$requested"
+          for target in "${targets[@]}"; do
+            case "$target" in
+              linux-x64|linux-arm64|linux-x64-baseline|linux-arm64-musl|linux-x64-musl|linux-x64-baseline-musl|windows-x64|windows-arm64|windows-x64-baseline) ;;
+              *) echo "::error::Unsupported target: $target (only Linux and Windows are enabled)"; exit 1 ;;
+            esac
+          done
       - id: release
         env:
           INPUT_TAG: ${{ inputs.tag }}
@@ -63,8 +77,8 @@ jobs:
       matrix:
         # One job per platform family: each target needs its own `bun build --compile` pass, and the
         # shared install + web-asset build dominates the runtime, so grouping is cheaper than one job
-        # per target and much faster than one job for all twelve.
-        group: [linux, darwin, windows]
+        # per target and much faster than one job for all nine.
+        group: [linux, windows]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -90,7 +104,6 @@ jobs:
           set -euo pipefail
           case "$GROUP" in
             linux)   group_targets="linux-x64 linux-arm64 linux-x64-baseline linux-arm64-musl linux-x64-musl linux-x64-baseline-musl" ;;
-            darwin)  group_targets="darwin-arm64 darwin-x64 darwin-x64-baseline" ;;
             windows) group_targets="windows-x64 windows-arm64 windows-x64-baseline" ;;
           esac
 
@@ -163,6 +176,7 @@ jobs:
               exit 1
             fi
             if [ "${target#linux-}" != "$target" ]; then
+              chmod +x "$dir/bin/$exe"
               tar --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$WORKSPACE/dist/archives/opencode-$target.tar.gz" -C "$dir/bin" "$exe"
             else
               ( cd "$dir/bin" && zip -X -q "$WORKSPACE/dist/archives/opencode-$target.zip" "$exe" )
@@ -180,6 +194,10 @@ jobs:
         run: |
           set -euo pipefail
           bin=packages/cli/dist/cli-linux-x64/bin/opencode
+          if [ ! -f "$bin" ]; then
+            echo "::notice::linux-x64 was not requested; skipping Linux smoke test"
+            exit 0
+          fi
           chmod +x "$bin"
           out=$(timeout 120 "$bin" --version) || { echo "::error::the linux-x64 binary does not start"; exit 1; }
           echo "$out"
