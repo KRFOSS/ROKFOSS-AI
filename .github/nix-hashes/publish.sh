@@ -17,8 +17,9 @@ bash "$here/validate.sh" "$new"
 "${git[@]}" fetch --no-tags --depth=1 origin "+refs/heads/dev:refs/remotes/origin/dev" "$GITHUB_SHA"
 
 # A newer push that changed the inputs has its own run, which publishes hashes for it. Mirrors on.push.paths.
-if ! git diff --quiet "$GITHUB_SHA" origin/dev -- bun.lock package.json ':(glob)packages/*/package.json' \
-  ':(glob)services/*/package.json' flake.lock nix/node_modules.nix nix/scripts patches; then
+if ! git diff --quiet "$GITHUB_SHA" origin/dev -- bun.lock package.json ':(glob)packages/**/package.json' \
+  ':(glob)services/**/package.json' flake.nix flake.lock nix patches .github/workflows/bot-nix-hashes.yml \
+  ':(exclude)nix/hashes.json'; then
   echo "::notice::dev changed the hash inputs since $GITHUB_SHA; leaving it to the newer run"
   exit 0
 fi
@@ -57,7 +58,7 @@ fi
 
 # Pushes and pull requests made with GITHUB_TOKEN start no workflows; dispatches do. These produce the checks dev
 # requires on the new head.
-for workflow in check.yml check-test.yml check-bot-scope.yml; do
+for workflow in check.yml check-test.yml check-nix.yml check-bot-scope.yml; do
   gh workflow run "$workflow" --repo "$GH_REPO" --ref "$branch"
 done
 
