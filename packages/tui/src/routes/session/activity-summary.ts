@@ -5,7 +5,6 @@ import type {
   SessionMessageInfo,
 } from "@opencode/client"
 import { canonicalToolName, executeCalls } from "../../util/tool-display"
-import { t } from "../../i18n"
 import { visitEntries } from "./anchor-view"
 import { instructionPaths, type PartRef, type SessionEntry, type SessionNode } from "./grouping/session"
 import { reasoningContent } from "./message-parts"
@@ -46,10 +45,10 @@ export function summarizeActivity(
 
 /** Status for a running item, independent of its details, so it doesn't flicker as they arrive. */
 export function busyLabel(part: Item["part"]) {
-  if (part.type === "reasoning") return t("Thinking…")
+  if (part.type === "reasoning") return "Thinking…"
   const name = canonicalToolName(part.name)
   const noun = name === "shell" ? "command" : name === "execute" ? "code" : name
-  return t(part.state.status === "streaming" ? "Preparing {{tool}}…" : "Running {{tool}}…", { tool: t(noun) })
+  return `${part.state.status === "streaming" ? "Preparing" : "Running"} ${noun}…`
 }
 
 /**
@@ -89,7 +88,7 @@ export function activitySummary(items: readonly Item[], instructions: number, cl
   return {
     label: Object.entries(counts)
       .filter(([, count]) => count > 0)
-      .map(([name, count]) => t(`{{count}} ${name}${count === 1 ? "" : "s"}`, { count }))
+      .map(([name, count]) => `${count} ${name}${count === 1 ? "" : "s"}`)
       .join(", "),
     active: items.some((item) => isActive(item, closed)),
   }

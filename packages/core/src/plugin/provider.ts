@@ -25,7 +25,6 @@ import { OpenRouterPlugin } from "./provider/openrouter.js"
 import { PoePlugin } from "./provider/poe.js"
 import { PromptCacheKeyPlugin } from "./provider/prompt-cache-key.js"
 import { RaiPlugin } from "./provider/rai.js"
-import { RaiRoomsPlugin } from "./provider/rai-rooms.js"
 import { SapAICorePlugin } from "./provider/sap-ai-core.js"
 import { VLLMPlugin } from "./provider/vllm.js"
 import { XAIPlugin } from "./provider/xai.js"
@@ -59,7 +58,6 @@ export const ProviderPlugins: PluginInternal.InternalPlugin[] = [
   PoePlugin,
   PromptCacheKeyPlugin,
   RaiPlugin,
-  RaiRoomsPlugin,
   SapAICorePlugin,
   VLLMPlugin,
   XAIPlugin,

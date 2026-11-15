@@ -6,7 +6,6 @@ import { DialogUpdate } from "../../src/component/dialog-update"
 import { ConfigProvider } from "../../src/config"
 import type { UpdateState } from "../../src/context/update-notification"
 import { Keymap } from "../../src/context/keymap"
-import { setLanguage } from "../../src/i18n"
 import { ThemeProvider } from "../../src/context/theme"
 import { DialogProvider } from "../../src/ui/dialog"
 import { ToastProvider } from "../../src/ui/toast"
@@ -103,41 +102,6 @@ test.each([false, true])("update choices are keyboard-navigable buttons with new
     expect(ran).toEqual(["skip"])
   } finally {
     app.renderer.destroy()
-  }
-})
-
-test("update choices and status render in Korean", async () => {
-  await using temporary = await tmpdir()
-  const [state, setState] = createSignal<UpdateState>({ type: "available", version: "2.0.0" })
-  setLanguage("ko")
-  const app = await testRender(
-    () => (
-      <TestTuiContexts directory={temporary.path} paths={{ state: temporary.path }}>
-        <ConfigProvider config={createTuiResolvedConfig()}>
-          <ThemeProvider mode="dark" source={emptyThemeSource}>
-            <Keymap.Provider>
-              <ToastProvider>
-                <DialogProvider>
-                  <ModalUpdate state={state} skip={() => {}} install={async () => {}} restart={() => {}} />
-                </DialogProvider>
-              </ToastProvider>
-            </Keymap.Provider>
-          </ThemeProvider>
-        </ConfigProvider>
-      </TestTuiContexts>
-    ),
-    { width: 100, height: 24, kittyKeyboard: true },
-  )
-  try {
-    app.renderer.start()
-    await app.waitForFrame((frame) => frame.includes("업데이트가 있습니다") && frame.includes("건너뛰기"))
-    expect(app.captureCharFrame()).not.toContain("Skip")
-    setState({ type: "installed", version: "2.0.0" })
-    await app.waitForFrame((frame) => frame.includes("다시 시작"))
-    expect(app.captureCharFrame()).not.toContain("Restart")
-  } finally {
-    app.renderer.destroy()
-    setLanguage("en")
   }
 })
 

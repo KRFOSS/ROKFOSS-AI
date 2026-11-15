@@ -68,7 +68,6 @@ import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogUsage } from "./component/usage"
 import { DialogRai } from "./component/dialog-rai"
-import { DialogRooms } from "./component/dialog-rooms"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
@@ -976,15 +975,6 @@ function App() {
         slash: { name: "credentials", aliases: ["rai"] },
         run: () => {
           dialog.replace(() => <DialogRai />)
-        },
-      },
-      {
-        name: "rai.rooms",
-        title: "ROKFOSS AI rooms",
-        category: "Integration",
-        slash: { name: "rooms" },
-        run: () => {
-          dialog.replace(() => <DialogRooms />, undefined, { size: "xlarge" })
         },
       },
       {

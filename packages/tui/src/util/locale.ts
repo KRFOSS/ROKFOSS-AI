@@ -47,16 +47,7 @@ export function number(num: number): string {
   return num.toString()
 }
 
-import { duration } from "@opencode/util/duration"
-export { duration }
-
-/** Localized compact elapsed time for session activity headers. */
-export function localizedDuration(input: number): string {
-  const value = duration(input)
-  if (currentLanguage() !== "ko") return value
-  const units: Record<string, string> = { ms: "밀리초", s: "초", m: "분", h: "시간", d: "일" }
-  return value.replace(/(ms|s|m|h|d)\b/g, (unit) => units[unit] ?? unit)
-}
+export { duration } from "@opencode/util/duration"
 
 export function truncate(str: string, len: number): string {
   if (str.length <= len) return str

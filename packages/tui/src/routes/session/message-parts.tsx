@@ -12,7 +12,6 @@ import { reasoningSummary } from "../../context/thinking"
 import { usePlugin } from "../../plugin/context"
 import { SplitBorder } from "../../ui/border"
 import { Locale } from "../../util/locale"
-import { t } from "../../i18n"
 import { use } from "./render-context"
 import { generateThinkingSyntax } from "./thinking-syntax"
 import { canonicalToolName } from "../../util/tool-display"
@@ -89,7 +88,7 @@ export function ReasoningPart(props: {
               open={!inMinimal() || expanded()}
               done={isDone()}
               title={inMinimal() && !expanded() ? summary().title : null}
-              duration={isDone() ? Locale.localizedDuration(duration()) : undefined}
+              duration={isDone() ? Locale.duration(duration()) : undefined}
             />
           </box>
         </box>
@@ -145,7 +144,7 @@ function ReasoningHeader(props: {
     <Switch>
       <Match when={!props.done}>
         <box flexDirection="row">
-          <Spinner color={fg()}>{props.title ? t("Thinking: {{title}}", { title: props.title }) : t("Thinking")}</Spinner>
+          <Spinner color={fg()}>{props.title ? "Thinking: " + props.title : "Thinking"}</Spinner>
         </box>
       </Match>
       <Match when={true}>
@@ -153,7 +152,7 @@ function ReasoningHeader(props: {
           <Show when={props.toggleable}>
             <span>{props.open ? "- " : "+ "}</span>
           </Show>
-          <span>{t("Thought")}</span>
+          <span>Thought</span>
           <Show when={props.title || props.duration}>
             <span>: </span>
           </Show>
