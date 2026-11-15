@@ -212,9 +212,6 @@ export function normalize(input: unknown): Result {
     username: Info.fields.username,
     timezone: Info.fields.timezone,
     snapshots: Info.fields.snapshots,
-    // The terminal app reads its interface language from this document; normalization runs before the
-    // schema, so a key missing here never reaches the app.
-    language: Info.fields.language,
     media: Info.fields.media,
     tool_output: Info.fields.tool_output,
     websearch: Info.fields.websearch,
