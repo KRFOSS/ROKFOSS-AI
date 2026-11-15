@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: "all, or a comma separated list of targets (linux-x64, linux-arm64, windows-x64, ...)"
+        description: "all, or a comma separated list of targets (linux-x64, darwin-arm64, windows-x64, ...)"
         required: false
         default: "all"
       tag:
@@ -63,12 +63,8 @@ jobs:
       matrix:
         # One job per platform family: each target needs its own `bun build --compile` pass, and the
         # shared install + web-asset build dominates the runtime, so grouping is cheaper than one job
-        # per target and much faster than one job for all enabled targets.
-        group:
-          - linux
-          # macOS builds are temporarily disabled.
-          # - darwin
-          - windows
+        # per target and much faster than one job for all twelve.
+        group: [linux, darwin, windows]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -94,7 +90,7 @@ jobs:
           set -euo pipefail
           case "$GROUP" in
             linux)   group_targets="linux-x64 linux-arm64 linux-x64-baseline linux-arm64-musl linux-x64-musl linux-x64-baseline-musl" ;;
-            # darwin)  group_targets="darwin-arm64 darwin-x64 darwin-x64-baseline" ;;
+            darwin)  group_targets="darwin-arm64 darwin-x64 darwin-x64-baseline" ;;
             windows) group_targets="windows-x64 windows-arm64 windows-x64-baseline" ;;
           esac
 

@@ -30,7 +30,7 @@ permissions:
 jobs:
   legacy-build:
     if: github.repository == 'anomalyco/opencode' && (github.ref_name == 'dev' || github.ref_name == 'production')
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       digest: ${{ steps.upload.outputs.digest }}
     steps:
@@ -56,7 +56,7 @@ jobs:
   legacy-deploy:
     needs: legacy-build
     if: github.repository == 'anomalyco/opencode' && (github.ref_name == 'dev' || github.ref_name == 'production')
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: ${{ github.ref_name }}
     permissions:
       contents: read
@@ -123,7 +123,7 @@ jobs:
 
   data-build:
     if: github.repository == 'anomalyco/opencode' && (github.ref_name == 'dev' || github.ref_name == 'production')
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       digest: ${{ steps.upload.outputs.digest }}
     steps:
@@ -150,7 +150,7 @@ jobs:
   data-deploy:
     needs: data-build
     if: github.repository == 'anomalyco/opencode' && (github.ref_name == 'dev' || github.ref_name == 'production')
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     environment: ${{ github.ref_name }}
     permissions:
       contents: read

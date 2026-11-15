@@ -1,5 +1,5 @@
 {
-  description = "ROKFOSS OpenCode packages and development shell";
+  description = "OpenCode development flake";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -8,7 +8,11 @@
   outputs =
     { self, nixpkgs, ... }:
     let
-      systems = builtins.attrNames (builtins.fromJSON (builtins.readFile ./nix/hashes.json)).nodeModules;
+      systems = [
+        "aarch64-linux"
+        "x86_64-linux"
+        "aarch64-darwin"
+      ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       rev = self.shortRev or self.dirtyShortRev or "dirty";
     in
@@ -17,21 +21,12 @@
         default = pkgs.mkShell {
           packages = with pkgs; [
             bun
-            nodejs_24
-            python3
-            gnumake
-            stdenv.cc
+            nodejs
             pkg-config
             openssl
             git
           ];
         };
-      });
-
-      formatter = forEachSystem (pkgs: pkgs.nixfmt);
-
-      checks = forEachSystem (pkgs: {
-        inherit (self.packages.${pkgs.stdenv.hostPlatform.system}) opencode opencode-desktop;
       });
 
       overlays = {

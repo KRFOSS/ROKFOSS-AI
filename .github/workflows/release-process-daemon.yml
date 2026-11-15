@@ -81,11 +81,10 @@ jobs:
           - runner: ubuntu-22.04-arm
             target: aarch64-unknown-linux-musl
             musl: true
-          # macOS builds are temporarily disabled.
-          # - runner: macos-15-intel
-          #   target: x86_64-apple-darwin
-          # - runner: macos-15
-          #   target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: blacksmith-6vcpu-macos-15
+            target: aarch64-apple-darwin
     runs-on: ${{ matrix.runner }}
     env:
       PROTOCOL_VERSION: ${{ needs.checks.outputs.protocol }}
