@@ -186,6 +186,13 @@ describe("Config.Entry", () => {
     expect(encoded.info.providers?.custom).not.toHaveProperty("headers")
     expect(encoded.info.providers?.custom).not.toHaveProperty("canonical")
   })
+test("keeps the terminal app's interface language", () => {
+    // The TUI reads this from the config document, so the core schema has to keep it: a field the
+    // schema does not know is dropped before the terminal app ever sees it.
+    const decoded = Schema.decodeUnknownSync(Config.Info)({ language: "ko" })
+    expect(decoded.language).toBe("ko")
+    expect(Schema.encodeSync(Config.Info)(decoded)).toEqual({ language: "ko" })
+  })
 })
 
 test("no flag is named after the everything-on switches", () => {
