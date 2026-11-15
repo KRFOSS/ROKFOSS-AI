@@ -228,6 +228,18 @@ resolve_version() {
     fi
 }
 
+# Uses a temporary directory next to the install directory: /tmp is a small tmpfs on many systems, and a
+# release archive is larger than it can hold. TMPDIR remains available as an explicit override.
+make_temp_dir() {
+    local parent
+    parent=$(dirname "$INSTALL_DIR")
+    if mkdir -p "$parent" 2>/dev/null && tmp=$(mktemp -d "${OPENCODE_TMPDIR:-$parent}/install.XXXXXX" 2>/dev/null); then
+        echo "$tmp"
+        return
+    fi
+    mktemp -d 2>/dev/null || mktemp -d -t opencode
+}
+
 sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then
         sha256sum "$1" | awk '{print $1}'
@@ -235,6 +247,12 @@ sha256_of() {
         shasum -a 256 "$1" | awk '{print $1}'
     else
         echo ""
+    fi
+}
+
+install_cleanup() {
+    if [ -n "${tmp_dir:-}" ] && [ -d "$tmp_dir" ]; then
+        rm -rf "$tmp_dir"
     fi
 }
 
@@ -264,17 +282,17 @@ download_and_install() {
         error "'unzip' is required but not installed"
     fi
 
-    tmp=$(mktemp -d 2>/dev/null || mktemp -d -t opencode)
-    trap 'rm -rf "$tmp"' EXIT
+    tmp_dir=$(make_temp_dir)
+    trap install_cleanup EXIT
 
     print_message info "Downloading $APP $TAG ($TARGET)"
-    if ! curl -fsSL --retry 3 --retry-delay 2 -o "$tmp/$asset" "$url"; then
+    if ! curl -fsSL --retry 3 --retry-delay 2 -o "$tmp_dir/$asset" "$url"; then
         error "Could not download $url"
     fi
 
-    if curl -fsSL --retry 2 -o "$tmp/SHA256SUMS" "https://github.com/$REPO/releases/download/$TAG/SHA256SUMS" 2>/dev/null; then
-        expected=$(awk -v name="$asset" '$2 == name || $2 == "*" name { print $1 }' "$tmp/SHA256SUMS" | head -n 1)
-        actual=$(sha256_of "$tmp/$asset")
+    if curl -fsSL --retry 2 -o "$tmp_dir/SHA256SUMS" "https://github.com/$REPO/releases/download/$TAG/SHA256SUMS" 2>/dev/null; then
+        expected=$(awk -v name="$asset" '$2 == name || $2 == "*" name { print $1 }' "$tmp_dir/SHA256SUMS" | head -n 1)
+        actual=$(sha256_of "$tmp_dir/$asset")
         if [ -n "$expected" ] && [ -n "$actual" ] && [ "$expected" != "$actual" ]; then
             error "Checksum mismatch for $asset (expected $expected, got $actual)"
         fi
@@ -286,16 +304,16 @@ download_and_install() {
     fi
 
     case "$EXTENSION" in
-        tar.gz) tar -xzf "$tmp/$asset" -C "$tmp" ;;
-        zip) unzip -oq "$tmp/$asset" -d "$tmp" ;;
+        tar.gz) tar -xzf "$tmp_dir/$asset" -C "$tmp_dir" ;;
+        zip) unzip -oq "$tmp_dir/$asset" -d "$tmp_dir" ;;
     esac
 
-    if [ ! -f "$tmp/$BINARY_NAME" ]; then
+    if [ ! -f "$tmp_dir/$BINARY_NAME" ]; then
         error "The archive did not contain $BINARY_NAME"
     fi
 
     mkdir -p "$INSTALL_DIR"
-    mv "$tmp/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
+    mv "$tmp_dir/$BINARY_NAME" "$INSTALL_DIR/$BINARY_NAME"
     chmod 755 "$INSTALL_DIR/$BINARY_NAME"
 
     # The macOS builds are cross-compiled and unsigned, so give the binary an ad-hoc signature and
