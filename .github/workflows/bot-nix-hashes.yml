@@ -41,11 +41,11 @@ jobs:
       matrix:
         include:
           - system: x86_64-linux
-            runner: blacksmith-4vcpu-ubuntu-2404
+            runner: ubuntu-24.04
           - system: aarch64-linux
-            runner: blacksmith-4vcpu-ubuntu-2404-arm
+            runner: ubuntu-24.04-arm
           - system: aarch64-darwin
-            runner: blacksmith-6vcpu-macos-latest
+            runner: macos-latest
     runs-on: ${{ matrix.runner }}
 
     steps:

@@ -108,6 +108,29 @@ The fork keeps its changes in as few places as possible:
 | Language setting | one entry in `packages/tui/src/component/dialog-config.tsx` |
 | Provider | `packages/ai/src/providers/rai.ts`, `packages/core/src/plugin/provider/rai.ts`, `packages/schema/src/rai.ts`, `packages/tui/src/component/dialog-rai.tsx` |
 | Web search | `packages/core/src/plugin/websearch/rai.ts` (registered in `websearch/index.ts`, not via `WebSearchProvider.register`) |
+| CI runners | `runs-on` labels in `check.yml`, `check-test.yml`, `check-nix.yml`, `check-docs.yml`, `bot-nix-hashes.yml`, `check-process-daemon.yml`, `release-process-daemon.yml` — `blacksmith-*` replaced with GitHub-hosted labels (see below) |
+
+### CI runners
+
+Upstream asks for Blacksmith self-hosted runners (`blacksmith-4vcpu-ubuntu-2404` and friends). This
+fork has no Blacksmith installation, and GitHub does not fail such a job: it stays **queued forever**,
+which made every push to `dev` leave a growing pile of `check`/`check-test`/`check-nix` runs that
+never start. The workflows above therefore use GitHub-hosted labels:
+
+| Upstream label | Fork label |
+| :--- | :--- |
+| `blacksmith-4vcpu-ubuntu-2404` | `ubuntu-24.04` |
+| `blacksmith-4vcpu-ubuntu-2404-arm` | `ubuntu-24.04-arm` |
+| `blacksmith-4vcpu-windows-2025` | `windows-2025` |
+| `blacksmith-6vcpu-macos-15` | `macos-15` |
+| `blacksmith-6vcpu-macos-26` | `macos-26` |
+| `blacksmith-6vcpu-macos-latest` | `macos-latest` |
+
+`deploy.yml`, `deploy-files.yml`, `deploy-site.yml`, `deploy-update.yml` and `release.yml` are left
+alone: every job in them is guarded by `if: github.repository == 'anomalyco/opencode'`, so in this
+fork they are *skipped* rather than queued, and they need credentials and signing identities the
+fork does not have anyway. Keep the table above in mind when merging upstream: a new `blacksmith-*`
+label in an edited file has to be translated again, and a newly added workflow needs the same pass.
 
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
