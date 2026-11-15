@@ -61,6 +61,8 @@ back to English, so an upstream string that lands without a translation still re
 1. `/connect` → **ROKFOSS AI** → paste a `rai-…` key.
 2. `/credentials` (aliases `/rai`) → pick a subscription or toggle high-speed output.
 
+Web search uses that same key. Once RAI is connected, **ROKFOSS 검색** is registered as a search provider (it does not replace the model integration) and becomes the default unless another provider was already chosen. It calls `POST /tools/web_search` on the gateway; no Exa/Tavily key is required.
+
 The model list comes from the gateway's `GET /models`; `rai.efforts` becomes model variants and is shown
 as the gateway reports it. The gateway downgrades and then drops a step its upstream refuses, so the
 client no longer sends probe requests of its own. High-speed output (`service_tier: "priority"`) is
@@ -105,6 +107,7 @@ The fork keeps its changes in as few places as possible:
 | Translated call sites | one `t("…")` per string plus one import per file |
 | Language setting | one entry in `packages/tui/src/component/dialog-config.tsx` |
 | Provider | `packages/ai/src/providers/rai.ts`, `packages/core/src/plugin/provider/rai.ts`, `packages/schema/src/rai.ts`, `packages/tui/src/component/dialog-rai.tsx` |
+| Web search | `packages/core/src/plugin/websearch/rai.ts` (registered in `websearch/index.ts`, not via `WebSearchProvider.register`) |
 
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
