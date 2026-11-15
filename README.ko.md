@@ -10,8 +10,7 @@
 <p align="center">오픈 소스 AI 코딩 에이전트.</p>
 <p align="center">
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/@opencode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@opencode/cli?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/release.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/KRFOSS/opencode/actions/workflows/release-fork.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/KRFOSS/opencode/release-fork.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -26,41 +25,38 @@
 ### 설치
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
+# 최신 CLI 릴리스 설치 (Linux / macOS)
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 
-# 패키지 매니저
-npm i -g @opencode/cli@latest      # bun/pnpm/yarn 도 가능
-brew install anomalyco/tap/opencode-v2 # macOS 및 Linux (권장, 항상 최신)
-brew install opencode              # macOS 및 Linux (공식 brew formula, 업데이트 빈도 낮음)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # 어떤 OS든
-nix run github:anomalyco/opencode  # Nix
+# Nix로 소스에서 실행
+nix run github:KRFOSS/opencode/dev
+
+# Nix로 소스에서 설치
+nix profile add github:KRFOSS/opencode/dev
 ```
 
-> [!TIP]
-> 설치 전에 0.1.x 보다 오래된 버전을 제거하세요.
+[release-fork 워크플로](.github/workflows/release-fork.yml)는 CLI 바이너리,
+`install.sh`, `SHA256SUMS`를 [GitHub Releases](https://github.com/KRFOSS/opencode/releases)에 배포합니다.
+Linux(`opencode-linux-*.tar.gz`), macOS(`opencode-darwin-*.zip`),
+Windows(`opencode-windows-*.zip`)용 압축 파일을 직접 다운로드할 수도 있습니다.
 
-### 데스크톱 앱 (BETA)
-
-OpenCode 는 데스크톱 앱으로도 제공됩니다. [opencode.ai/download](https://opencode.ai/download) 에서 다운로드하세요.
-
-| 플랫폼                | 다운로드                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, 또는 AppImage      |
+특정 릴리스를 설치하려면 다음과 같이 실행하세요.
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash -s -- --version v2.3.0-krfoss.1
 ```
 
 #### 설치 디렉터리
 
-설치 스크립트는 OpenCode를 `$HOME/.opencode/bin`에 설치합니다.
+설치 스크립트는 OpenCode를 `$HOME/.opencode/bin`에 설치합니다. `--dir <path>`로 경로를 변경할 수 있습니다.
+
+### 데스크톱 앱
+
+이 포크의 릴리스 워크플로는 현재 CLI만 배포합니다. 데스크톱 앱은 소스에서 빌드할 수 있습니다.
+
+```bash
+nix build github:KRFOSS/opencode/dev#opencode-desktop
+```
 
 ### Agents
 

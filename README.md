@@ -10,8 +10,7 @@
 <p align="center">The open source AI coding agent.</p>
 <p align="center">
   <a href="https://opencode.ai/discord"><img alt="Discord" src="https://img.shields.io/discord/1391832426048651334?style=flat-square&label=discord" /></a>
-  <a href="https://www.npmjs.com/package/@opencode/cli"><img alt="npm" src="https://img.shields.io/npm/v/@opencode/cli?style=flat-square" /></a>
-  <a href="https://github.com/anomalyco/opencode/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/anomalyco/opencode/release.yml?style=flat-square&branch=dev" /></a>
+  <a href="https://github.com/KRFOSS/opencode/actions/workflows/release-fork.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/KRFOSS/opencode/release-fork.yml?style=flat-square&branch=dev" /></a>
 </p>
 
 <p align="center">
@@ -26,41 +25,38 @@
 ### Installation
 
 ```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
+# Install the latest CLI release (Linux / macOS)
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 
-# Package managers
-npm i -g @opencode/cli@latest      # or bun/pnpm/yarn
-brew install anomalyco/tap/opencode-v2 # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run github:anomalyco/opencode  # Nix
+# Run from source with Nix
+nix run github:KRFOSS/opencode/dev
+
+# Install from source with Nix
+nix profile add github:KRFOSS/opencode/dev
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+The [release-fork workflow](.github/workflows/release-fork.yml) publishes CLI binaries,
+`install.sh`, and `SHA256SUMS` to [GitHub Releases](https://github.com/KRFOSS/opencode/releases).
+Download an archive directly for Linux (`opencode-linux-*.tar.gz`), macOS
+(`opencode-darwin-*.zip`), or Windows (`opencode-windows-*.zip`).
 
-### Desktop App (BETA)
-
-OpenCode is also available as a desktop application. Download it from [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+To install a specific release:
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash -s -- --version v2.3.0-krfoss.1
 ```
 
 #### Installation Directory
 
-The install script installs OpenCode to `$HOME/.opencode/bin`.
+The install script installs OpenCode to `$HOME/.opencode/bin`. Use `--dir <path>` to change it.
+
+### Desktop App
+
+This fork's release workflow currently publishes the CLI only. To build the desktop app from source:
+
+```bash
+nix build github:KRFOSS/opencode/dev#opencode-desktop
+```
 
 ### Agents
 
