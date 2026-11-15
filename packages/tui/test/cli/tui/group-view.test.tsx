@@ -8,6 +8,7 @@ import type { SessionMessageAssistant, SessionMessageInfo } from "@opencode/clie
 import { ConfigProvider } from "../../../src/config"
 import { ThemeProvider } from "../../../src/context/theme"
 import { SessionGroupView } from "../../../src/routes/session/group-view"
+import { currentLanguage, setLanguage } from "../../../src/i18n"
 import { createTimelineAnchors, groupID, type AnchorTarget } from "../../../src/routes/session/anchors"
 import { context } from "../../../src/routes/session/render-context"
 import type { SessionEntry, SessionGroup } from "../../../src/routes/session/grouping/session"
@@ -85,7 +86,14 @@ test("retains nested expansion state and registers exact headers and parts", asy
   const nested: AnchorTarget = { type: "group", groupID: innerID }
   const a: AnchorTarget = { type: "part", ref: { messageID: "a", partID: "read-a" } }
   const b: AnchorTarget = { type: "part", ref: { messageID: "b", partID: "read-b" } }
+  const previousLanguage = currentLanguage()
   try {
+    setLanguage("en")
+    await app.waitForFrame((frame) => frame.includes("Explored"))
+    setLanguage("ko")
+    await app.waitForFrame((frame) => frame.includes("탐색 완료"))
+    expect(app.captureCharFrame()).toContain("읽기 2건")
+    setLanguage("en")
     await app.waitForFrame((frame) => frame.includes("Explored"))
     expect(app.captureCharFrame()).not.toContain("Target B")
     expect(anchors.get(b)).toBeUndefined()
@@ -141,6 +149,12 @@ test("retains nested expansion state and registers exact headers and parts", asy
     )
     await app.renderOnce()
     expect(app.captureCharFrame()).toContain("Thought")
+    setLanguage("ko")
+    await app.waitForFrame((frame) => frame.includes("생각"))
+    expect(app.captureCharFrame()).toContain("2단계")
+    expect(app.captureCharFrame()).toContain("4밀리초")
+    setLanguage("en")
+    await app.renderOnce()
     expect(app.captureCharFrame()).not.toContain("Reset thought body")
     const thinkingID = groupID(row, 0)
     if (!thinkingID) throw new Error("Missing thinking group ID")
@@ -148,6 +162,7 @@ test("retains nested expansion state and registers exact headers and parts", asy
     await app.waitForFrame((frame) => frame.includes("Reset thought body"))
     expect(app.captureCharFrame()).toContain("Reset thought body")
   } finally {
+    setLanguage(previousLanguage)
     app.renderer.destroy()
   }
   expect(anchors.list()).toEqual([])

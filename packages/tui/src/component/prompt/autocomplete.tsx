@@ -858,15 +858,15 @@ export function Autocomplete(props: {
   const scrollAcceleration = createMemo(() => getScrollAcceleration(config))
   const emptyMessage = createMemo(() => {
     const fileSearch = visibleFiles()
-    if (store.visible === "command") return "No matching commands"
+    if (store.visible === "command") return t("No matching commands")
     if (store.visible === "directory") {
-      if (files.loading) return "Searching…"
-      if (fileSearch.failed) return "Could not search directories. Keep typing to try again."
-      return "No matching directories"
+      if (files.loading) return t("Searching…")
+      if (fileSearch.failed) return t("Could not search directories. Keep typing to try again.")
+      return t("No matching directories")
     }
-    if (files.loading) return "Searching…"
-    if (fileSearch.failed) return "Could not search files. Keep typing to try again."
-    return "No matching files, agents, or references"
+    if (files.loading) return t("Searching…")
+    if (fileSearch.failed) return t("Could not search files. Keep typing to try again.")
+    return t("No matching files, agents, or references")
   })
   const emptyError = createMemo(() => store.visible === "reference" && !files.loading && visibleFiles().failed)
   // The scrollbox paints this under the classic design; new designs paint it per row.

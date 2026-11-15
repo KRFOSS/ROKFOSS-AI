@@ -27,7 +27,7 @@ const defaultBaseURL = "https://project.krfoss.org/api/rai/v1"
 const gatewayHost = "project.krfoss.org"
 const credentialHeader = "X-RAI-Credential"
 // The gateway answers `403` with an HTML page to every other user agent, so this must contain `ROKFOSS`.
-const userAgent = "ROKFOSS-CLI/v0.1 (opencode-rai)"
+export const userAgent = "ROKFOSS-CLI/v0.1 (opencode-rai)"
 // The gateway's model list is small; a remote host that never answers must not hold the refresh.
 const requestTimeout = Duration.seconds(15)
 // The gateway's catalogue changes rarely; a background refresh keeps a new model from waiting for a restart.
