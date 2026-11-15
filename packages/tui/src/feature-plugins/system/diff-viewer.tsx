@@ -1344,12 +1344,23 @@ function Commands(props: { context: Plugin.Context }) {
               ? { type: "home" }
               : route.type === "session"
                 ? { type: "session", sessionID: route.sessionID }
-                : {
-                    type: "plugin",
-                    id: route.id,
-                    name: route.name,
-                    ...(route.data ? { data: { ...route.data } } : {}),
-                  }
+                : route.type === "rooms"
+                  ? {
+                      type: "rooms",
+                      roomID: route.roomID,
+                      title: route.title,
+                      provider: route.provider,
+                      model: route.model,
+                      access: route.access,
+                      ...(route.projectID ? { projectID: route.projectID } : {}),
+                      ...(route.running ? { running: true } : {}),
+                    }
+                  : {
+                      type: "plugin",
+                      id: route.id,
+                      name: route.name,
+                      ...(route.data ? { data: { ...route.data } } : {}),
+                    }
           props.context.ui.router.navigate({
             type: "plugin",
             name: ROUTE,

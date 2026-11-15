@@ -69,6 +69,7 @@ import { DialogMcp } from "./component/dialog-mcp"
 import { DialogUsage } from "./component/usage"
 import { DialogRai } from "./component/dialog-rai"
 import { DialogRooms } from "./component/dialog-rooms"
+import { RoomsView } from "./component/rooms-view"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
@@ -658,6 +659,12 @@ function App() {
       }
 
       setTerminalTitle(renderer, `OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}`)
+      return
+    }
+
+    if (route.data.type === "rooms") {
+      const title = route.data.title.trim()
+      setTerminalTitle(renderer, title && title !== "New room" ? `OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}` : "OpenCode")
       return
     }
 
@@ -1475,6 +1482,11 @@ function App() {
                         verticalTabsWidth={verticalTabsVisible() ? tabsResize.size() : 0}
                       />
                     )}
+                  </Show>
+                </Match>
+                <Match when={route.data.type === "rooms"}>
+                  <Show when={route.data.type === "rooms" ? (route.data.openToken ?? route.data.roomID) : undefined} keyed>
+                    {(_token) => <RoomsView />}
                   </Show>
                 </Match>
                 <Match when={route.data.type === "plugin"}>

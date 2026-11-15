@@ -148,6 +148,16 @@ export type Route =
       readonly name: string
       readonly data?: Record<string, any>
     }
+  | {
+      readonly type: "rooms"
+      readonly roomID: string
+      readonly title: string
+      readonly provider: string
+      readonly model: string
+      readonly access: "owner" | "write" | "read" | null
+      readonly projectID?: string
+      readonly running?: boolean
+    }
 
 export type Destination = Route | Omit<Extract<Route, { readonly type: "plugin" }>, "id">
 

@@ -24,7 +24,25 @@ export type PluginRoute = {
   data?: Record<string, unknown>
 }
 
-export type Route = HomeRoute | SessionRoute | PluginRoute
+/**
+ * A ROKFOSS AI room opened like a session. The transcript stays in the view's memory and is never
+ * written to the session store; only the room identity needed to reload it from the gateway is here.
+ */
+export type RoomsRoute = {
+  type: "rooms"
+  /** `"0"` is a room that has not been created on the gateway yet. */
+  roomID: string
+  title: string
+  provider: string
+  model: string
+  access: "owner" | "write" | "read" | null
+  projectID?: string
+  running?: boolean
+  /** Changes each time the list opens a room, so the view remounts. Omitted from identity updates. */
+  openToken?: string
+}
+
+export type Route = HomeRoute | SessionRoute | PluginRoute | RoomsRoute
 
 export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
   name: "Route",
@@ -64,6 +82,23 @@ function initialRoute(value: unknown): Route | undefined {
         : undefined
     if (data) return { type: "plugin", id: value.id, name: value.name, data }
     return { type: "plugin", id: value.id, name: value.name }
+  }
+  if (value.type === "rooms" && "roomID" in value && typeof value.roomID === "string" && value.roomID !== "") {
+    const access =
+      "access" in value && (value.access === "owner" || value.access === "write" || value.access === "read")
+        ? value.access
+        : null
+    const projectID = "projectID" in value && typeof value.projectID === "string" ? value.projectID : undefined
+    return {
+      type: "rooms",
+      roomID: value.roomID,
+      title: "title" in value && typeof value.title === "string" ? value.title : "",
+      provider: "provider" in value && typeof value.provider === "string" ? value.provider : "",
+      model: "model" in value && typeof value.model === "string" ? value.model : "",
+      access,
+      ...(projectID ? { projectID } : {}),
+      ...("running" in value && value.running === true ? { running: true } : {}),
+    }
   }
 }
 
