@@ -107,6 +107,13 @@ describe("ConfigNormalize", () => {
     expect(result.agents?.reviewer?.system).toBe("Use V2")
   })
 
+  test("keeps the terminal app's interface language", () => {
+    // Normalization runs before the schema and copies only the keys it knows, so a missing entry here
+    // dropped `language` and the terminal app fell back to the system locale.
+    expect(decoded({ language: "ko" }).language).toBe("ko")
+    expect(normalized({ language: "ko" }).encoded.language).toBe("ko")
+  })
+
   test("canonicalizes transformed native values through decode then encode", () => {
     const result = normalized({ warming: { interval: "4 minutes", duration: "30 minutes" } })
     expect(result.encoded.warming).toEqual({ interval: "240000 millis", duration: "1800000 millis" })
