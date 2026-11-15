@@ -2,7 +2,7 @@ name: release-fork
 
 # Builds the fork's CLI binaries and publishes them as GitHub release assets, so users can install
 # without npm:
-#   curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash
 #
 # This is a fork-only workflow: upstream releases are produced by .github/workflows/release.yml, which
 # needs R2 credentials, signing identities and blacksmith runners this fork does not have.
@@ -31,7 +31,30 @@ permissions:
   contents: write
 
 jobs:
+  # The tag and the version the binary reports have to agree, so both are decided once, up front.
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version packages/cli/package.json)
+          tag="${INPUT_TAG:-v${version}-krfoss.${GITHUB_RUN_NUMBER}}"
+          case "$tag" in v*) ;; *) tag="v$tag" ;; esac
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "releasing $tag" >> "$GITHUB_STEP_SUMMARY"
+
   build:
+    needs: plan
     name: build ${{ matrix.group }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -56,6 +79,8 @@ jobs:
         working-directory: packages/cli
         env:
           GROUP: ${{ matrix.group }}
+          # Without this the binary reports 0.0.0-dev-1 and asks to update to an upstream release.
+          OPENCODE_VERSION: ${{ needs.plan.outputs.version }}
           # Cross-compiles by downloading the matching Bun release binary for each target.
           BUN_COMPILE_RELEASE: bun-v1.4.4
           # Read-only; raises the rate limit for Bun release downloads.
@@ -108,7 +133,7 @@ jobs:
           compression-level: 0
 
   publish:
-    needs: build
+    needs: [plan, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -150,11 +175,19 @@ jobs:
           fi
           echo "packaged $count target(s)"
       - name: Smoke test the Linux build
+        env:
+          EXPECTED: ${{ needs.plan.outputs.version }}
         run: |
           set -euo pipefail
           bin=packages/cli/dist/cli-linux-x64/bin/opencode
           chmod +x "$bin"
-          timeout 120 "$bin" --version || { echo "::error::the linux-x64 binary does not start"; exit 1; }
+          out=$(timeout 120 "$bin" --version) || { echo "::error::the linux-x64 binary does not start"; exit 1; }
+          echo "$out"
+          # Catches a build that ignored OPENCODE_VERSION and would report 0.0.0-dev-1 to users.
+          case "$out" in
+            *"$EXPECTED"*) ;;
+            *) echo "::error::expected version $EXPECTED, got $out"; exit 1 ;;
+          esac
       - name: Checksums and installer
         run: |
           set -euo pipefail
@@ -165,27 +198,23 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          INPUT_TAG: ${{ inputs.tag }}
+          TAG: ${{ needs.plan.outputs.tag }}
           INPUT_DRAFT: ${{ inputs.draft }}
         run: |
           set -euo pipefail
-          version=$(jq -r .version packages/cli/package.json)
-          tag="${INPUT_TAG:-v${version}-krfoss.${GITHUB_RUN_NUMBER}}"
-          case "$tag" in v*) ;; *) tag="v$tag" ;; esac
-
           flags=()
           if [ "$INPUT_DRAFT" = "true" ]; then flags+=("--draft"); fi
 
-          echo "publishing $tag"
-          gh release create "$tag" \
+          echo "publishing $TAG"
+          gh release create "$TAG" \
             --target "$GITHUB_SHA" \
-            --title "ROKFOSS OpenCode $tag" \
+            --title "ROKFOSS OpenCode $TAG" \
             --generate-notes \
             "${flags[@]}" \
             dist/archives/*
 
-          echo "### Released $tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Released $TAG" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
