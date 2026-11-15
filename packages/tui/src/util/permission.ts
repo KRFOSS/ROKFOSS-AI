@@ -78,7 +78,7 @@ export function permissionPresentation(
     const description = text(input.description)
     return {
       icon: "#",
-      title: `${Locale.titlecase(agent)} Subagent`,
+      title: t("{{agent}} Subagent", { agent: Locale.titlecase(agent) }),
       lines: description ? [`◉ ${description}`] : [],
     }
   }
@@ -98,7 +98,7 @@ export function permissionPresentation(
     return {
       icon: "◈",
       title: query ? `${title} "${query}"` : title,
-      lines: query ? [`Query: ${query}`] : [],
+      lines: query ? [t("Query: {{query}}", { query })] : [],
     }
   }
 
@@ -112,9 +112,9 @@ export function permissionPresentation(
       icon: "→",
       title: `LSP ${operation}${file ? ` ${formatPath(file)}${position ? `:${position}` : ""}` : ""}`,
       lines: [
-        ...(input.operation ? [`Operation: ${operation}`] : []),
+        ...(input.operation ? [t("Operation: {{operation}}", { operation })] : []),
         ...(file ? [t("Path: {{path}}", { path: formatPath(file) })] : []),
-        ...(position ? [`Position: ${position}`] : []),
+        ...(position ? [t("Position: {{position}}", { position })] : []),
       ],
     }
   }

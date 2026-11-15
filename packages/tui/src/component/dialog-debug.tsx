@@ -27,12 +27,12 @@ export function DialogDebug() {
   const entries = createMemo(() => {
     const model = local.model.current()
     return [
-      { label: "Version", value: `${app.version} (${app.channel})` },
-      { label: "Date", value: new Date().toISOString() },
-      { label: "OS", value: describeOS() },
-      { label: "Terminal", value: describeTerminal() },
-      { label: "Session ID", value: route.data.type === "session" ? route.data.sessionID : "n/a" },
-      { label: "Model", value: model ? `${model.providerID}/${model.modelID}` : "n/a" },
+      { label: t("Version"), value: `${app.version} (${app.channel})` },
+      { label: t("Date"), value: new Date().toISOString() },
+      { label: t("OS"), value: describeOS() },
+      { label: t("Terminal"), value: describeTerminal() },
+      { label: t("Session ID"), value: route.data.type === "session" ? route.data.sessionID : "n/a" },
+      { label: t("Model"), value: model ? `${model.providerID}/${model.modelID}` : "n/a" },
     ]
   })
 

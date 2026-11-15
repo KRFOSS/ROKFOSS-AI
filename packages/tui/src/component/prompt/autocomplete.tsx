@@ -42,6 +42,7 @@ import { stringWidth } from "../../util/string-width"
 import { parseFileLineRange, stripFileLineRange } from "../../prompt/parse"
 import { moveSelection, reconcileSelectionWindow, revealSelectionOffset } from "../../ui/select-controller"
 import { directoryAutocomplete, slashArgumentAutocomplete } from "../../prompt/directory-completion"
+import { t } from "../../i18n"
 
 export type AutocompleteRef = {
   onInput: (value: string) => void
@@ -494,7 +495,9 @@ export function Autocomplete(props: {
       if (!slash) return []
       return [slash.name, ...(slash.aliases ?? [])].map((name) => ({
         display: `/${name}`,
-        description: command.description ?? command.title,
+        // Translated here, not in the registry: a command title is a module-level constant, and
+        // reading the language inside this memo keeps the list in step with `/settings`.
+        description: t(command.description ?? command.title ?? ""),
         onSelect: slash.arguments ? () => insertSlash(name) : command.run,
       }))
     })

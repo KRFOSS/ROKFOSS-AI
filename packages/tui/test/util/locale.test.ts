@@ -1,6 +1,21 @@
 import { expect, test } from "bun:test"
 import { currentLanguage, setLanguage } from "../../src/i18n"
+import { uiText } from "../../src/i18n/ui"
 import { Locale } from "../../src/util/locale"
+
+test("session rows and tool summaries follow the interface language", () => {
+  // These labels come from @opencode/session-ui, which reads the UI dictionary; before the terminal app
+  // provided that context they stayed English next to Korean text ("Explored", "Thought").
+  const previous = currentLanguage()
+  try {
+    setLanguage("ko")
+    expect(uiText("ui.sessionTurn.status.gatheredContext")).toBe("탐색 완료")
+    setLanguage("en")
+    expect(uiText("ui.sessionTurn.status.gatheredContext")).toBe("Explored")
+  } finally {
+    setLanguage(previous)
+  }
+})
 
 test("uses Korean count units when the interface is Korean", () => {
   // Korean steps by ten thousand, so an English "K" next to Korean labels reads as a foreign unit.

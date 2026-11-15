@@ -15,27 +15,15 @@ export const Credential = Schema.Struct({
 export interface Credential extends Schema.Schema.Type<typeof Credential> {}
 
 /**
- * One reasoning step the plugin checked against the gateway. The gateway advertises steps the upstream may still
- * reject (live: `ultra` on every codex model), so a step is offered only after it answered `200` once.
- */
-export const Effort = Schema.Struct({
-  modelID: Schema.String,
-  effort: Schema.String,
-  supported: Schema.Boolean,
-}).annotate({ identifier: "Rai.Effort" })
-export interface Effort extends Schema.Schema.Type<typeof Effort> {}
-
-/**
  * Everything the settings dialog shows. `ownerID` is the subscription the user picked (0 is their own, absent means
- * "whatever the config file says"), `fast` is high-speed output, and `error` carries the gateway's own message when the
- * subscription list could not be read.
+ * "whatever the config file says"), `fast` is high-speed output, and `error` carries what the gateway answered when the
+ * key or the subscription list could not be read.
  */
 export const Settings = Schema.Struct({
   connected: Schema.Boolean,
   ownerID: Schema.NullOr(Schema.Int),
   fast: Schema.Boolean,
   credentials: Schema.Array(Credential),
-  efforts: Schema.Array(Effort),
   error: Schema.NullOr(Schema.String),
 }).annotate({ identifier: "Rai.Settings" })
 export interface Settings extends Schema.Schema.Type<typeof Settings> {}
@@ -65,11 +53,6 @@ export const Definition = Rpc.define({
     /** Enables or disables high-speed output (`service_tier: "priority"`). */
     setFast: {
       input: Schema.toStandardSchemaV1(Schema.Struct({ enabled: Schema.Boolean })),
-      output: Schema.toStandardSchemaV1(Settings),
-    },
-    /** Forgets what was learned about advertised reasoning steps and checks them again. */
-    verify: {
-      input: Schema.toStandardSchemaV1(Schema.Struct({})),
       output: Schema.toStandardSchemaV1(Settings),
     },
   },

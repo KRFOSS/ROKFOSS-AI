@@ -59,13 +59,17 @@ back to English, so an upstream string that lands without a translation still re
 ## ROKFOSS AI provider
 
 1. `/connect` → **ROKFOSS AI** → paste a `rai-…` key.
-2. `/credentials` (aliases `/rai`) → pick a subscription, toggle high-speed output, or re-check
-   reasoning steps.
+2. `/credentials` (aliases `/rai`) → pick a subscription or toggle high-speed output.
 
-The model list comes from the gateway's `GET /models`; reasoning steps become model variants, and a
-step is offered only after the gateway has accepted it once (the gateway advertises `ultra` for every
-codex model but rejects it, so it stays hidden until that changes). `service_tier: "priority"` is a
-no-op for codex models on the gateway, which the dialog states.
+The model list comes from the gateway's `GET /models`; `rai.efforts` becomes model variants and is shown
+as the gateway reports it. The gateway downgrades and then drops a step its upstream refuses, so the
+client no longer sends probe requests of its own. High-speed output (`service_tier: "priority"`) is
+sent for `codex` and `xai` models only — the gateway ignores it elsewhere.
+
+The key never leaves the gateway: requests go to `https://project.krfoss.org` only. A `baseURL` in a
+project's `opencode.json` is ignored, because merging that file would otherwise let a repository
+redirect the key; only the user-level configuration, the system configuration and `RAI_BASE_URL` are
+honoured.
 
 Settings live under `providers.rai.settings`:
 
@@ -74,8 +78,7 @@ Settings live under `providers.rai.settings`:
   "providers": {
     "rai": {
       "settings": {
-        "credential": "3",
-        "verifyEfforts": true
+        "credential": "3"
       }
     }
   }

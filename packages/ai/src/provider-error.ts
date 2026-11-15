@@ -88,6 +88,8 @@ export const isRetryable = (error: AIError) => error.isRetryable
 
 // OpenCode Zen reports account caps as typed 429/402 errors that are not throttles.
 const QUOTA_CODES = new Set([
+  // Spec 5.9: a shared-subscription limit is a final answer, so no retry policy may repeat it.
+  "share_limited",
   "insufficient_quota",
   "usage_not_included",
   "billing_error",

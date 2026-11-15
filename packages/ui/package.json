@@ -104,7 +104,8 @@
     "./icons/file-type-name": "./src/components/file-icons/choose-icon-name.ts",
     "./icons/app": "./src/components/app-icons/types.ts",
     "./fonts/*": "./src/assets/fonts/*",
-    "./audio/*": "./src/assets/audio/*"
+    "./audio/*": "./src/assets/audio/*",
+    "./context/i18n-core": "./src/context/i18n-core.ts"
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",

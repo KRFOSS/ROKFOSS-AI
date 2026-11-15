@@ -343,7 +343,7 @@ export function DevToolsBar() {
         <text fg={panel() === "theme" ? theme.text.action.primary.focused : theme.text.muted}>{t("Theme")}</text>
         <Show when={panel() === "theme"}>
           <PanelBox>
-            <PanelTitle>Theme</PanelTitle>
+            <PanelTitle>{t("Theme")}</PanelTitle>
             <Row label={t("Name")} value={themes.selected} />
             <Row label={t("Mode")} value={mode()} />
             <For each={themePerformance()}>{(entry) => <Row label={entry.key} value={String(entry.value)} />}</For>
@@ -359,9 +359,9 @@ export function DevToolsBar() {
         <text fg={panel() === "tools" ? theme.text.action.primary.focused : theme.text.muted}>{t("Tools")}</text>
         <Show when={panel() === "tools"}>
           <PanelBox>
-            <PanelTitle>Tools</PanelTitle>
+            <PanelTitle>{t("Tools")}</PanelTitle>
             <Action onClick={() => void dump()} disabled={dumping()} hoverBackground>
-              {dumping() ? "Writing debug snapshot…" : "Write debug snapshot"}
+              {dumping() ? t("Writing debug snapshot…") : t("Write debug snapshot")}
             </Action>
             <Show when={dumpPath()}>
               {(file) => (
@@ -399,7 +399,7 @@ export function DevToolsBar() {
                 }
                 hoverBackground
               >
-                {turnTokens() ? "[x]" : "[ ]"} Turn token usage
+                {turnTokens() ? "[x]" : "[ ]"} {t("Turn token usage")}
               </Action>
               <Show when={Boolean(turnTokens())}>
                 <Action
@@ -410,7 +410,7 @@ export function DevToolsBar() {
                   }
                   hoverBackground
                 >
-                  {verboseTurnTokens() ? "[x]" : "[ ]"} Turn token usage (verbose)
+                  {verboseTurnTokens() ? "[x]" : "[ ]"} {t("Turn token usage (verbose)")}
                 </Action>
               </Show>
             </box>
@@ -418,7 +418,9 @@ export function DevToolsBar() {
               {(group) => (
                 <box marginTop={1}>
                   <text fg={elevatedTheme.text.base} attributes={TextAttributes.BOLD}>
-                    {group.title}
+                    {/* Groups register their title in English at import time (see DevTools.register), so
+                        it is translated here, where it renders, rather than in the registration. */}
+                    {t(group.title)}
                   </text>
                   <For each={group.entries}>{(entry) => <Row label={entry.key} value={String(entry.value)} />}</For>
                 </box>

@@ -26,7 +26,7 @@ export function DialogRai() {
   const directory = location.current?.directory ?? data.location.default().directory
 
   // Every method answers the full snapshot, so one call both changes a setting and refreshes the list.
-  async function call(method: "refresh" | "select" | "setFast" | "verify", input: Record<string, JsonValue> = {}) {
+  async function call(method: "refresh" | "select" | "setFast", input: Record<string, JsonValue> = {}) {
     const result = await client.api.rpc.call({ rpcID, method, input, location: { directory } })
     const next = Option.getOrUndefined(decodeSettings(result.output))
     if (!next) throw new Error(`ROKFOSS AI returned no settings for ${method}`)
@@ -69,23 +69,6 @@ export function DialogRai() {
       .finally(() => setSaving(false))
   }
 
-  async function verify() {
-    if (saving()) return
-    setSaving(true)
-    await call("verify")
-      .then((next) =>
-        toast.show({
-          variant: "success",
-          message: t("Checked {{supported}} of {{total}} reasoning steps", {
-            supported: next.efforts.filter((effort) => effort.supported).length,
-            total: next.efforts.length,
-          }),
-        }),
-      )
-      .catch(toast.error)
-      .finally(() => setSaving(false))
-  }
-
   const options = createMemo<DialogSelectOption<string>[]>(() => {
     const current = settings()
     if (!current?.connected) return []
@@ -106,9 +89,8 @@ export function DialogRai() {
         value: "fast",
         title: t("High-speed output"),
         category: t("Options"),
-        // The gateway accepts the tier for every model but its upstream decides; codex answered `default` live.
-        // Short on purpose: the list is narrow and a sentence-length hint is truncated mid-word.
-        description: t("Ignored by some models."),
+        /* Only the codex and xai upstreams accept the tier; the gateway leaves every other provider at its own. */
+        description: t("Applies to codex and xai models only."),
         footer: current.fast ? t("on") : t("off"),
         onSelect: () => void toggleFast(),
       },
@@ -147,17 +129,6 @@ export function DialogRai() {
           )}
         </Show>
       }
-      actions={[
-        {
-          command: "rai.verify",
-          title: t("verify steps"),
-          // Not in the shared keybind table, so the dialog supplies its own key or the action never shows.
-          bind: "ctrl+r",
-          selection: "none",
-          disabled: settings()?.connected !== true,
-          onTrigger: () => void verify(),
-        },
-      ]}
     />
   )
 }

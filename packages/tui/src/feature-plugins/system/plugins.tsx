@@ -96,7 +96,7 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
         value: entry.key,
         category: entry.runtime === "tui" ? "TUI" : "Server",
         searchText: entry.runtime === "tui" ? entry.target : source(entry.plugin, props.context),
-        footer: updating(entry) ? "updating" : footer(entry),
+        footer: updating(entry) ? t("updating") : footer(entry),
         footerColor:
           status(entry) === "failed"
             ? props.context.theme.text.feedback.error.base
@@ -204,7 +204,7 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
               ...(pluginError(focusedEntry()) && !focusedTui()
                 ? [{ title: "view error", label: "enter", group: "primary" as const }]
                 : []),
-              { title: `${showInternal() ? "hide" : "show"} internal`, label: "ctrl+a" },
+              { title: showInternal() ? t("hide internal") : t("show internal"), label: "ctrl+a" },
             ]}
             onMove={(option) => setFocused(option.value)}
             onSelect={(option) => {
@@ -219,7 +219,7 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
             }}
             actions={[
               {
-                title: checking() ? "checking for updates" : "check for updates",
+                title: checking() ? t("checking for updates") : t("check for updates"),
                 command: "dialog.plugins.check",
                 selection: "none",
                 hidden: !entries().some(
@@ -257,9 +257,9 @@ export function PluginsDialog(props: { context: Plugin.Context; plugins: ReturnT
       >
         {(entry) => (
           <DialogErrorDetails
-            title={`${entry().runtime === "tui" ? "TUI" : "Server"} plugin error`}
+            title={t("{{runtime}} plugin error", { runtime: entry().runtime === "tui" ? "TUI" : t("Server") })}
             source={pluginSource(entry(), props.context)}
-            error={pluginError(entry()) ?? "Unknown plugin error"}
+            error={pluginError(entry()) ?? t("Unknown plugin error")}
             diagnosticRef={pluginErrorRef(entry())}
             context={`Plugin: ${label(entry(), props.context)}\nStatus: failed\nRuntime: ${entry().runtime}\nSource: ${pluginSource(entry(), props.context)}`}
             onBack={() => {
@@ -307,11 +307,11 @@ function outdated(entry: Entry) {
 function footer(entry: Entry) {
   const details = [
     ...(status(entry) === "active" ? [] : [status(entry)]),
-    ...(isLocal(entry) ? ["local"] : []),
+    ...(isLocal(entry) ? [t("local")] : []),
     ...(entry.runtime === "server" && entry.plugin.source.type === "package" && entry.plugin.source.version
       ? [displayVersion(entry.plugin.source.version)]
       : []),
-    ...(outdated(entry) ? ["update available"] : []),
+    ...(outdated(entry) ? [t("update available")] : []),
   ]
   return details.length ? details.join(", ") : undefined
 }

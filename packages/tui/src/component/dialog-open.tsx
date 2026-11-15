@@ -337,7 +337,13 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
               pending = undefined
               restore(previous)
             }}
-            title={projectID() ? `${projectName(data.project.get(projectID()!)) ?? "Project"} / Worktrees` : "Open"}
+            title={
+              projectID()
+                ? t("{{project}} / Worktrees", {
+                    project: projectName(data.project.get(projectID()!)) ?? t("Project"),
+                  })
+                : "Open"
+            }
             placeholder={projectID() ? "Search worktrees…" : "Search sessions and projects…"}
             options={projectID() ? worktreeOptions() : options()}
             current={
@@ -424,13 +430,15 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
                 <text fg={theme.text.muted}>
                   {projectID()
                     ? worktrees.loading
-                      ? "Loading worktrees…"
-                      : "No matching worktrees"
+                      ? t("Loading worktrees…")
+                      : t("No matching worktrees")
                     : recent.loading || projects.loading || matched.loading
-                      ? "Searching sessions and projects…"
+                      ? t("Searching sessions and projects…")
                       : shortcuts.get("session.list")
-                        ? `No matches · search all sessions with ${shortcuts.get("session.list")}`
-                        : "No matches"}
+                        ? t("No matches · search all sessions with {{key}}", {
+                            key: shortcuts.get("session.list") ?? "",
+                          })
+                        : t("No matches")}
                 </text>
               </box>
             }
@@ -451,11 +459,11 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
       >
         <DialogPrompt
           size="large"
-          title={`${projectName(data.project.get(projectID()!)) ?? "Project"} / New worktree`}
-          placeholder="Worktree name (optional)"
+          title={`${projectName(data.project.get(projectID()!)) ?? t("Project")} / ${t("New worktree")}`}
+          placeholder={t("Worktree name (optional)")}
           description={() => <text fg={theme.text.muted}>{t("Leave blank for a random name.")}</text>}
           busy={creating()}
-          busyText="Creating worktree…"
+          busyText={t("Creating worktree…")}
           onCancel={cancelCreation}
           onConfirm={(value) => {
             const id = projectID()!

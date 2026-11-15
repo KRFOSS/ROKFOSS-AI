@@ -185,13 +185,13 @@ function DiffViewer(props: {
   }
   const result = () => (diff.error || diff.loading ? undefined : diff())
   const sourceDetail = () => {
-    if (mode() === "turn") return diff.error ? "Diff unavailable" : undefined
-    if (mode() === "working") return "vs HEAD"
-    if (diff.error) return "Base or diff unavailable"
-    if (!result()) return "Resolving diff…"
+    if (mode() === "turn") return diff.error ? t("Diff unavailable") : undefined
+    if (mode() === "working") return t("vs HEAD")
+    if (diff.error) return t("Base or diff unavailable")
+    if (!result()) return t("Resolving diff…")
     const base = result()?.base
-    if (!base) return "Base not reported"
-    return `vs ${base.name}`
+    if (!base) return t("Base not reported")
+    return t("vs {{base}}", { base: base.name })
   }
   return (
     <DiffViewerContent
@@ -917,15 +917,15 @@ export function DiffViewerContent(props: {
             <box flexGrow={1} padding={2} paddingTop={compact() ? 1 : 2}>
               <text fg={theme.text.feedback.error.base}>
                 {!props.sourceBase && needsBase(mode())
-                  ? "Could not load diff. Choose a base branch from Diff source, or select Uncommitted."
-                  : "Could not load diff. Reopen the diff viewer to try again."}
+                  ? t("Could not load diff. Choose a base branch from Diff source, or select Uncommitted.")
+                  : t("Could not load diff. Reopen the diff viewer to try again.")}
               </text>
             </box>
           </Match>
           <Match when={!props.loading && props.unavailable}>
             <box flexGrow={1} padding={2} paddingTop={compact() ? 1 : 2}>
               <text fg={theme.text.muted}>
-                Committed comparison unavailable without base metadata. Choose a base branch from Diff source.
+                {t("Committed comparison unavailable without base metadata. Choose a base branch from Diff source.")}
               </text>
             </box>
           </Match>
@@ -1072,10 +1072,10 @@ export function DiffViewerContent(props: {
                                   >
                                     <text fg={theme.text.muted}>
                                       {mode() === "committed" && image()
-                                        ? "Committed image preview unavailable. The working-tree image is not shown."
+                                        ? t("Committed image preview unavailable. The working-tree image is not shown.")
                                         : entry.file.status === "deleted" && image()
-                                          ? "Deleted image. The previous revision is not available for preview."
-                                          : "No patch available for this file."}
+                                          ? t("Deleted image. The previous revision is not available for preview.")
+                                          : t("No patch available for this file.")}
                                     </text>
                                   </box>
                                 }

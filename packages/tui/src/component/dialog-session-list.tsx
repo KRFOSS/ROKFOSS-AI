@@ -114,14 +114,16 @@ export function DialogSessionList() {
   const searchState = createMemo(() => {
     const query = filter().trim()
     if (query !== search().trim() || searchResults.loading)
-      return { message: query ? "Searching sessions…" : "Loading sessions…", error: false }
+      return { message: query ? t("Searching sessions…") : t("Loading sessions…"), error: false }
     const result = searchResults()
     if (result?.query === query && result.error)
       return {
-        message: query ? "Could not search sessions. Change the search to try again." : "Could not load sessions.",
+        message: query
+          ? t("Could not search sessions. Change the search to try again.")
+          : t("Could not load sessions."),
         error: true,
       }
-    return { message: query ? "No sessions found" : "No sessions available", error: false }
+    return { message: query ? t("No sessions found") : t("No sessions available"), error: false }
   })
 
   const quickSwitchHint = createMemo(() => {
@@ -206,13 +208,15 @@ export function DialogSessionList() {
             {t("Sessions")}
           </text>
           <Show when={!allProjects() && currentProjectName()}>
-            <text fg={theme.text.muted}> for {currentProjectName()}</text>
+            <text fg={theme.text.muted}> {t("for {{project}}", { project: currentProjectName() })}</text>
           </Show>
         </box>
       }
       searchInTitle
       titlePlaceholder={
-        !allProjects() && currentProjectName() ? `Search sessions in ${currentProjectName()}` : "Search sessions"
+        !allProjects() && currentProjectName()
+          ? t("Search sessions in {{project}}", { project: currentProjectName() })
+          : "Search sessions"
       }
       options={options()}
       skipFilter={true}

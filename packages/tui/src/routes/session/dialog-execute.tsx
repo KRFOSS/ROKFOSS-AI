@@ -66,13 +66,13 @@ export function DialogExecute(props: { part: SessionMessageAssistantTool }) {
   })
   const status = createMemo(() => {
     const state = props.part.state
-    if (state.status === "streaming") return "Receiving code…"
-    if (state.status === "running") return "Running"
+    if (state.status === "streaming") return t("Receiving code…")
+    if (state.status === "running") return t("Running")
     const duration = props.part.time.completed
       ? ` · ${Locale.duration(props.part.time.completed - (props.part.time.ran ?? props.part.time.created))}`
       : ""
-    if (failed()) return `Failed${duration}`
-    return `Completed${duration}`
+    if (failed()) return `${t("Failed")}${duration}`
+    return `${t("Completed")}${duration}`
   })
 
   const copy = (kind: "code" | "output") => {
@@ -171,7 +171,7 @@ export function DialogExecute(props: { part: SessionMessageAssistantTool }) {
                     }
                     wrapMode="word"
                   >
-                    {text() ?? (props.part.state.status === "completed" ? "No output" : "Waiting for output…")}
+                    {text() ?? (props.part.state.status === "completed" ? t("No output") : t("Waiting for output…"))}
                   </text>
                 }
               >

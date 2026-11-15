@@ -28,6 +28,8 @@ import { useStorageOptional } from "./storage"
 import { DevTools } from "../devtools"
 import { configDirectories } from "../util/config-directories"
 
+// The title stays English here and is passed through `t()` where the group renders (component/devtools-bar.tsx):
+// a `t()` call at module scope would resolve once, at import time, and keep that language for the whole process.
 const themePerformance = DevTools.register({ id: "theme-performance", title: "Theme performance" })
 export type ThemeError = { name: string; error: Error }
 type ThemeErrorHandler = (event: ThemeError) => void

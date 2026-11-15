@@ -1,4 +1,4 @@
-import { Cause, Effect, Layer, Option, Schema, Stream } from "effect"
+import { Cause, Duration, Effect, Layer, Option, Schema, Stream } from "effect"
 import {
   FetchHttpClient,
   Headers,
@@ -7,8 +7,9 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/http"
-import { HttpContext, HttpRateLimitDetails, AIError, TransportError } from "../schema/index.js"
+import { AIErrorReason, HttpContext, HttpRateLimitDetails, AIError, TransportError } from "../schema/index.js"
 import { classifyProviderFailure, providerErrorMessage } from "../provider-error.js"
+import { providerCodes } from "../utils/provider-codes.js"
 import {
   CurrentTls,
   headerDetails,
@@ -283,6 +284,90 @@ export const withFetch = (
       Effect.provideService(FetchHttpClient.Fetch, fetch),
     )
   return middleware === undefined ? send : (request) => middleware(request, send)
+}
+
+/**
+ * Spec 5.9: a shared-subscription limit is a final answer, not a throttle, so a request that hits it is never sent
+ * again. The code arrives in the body of a 429 or in a stream `error` event, and the message keeps it when the body is
+ * gone, so both are checked.
+ */
+const SHARED_LIMIT_CODE = "share_limited"
+/** Spec 5.9: only a throttle (429) and the gateway's own 5xx family may be sent again; every other status is final. */
+const RETRYABLE_STATUS = new Set([429, 502, 503, 504])
+/** Spec 5.9 bounds retrying at three attempts after the first one. */
+export const MAX_RETRIES = 3
+/** A provider-requested delay is honoured but bounded, so a hostile or buggy `Retry-After` cannot stall a call. */
+const RETRY_AFTER_MAX_MS = 60_000
+/** Backoff when the response names no delay: 0.5s, then 1s, then 2s. */
+const backoffMs = (retry: number) => Math.min(4_000, 500 * 2 ** retry)
+
+/** Spec 5.9: `share_limited` is retried zero times, however the failure carries the code. */
+const sharedLimit = (error: AIError) =>
+  [error.reason.message, ...providerCodes(error.reason.body)].some((value) =>
+    value.toLowerCase().includes(SHARED_LIMIT_CODE),
+  )
+
+/** Whether another attempt may succeed: a throttle or the gateway's 5xx family, and never a shared limit (spec 5.9). */
+const retryable = (error: AIError) => {
+  if (sharedLimit(error)) return false
+  const status = error.reason.http?.status
+  // A rejection such as 400, 401 or 403 is deterministic: sending it again only repeats the refusal.
+  if (status === undefined || !RETRYABLE_STATUS.has(status)) return false
+  return error.isRetryable
+}
+
+/** The wait before the next attempt: the response's own `Retry-After` when it named one. */
+const retryDelayMs = (error: AIError, retry: number) =>
+  error.retryAfterMs === undefined ? backoffMs(retry) : Math.min(error.retryAfterMs, RETRY_AFTER_MAX_MS)
+
+/**
+ * Marks a failure that already used the whole allowance. `x-should-retry: false` is what every policy (including the
+ * session-level one) reads first, so the three retries of spec 5.9 are the total for this request, not per layer.
+ */
+const spent = (error: AIError) => {
+  const http = error.reason.http
+  if (http === undefined) return error
+  return new AIError({
+    reason: AIErrorReason.make({
+      ...error.reason,
+      // `message` and `cause` live on the prototype, so a spread drops them; the union schema needs the message back.
+      message: error.reason.message,
+      http: new HttpContext({
+        url: http.url,
+        status: http.status,
+        headers: { ...http.headers, "x-should-retry": "false" },
+      }),
+    }),
+  })
+}
+
+export interface RetryOptions {
+  /** Attempts after the first one; the specification allows at most three, so higher values are lowered. */
+  readonly maxRetries?: number
+}
+
+/**
+ * Sends one exchange again on throttles and gateway failures, following `Retry-After`, up to three times. The loop
+ * lives in the executor so every route that opts in retries identically, and a `share_limited` answer fails after one
+ * attempt (spec 5.9). Requests are classified first by `statusError`, so the retry decision reads the status and body
+ * the failure already carries instead of consuming the response twice.
+ */
+export const retrying = (executor: Interface, options: RetryOptions = {}): Interface => {
+  const maxRetries = Math.max(0, Math.min(options.maxRetries ?? MAX_RETRIES, MAX_RETRIES))
+  return {
+    execute: (request, middleware) =>
+      Effect.gen(function* () {
+        let retries = 0
+        while (true) {
+          const result = yield* Effect.result(executor.execute(request, middleware))
+          if (result._tag === "Success") return result.success
+          if (!retryable(result.failure)) return yield* result.failure
+          if (retries >= maxRetries) return yield* spent(result.failure)
+          yield* Effect.sleep(Duration.millis(retryDelayMs(result.failure, retries)))
+          retries++
+        }
+      }),
+  }
 }
 
 /** Run `fn` on every request: it sees the raw response before status classification, inside middleware already on `executor`, and outside per-call middleware. */

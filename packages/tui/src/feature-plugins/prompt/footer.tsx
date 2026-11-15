@@ -5,6 +5,7 @@ import { useTerminalDimensions } from "@opentui/solid"
 import { TextAttributes } from "@opentui/core"
 import { useInteractivity } from "../../context/interactivity"
 import { stringWidth } from "../../util/string-width"
+import { t } from "../../i18n"
 import { createGoal, GoalStatus } from "./goal"
 
 const money = new Intl.NumberFormat("en-US", {
@@ -60,7 +61,7 @@ export function PromptFooter(props: {
     return promptFooterLayout({
       width: Math.max(0, dimensions().width - 8),
       usage: status(),
-      shortcuts: command ? [`${command} commands`] : [],
+      shortcuts: command ? [`${command} ${t("commands")}`] : [],
     })
   })
 
@@ -115,7 +116,7 @@ export function PromptFooter(props: {
               flexShrink={0}
             >
               {shortcut("agent.cycle")}{" "}
-              <span style={interactive() ? { fg: props.context.theme.text.muted } : {}}>agents</span>
+              <span style={interactive() ? { fg: props.context.theme.text.muted } : {}}>{t("agents")}</span>
             </text>
           </Match>
         </Switch>
@@ -127,7 +128,7 @@ export function PromptFooter(props: {
             flexShrink={0}
           >
             {shortcut("command.palette.show")}{" "}
-            <span style={interactive() ? { fg: props.context.theme.text.muted } : {}}>commands</span>
+            <span style={interactive() ? { fg: props.context.theme.text.muted } : {}}>{t("commands")}</span>
           </text>
         </Show>
       </Match>
