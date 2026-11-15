@@ -41,6 +41,12 @@ const sendInput = {
 
 const run = <A>(effect: Effect.Effect<A, unknown>) => Effect.runPromise(effect)
 
+/**
+ * `rpc.register` acquires a scope once the mock stands in for the real RPC layer, so registration is scoped
+ * here and `run` keeps its plain no-requirement signature.
+ */
+const register = (ctx: unknown, http: HttpClient.HttpClient) => Effect.scoped(registerRooms(ctx as never, http))
+
 function httpOf(handler: (input: { url: string; headers: Headers; body: string; signal: AbortSignal }) => Response | Promise<Response>) {
   const calls: Array<{ url: string; headers: Headers; body: string }> = []
   const http = HttpClient.make((request, _url, signal) =>
@@ -171,7 +177,7 @@ describe("RAI rooms protocol", () => {
         },
       },
     }
-    await run(registerRooms(ctx as never, http))
+    await run(register(ctx, http))
     const projects = (await run(handlers.projects({}))) as { error: string; projects: unknown[] }
     const sent = (await run(handlers.send(sendInput))) as { error: string; text: string }
     expect(projects.error).toBe(connectFirst)
@@ -364,7 +370,7 @@ describe("RAI rooms protocol", () => {
         },
       },
     }
-    await run(registerRooms(ctx as never, http))
+    await run(register(ctx, http))
     const sent = (await run(handlers.send({ ...sendInput, audience, search: false }))) as { text: string }
     const taken = (await run(handlers.take({ audience }))) as { chunk: { text?: string | null } | null; open: boolean }
     const stranger = (await run(handlers.take({ audience: other }))) as { chunk: unknown; open: boolean }
@@ -398,7 +404,8 @@ describe("RAI rooms protocol", () => {
     })
     const handlers: Record<string, (input: unknown) => Effect.Effect<unknown>> = {}
     await run(
-      registerRooms(
+      Effect.scoped(
+        registerRooms(
         {
           rpc: {
             register: (_definition: unknown, next: typeof handlers) => {
@@ -414,6 +421,7 @@ describe("RAI rooms protocol", () => {
           },
         } as never,
         http,
+      ),
       ),
     )
     const sending = run(handlers.send({ ...sendInput, audience, search: false }))
