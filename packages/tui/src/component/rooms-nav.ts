@@ -1,5 +1,24 @@
 import type { Route } from "../context/route"
 
+/**
+ * Room tabs share the session tab strip, so their ids are namespaced: a room id is not a session id and
+ * must never reach the session API. `roomIDOfTab` is the inverse of `roomTabID`.
+ */
+export const ROOM_TAB_PREFIX = "rai:"
+
+export function roomTabID(roomID: string): string {
+  return ROOM_TAB_PREFIX + roomID
+}
+
+export function isRoomTab(tabID: string): boolean {
+  return tabID.startsWith(ROOM_TAB_PREFIX)
+}
+
+export function roomIDOfTab(tabID: string): string | undefined {
+  if (!isRoomTab(tabID)) return undefined
+  return tabID.slice(ROOM_TAB_PREFIX.length)
+}
+
 /** Where `/rooms` was opened from, so leaving a room restores that screen and the list dialog. */
 let back: Route = { type: "home" }
 

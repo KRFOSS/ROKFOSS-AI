@@ -664,7 +664,10 @@ function App() {
 
     if (route.data.type === "rooms") {
       const title = route.data.title.trim()
-      setTerminalTitle(renderer, title && title !== "New room" ? `OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}` : "OpenCode")
+      // A room that has not reached the gateway yet has no title worth showing, and the room title is
+      // translated, so the id decides instead of comparing the text.
+      const fresh = route.data.roomID === "0"
+      setTerminalTitle(renderer, !fresh && title ? `OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}` : "OpenCode")
       return
     }
 

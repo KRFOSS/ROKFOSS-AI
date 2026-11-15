@@ -382,6 +382,8 @@ export const dict: Dictionary = {
   "Rename account": "계정 이름 변경",
   "ROKFOSS AI settings": "ROKFOSS AI 설정",
   "ROKFOSS AI rooms": "ROKFOSS AI 대화방",
+  "ROKFOSS AI": "ROKFOSS AI",
+  "ROKFOSS AI room": "ROKFOSS AI 방",
   "All projects": "모든 프로젝트",
   "Rooms": "대화방",
   "No rooms": "대화방이 없습니다",

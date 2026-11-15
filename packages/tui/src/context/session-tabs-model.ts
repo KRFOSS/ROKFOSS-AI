@@ -1,6 +1,16 @@
 export type SessionTab = {
   sessionID: string
   title?: string
+  /**
+   * Present only on a ROKFOSS AI room tab (`rai:<roomID>`). The room identity needed to reopen the
+   * room from the gateway; a room tab is never a session and must not be passed to the session API.
+   */
+  room?: {
+    provider: string
+    model: string
+    access: "owner" | "write" | "read" | null
+    projectID?: string
+  }
 }
 
 export type SessionTabUnread = "activity" | "error"

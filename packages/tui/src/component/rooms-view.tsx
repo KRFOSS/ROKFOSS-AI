@@ -19,6 +19,7 @@ import { useDialog } from "../ui/dialog"
 import { DialogRooms } from "./dialog-rooms"
 import { PromptMetadataRow } from "./prompt/metadata"
 import { accessOf, roomsReturn } from "./rooms-nav"
+import { roomSlashCommands, roomSlashDirect, type SlashShape } from "./rooms-slash"
 
 type Line = { readonly id: string; readonly role: string; readonly text: string }
 
@@ -69,6 +70,8 @@ export function RoomsView() {
   const cursorStyle = useCursorStyle()
   const dimensions = useTerminalDimensions()
   const modelKey = Keymap.useShortcut("model.list")
+  // A room gets the same `/` commands a session offers, minus the ones that need a session.
+  const commandList = Keymap.useCommands()
   const directory = location.current?.directory ?? data.location.default().directory
   const pad = () => (dimensions().width < 44 ? 1 : 2)
   const markdownMode = () => config.session?.markdown ?? "rendered"
@@ -89,6 +92,9 @@ export function RoomsView() {
   const [search, setSearch] = createSignal(false)
   const [live, setLive] = createSignal(false)
   const [draft, setDraft] = createSignal("")
+  const [slashIndex, setSlashIndex] = createSignal(0)
+  // Escape hides the list without discarding what was typed; the next keystroke brings it back.
+  const [slashDismissed, setSlashDismissed] = createSignal(false)
   let streamed = false
   let liveText = ""
   let streamToken: string | undefined
@@ -356,7 +362,12 @@ export function RoomsView() {
         audience: stream?.token ?? null,
       })
       if (disposed) return
-      if (result.roomID && result.roomID !== "0") setRoomID(result.roomID)
+      if (result.roomID && result.roomID !== "0") {
+        setRoomID(result.roomID)
+        // Registering a tab needs the room id on the route. The open token is kept, so this view stays
+        // mounted and the transcript already on screen survives.
+        if (route.openToken) navigate({ ...route, roomID: result.roomID })
+      }
       if (!streamed && result.notice)
         pushLine({ id: `notice-${Date.now()}`, role: "notice", text: RaiRooms.displayText(result.notice, 500) })
       if (!streamed) {
@@ -444,6 +455,48 @@ export function RoomsView() {
       },
     ],
   }))
+
+  /** Keymap commands report an `id`, so they are mapped onto the shape the slash helpers take. */
+  const slashShapes = createMemo<SlashShape[]>(() =>
+    commandList().flatMap((command) => {
+      if (!command.slash) return []
+      const enabled = command.enabled
+      if (enabled === false || (typeof enabled === "function" && enabled() === false)) return []
+      return [
+        {
+          name: command.id ?? command.slash.name,
+          title: command.title,
+          slash: command.slash,
+          run: (input?: string) => command.run(input),
+        },
+      ]
+    }),
+  )
+  const slashCandidates = createMemo(() => (slashDismissed() ? [] : roomSlashCommands(slashShapes(), draft())))
+  const slashPick = () => slashCandidates()[Math.min(slashIndex(), slashCandidates().length - 1)]
+
+  function runSlash(command: SlashShape, input: string) {
+    textarea?.setText("")
+    setDraft("")
+    setSlashIndex(0)
+    setSlashDismissed(false)
+    void Promise.resolve(command.run?.(input)).catch(showError)
+  }
+
+  /** Enter runs a command when the line names one, and sends a message otherwise. */
+  function submit() {
+    if (slashCandidates().length > 0) {
+      const picked = slashPick()
+      if (picked) runSlash(picked, "")
+      return
+    }
+    const direct = roomSlashDirect(slashShapes(), (textarea?.plainText ?? draft()).trim())
+    if (direct) {
+      runSlash(direct.command, direct.input)
+      return
+    }
+    void send()
+  }
 
   const placeholder = () => {
     if (!writable()) return t("Read only")
@@ -550,6 +603,26 @@ export function RoomsView() {
         </scrollbox>
       </box>
       <box flexShrink={0} paddingLeft={pad()} paddingRight={pad()} paddingBottom={1} gap={1}>
+        <Show when={slashCandidates().length > 0}>
+          <box
+            flexShrink={0}
+            flexDirection="column"
+            border={["left"]}
+            borderColor={theme.text.base}
+            customBorderChars={SplitBorder.customBorderChars}
+            backgroundColor={theme.background.raised.base}
+            paddingLeft={1}
+            paddingRight={1}
+          >
+            <For each={slashCandidates()}>
+              {(command, index) => (
+                <text fg={index() === slashIndex() ? theme.text.base : theme.text.muted} wrapMode="none" truncate>
+                  {index() === slashIndex() ? "› " : "  "}/{command.slash!.name}  {command.title ?? command.slash!.name}
+                </text>
+              )}
+            </For>
+          </box>
+        </Show>
         <Show when={error() || phase()}>
           <text fg={error() ? theme.text.feedback.error.base : theme.text.muted} wrapMode="word">
             {error() || phase()}
@@ -582,13 +655,40 @@ export function RoomsView() {
                 maxHeight={Math.max(4, Math.floor(dimensions().height / 3))}
                 wrapMode="word"
                 ref={(element: TextareaRenderable) => (textarea = element)}
-                onContentChange={() => setDraft(textarea?.plainText ?? "")}
+                onContentChange={() => {
+                  setDraft(textarea?.plainText ?? "")
+                  setSlashDismissed(false)
+                  setSlashIndex(0)
+                }}
                 onSubmit={() => {
-                  setTimeout(() => setTimeout(() => void send(), 0), 0)
+                  setTimeout(() => setTimeout(() => submit(), 0), 0)
                 }}
                 onKeyDown={(event: KeyEvent) => {
+                  const candidates = slashCandidates()
+                  if (candidates.length > 0) {
+                    if (event.name === "up" || event.name === "down") {
+                      event.preventDefault()
+                      const step = event.name === "up" ? -1 : 1
+                      setSlashIndex((index) => (index + step + candidates.length) % candidates.length)
+                      return
+                    }
+                    if (event.name === "tab") {
+                      event.preventDefault()
+                      const picked = slashPick()
+                      if (!picked) return
+                      const line = `/${picked.slash!.name} `
+                      textarea?.setText(line)
+                      setDraft(line)
+                      return
+                    }
+                  }
                   if (event.name !== "escape") return
                   event.preventDefault()
+                  // Escape closes the command list first, and leaves the room only when it is closed.
+                  if (candidates.length > 0) {
+                    setSlashDismissed(true)
+                    return
+                  }
                   leave()
                 }}
                 placeholder={placeholder()}
@@ -631,7 +731,7 @@ export function RoomsView() {
           </box>
         </box>
         <text fg={theme.text.muted} wrapMode="none" truncate>
-          {t("Send")} enter · {t("Back to rooms")} esc
+          {t("Send")} enter · {t("Back to rooms")} esc · {t("Commands")} /
           {hasMore() ? ` · ${t("Older messages")} ctrl+o` : ""}
         </text>
       </box>

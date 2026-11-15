@@ -16,6 +16,8 @@ import { newSessionLocation } from "../config/new-session-location"
 import { createSessionRetention } from "@opencode/client/solid"
 import { createProgramStatus, type PendingSession } from "./program-status"
 import { anchorKey, type AnchorTarget } from "../routes/session/anchors"
+import { t } from "../i18n"
+import { isRoomTab, nextRoomToken, roomIDOfTab, roomTabID } from "../component/rooms-nav"
 import {
   closeSessionTab,
   cycleSessionTab,
@@ -115,8 +117,11 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       )
     }
 
-    const root = (sessionID: string) => data.session.root(sessionID)
+    // A room tab id is not a session id: every session API call is guarded so a room tab can never
+    // reach the server as if it were a session.
+    const root = (sessionID: string) => (isRoomTab(sessionID) ? sessionID : data.session.root(sessionID))
     const title = (sessionID: string, persisted?: string, fallback?: string) => {
+      if (isRoomTab(sessionID)) return persisted ?? t("ROKFOSS AI room")
       const session = data.session.get(sessionID)
       return session?.title ?? persisted ?? fallback ?? (session ? withTimestampedFallback(session) : undefined)
     }
@@ -125,23 +130,30 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       return info?.time.idle !== undefined && (info.time.viewed === undefined || info.time.idle > info.time.viewed)
     }
     const family = (sessionID: string) => {
+      if (isRoomTab(sessionID)) return [sessionID]
       const session = root(sessionID)
       const members = data.session.family(session)
       return members.includes(session) ? members : [session, ...members]
     }
     const normalize = (value: TabsState) => ({
       tabs: value.tabs.reduce<SessionTab[]>((tabs, tab) => {
+        if (isRoomTab(tab.sessionID)) return openSessionTab(tabs, tab)
         const sessionID = root(tab.sessionID)
         return openSessionTab(tabs, { sessionID, title: title(sessionID, tab.title) })
       }, []),
       unread: {},
     })
-    const current = () => (route.data.type === "session" ? root(route.data.sessionID) : undefined)
+    const current = () => {
+      if (route.data.type === "session") return root(route.data.sessionID)
+      // `"0"` is a room that does not exist on the gateway yet, so it has no tab to highlight.
+      if (route.data.type === "rooms" && route.data.roomID !== "0") return roomTabID(route.data.roomID)
+      return undefined
+    }
     createSessionRetention({
       session: data.session,
       current: () =>
         route.data.type === "session" && route.data.sessionID !== "dummy" ? route.data.sessionID : undefined,
-      keep: () => (enabled() ? state().tabs.map((tab) => tab.sessionID) : []),
+      keep: () => (enabled() ? state().tabs.filter((tab) => !isRoomTab(tab.sessionID)).map((tab) => tab.sessionID) : []),
       limit: 3,
     })
     const newTab = createMemo((open = false) => {
@@ -151,6 +163,21 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       return sessionID !== undefined && !state().tabs.some((tab) => tab.sessionID === sessionID)
     }, false)
     const status = (sessionID: string) => {
+      if (isRoomTab(sessionID)) {
+        // A room has no session status; only the room currently on screen can be busy, and the
+        // transcript itself never reaches the session store.
+        const running =
+          route.data.type === "rooms" &&
+          roomIDOfTab(sessionID) === route.data.roomID &&
+          route.data.running === true
+        return {
+          unread: undefined,
+          promptPulse: 0,
+          attention: false as const,
+          busy: running,
+          renaming: false,
+        }
+      }
       const session = root(sessionID)
       const members = family(session)
       return {
@@ -181,7 +208,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       renderer,
       sessions: () => {
         const viewed = route.data.type === "session" && route.data.sessionID !== "dummy" ? current() : undefined
-        const tabs = enabled() ? state().tabs.map((tab) => tab.sessionID) : []
+        const tabs = enabled() ? state().tabs.filter((tab) => !isRoomTab(tab.sessionID)).map((tab) => tab.sessionID) : []
         return Array.from(new Set(viewed ? [...tabs, viewed] : tabs)).flatMap((sessionID): PendingSession[] => {
           const session = status(sessionID)
           if (session.attention)
@@ -204,14 +231,44 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     createEffect(
       on(
         [
-          () => (enabled() && route.data.type === "session" ? route.data.sessionID : undefined),
+          () => {
+            if (!enabled()) return undefined
+            if (route.data.type === "session") return route.data.sessionID
+            // A room that has not reached the gateway yet (`"0"`) has no tab to register.
+            if (route.data.type === "rooms" && route.data.roomID !== "0") return roomTabID(route.data.roomID)
+            return undefined
+          },
           () => config.tabs.scope,
         ],
         ([routed]) => {
           if (!routed || routed === "dummy") return
+          const roomID = roomIDOfTab(routed)
           const sessionID = root(routed)
           cancelledTabs.delete(sessionID)
           history = recordSessionTabHistory(history, sessionID)
+          if (roomID !== undefined) {
+            // Store the room identity needed to reopen it, never a transcript.
+            if (route.data.type !== "rooms" || route.data.roomID !== roomID) return
+            // Captured here because the store update below runs outside the narrowing above.
+            const roomRoute = route.data
+            const existing = state().tabs.find((tab) => tab.sessionID === sessionID)
+            const room = {
+              provider: roomRoute.provider,
+              model: roomRoute.model,
+              access: roomRoute.access,
+              ...(roomRoute.projectID ? { projectID: roomRoute.projectID } : {}),
+            }
+            update((draft) => {
+              if (cancelledTabs.has(sessionID)) return
+              const tab = { sessionID, title: roomRoute.title || existing?.title, room }
+              const index = draft.tabs.findIndex((item) => item.sessionID === sessionID)
+              draft.tabs =
+                index === -1
+                  ? openSessionTab(draft.tabs, tab)
+                  : draft.tabs.map((item) => (item.sessionID === sessionID ? { ...item, ...tab } : item))
+            })
+            return
+          }
           if (state().tabs.some((tab) => tab.sessionID === sessionID)) return
           const fallback = newTab() ? NEW_SESSION_TAB_TITLE : undefined
           update((draft) => {
@@ -278,7 +335,10 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     // the first connection slots and switches still render from a warm cache.
     const openTabSessions = createMemo(() =>
       state()
-        .tabs.map((tab) => tab.sessionID)
+        // A room tab is not a session, so prefetching it would ask the server for a session that
+        // does not exist.
+        .tabs.filter((tab) => !isRoomTab(tab.sessionID))
+        .map((tab) => tab.sessionID)
         .sort()
         .join("\n"),
     )
@@ -346,6 +406,27 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       }),
     )
 
+    /**
+     * Opens a tab's own screen. A room tab reopens the gateway room with the identity stored on the
+     * tab, so selecting it never asks the session API about a session that does not exist. Returns
+     * whether the tab was a room, so callers can fall back to a session navigation.
+     */
+    function navigateTab(tab: SessionTab) {
+      const roomID = roomIDOfTab(tab.sessionID)
+      if (roomID === undefined) return false
+      route.navigate({
+        type: "rooms",
+        roomID,
+        title: tab.title ?? "",
+        provider: tab.room?.provider ?? "",
+        model: tab.room?.model ?? "",
+        access: tab.room?.access ?? null,
+        ...(tab.room?.projectID ? { projectID: tab.room.projectID } : {}),
+        openToken: nextRoomToken(),
+      })
+      return true
+    }
+
     function remove(sessionID: string, navigate: boolean) {
       const target = root(sessionID)
       cancelledTabs.add(target)
@@ -360,6 +441,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         ? moveSessionTabHistory(recordSessionTabHistory(history, target), closed.tabs, target, -1)
         : { history, sessionID: undefined }
       const next = previous.sessionID ?? closed.next
+      // Resolved before the tab is dropped, because a room tab carries the identity used to reopen it.
+      const nextTab = next === undefined ? undefined : state().tabs.find((tab) => tab.sessionID === next)
       history = previous.history
       update((draft) => {
         draft.tabs = closeSessionTab(draft.tabs, target).tabs
@@ -370,7 +453,9 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         delete next[target]
         return next
       })
-      if (selected) route.navigate(next ? { type: "session", sessionID: next } : { type: "home" })
+      if (!selected) return
+      if (nextTab && navigateTab(nextTab)) return
+      route.navigate(next ? { type: "session", sessionID: next } : { type: "home" })
     }
 
     return {
@@ -384,7 +469,9 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           .toReversed()
           .map((entry) => ({
             ...entry.tab,
-            title: data.session.get(entry.tab.sessionID)?.title ?? entry.tab.title,
+            title: isRoomTab(entry.tab.sessionID)
+              ? entry.tab.title
+              : (data.session.get(entry.tab.sessionID)?.title ?? entry.tab.title),
           }))
       },
       newTab() {
@@ -416,6 +503,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       },
       select(sessionID: string) {
         if (!enabled()) return
+        const tab = state().tabs.find((item) => item.sessionID === sessionID)
+        if (tab && navigateTab(tab)) return
         route.navigate({ type: "session", sessionID: root(sessionID) })
       },
       open(sessionID: string) {
@@ -430,7 +519,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       add() {
         if (!enabled()) return
         const sessionID = current()
-        const currentLocation = (sessionID ? data.session.get(sessionID)?.location : undefined) ?? location.ref
+        const currentLocation =
+          (sessionID && !isRoomTab(sessionID) ? data.session.get(sessionID)?.location : undefined) ?? location.ref
         route.navigate({
           type: "home",
           location: newSessionLocation(
@@ -448,7 +538,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
           const previous = moveSessionTabHistory(history, state().tabs, undefined, -1)
           history = previous.history
           const session = previous.sessionID ?? state().tabs.at(-1)?.sessionID
-          if (route.data.type === "home" && session) route.navigate({ type: "session", sessionID: session })
+          const tab = session === undefined ? undefined : state().tabs.find((item) => item.sessionID === session)
+          if (route.data.type === "home" && tab && !navigateTab(tab)) route.navigate({ type: "session", sessionID: tab.sessionID })
           return
         }
         const index = state().tabs.findIndex((tab) => tab.sessionID === target)
@@ -466,6 +557,8 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         update((draft) => {
           draft.tabs = tabs
         })
+        const reopened = tabs.find((tab) => tab.sessionID === result.sessionID)
+        if (reopened && navigateTab(reopened)) return
         route.navigate({ type: "session", sessionID: result.sessionID })
       },
       move(sessionID: string, index: number) {
@@ -479,19 +572,19 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       cycle(direction: 1 | -1) {
         if (!enabled()) return
         const tab = cycleSessionTab(state().tabs, current(), direction)
-        if (tab) route.navigate({ type: "session", sessionID: tab.sessionID })
+        if (tab) navigateTab(tab)
       },
       cycleUnread(direction: 1 | -1) {
         if (!enabled()) return
         const tab = cycleSessionTab(state().tabs, current(), direction, (tab) =>
           Boolean(status(tab.sessionID).unread || status(tab.sessionID).attention),
         )
-        if (tab) route.navigate({ type: "session", sessionID: tab.sessionID })
+        if (tab) navigateTab(tab)
       },
       selectIndex(index: number) {
         if (!enabled()) return
         const tab = state().tabs[index]
-        if (tab) route.navigate({ type: "session", sessionID: tab.sessionID })
+        if (tab) navigateTab(tab)
       },
     }
   },

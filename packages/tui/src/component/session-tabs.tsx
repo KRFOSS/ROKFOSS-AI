@@ -40,6 +40,7 @@ import {
 import { createAnimatable, spring, tween } from "../ui/animation"
 import { Locale } from "../util/locale"
 import { TabPulse, unreadGlowIntensity } from "./tab-pulse"
+import { isRoomTab } from "./rooms-nav"
 import { tint } from "../theme/color"
 import { SESSION_SIDEBAR_WIDTH, SESSION_TABS_COMPACT_BREAKPOINT } from "../ui/layout"
 import { projectName } from "../util/project"
@@ -580,6 +581,8 @@ function VerticalSessionTabs(props: {
   const detail = (sessionID: string) => {
     const fixture = tabs.detail?.(sessionID)
     if (fixture !== undefined) return fixture
+    // A ROKFOSS AI room tab has no server session, so its detail names the gateway instead.
+    if (isRoomTab(sessionID)) return t("ROKFOSS AI")
     const session = data?.session.get(sessionID)
     const project = session ? data?.project.get(session.projectID) : undefined
     const vcs = session ? data?.location.vcs.info(session.location) : undefined

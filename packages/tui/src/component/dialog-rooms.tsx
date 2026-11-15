@@ -140,7 +140,7 @@ export function DialogRooms() {
     enter({
       type: "rooms",
       roomID: "0",
-      title: "New room",
+      title: t("New room"),
       provider: seeded?.provider ?? "xai",
       model: seeded?.model ?? "",
       access: "write",
