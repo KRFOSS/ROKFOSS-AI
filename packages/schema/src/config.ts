@@ -67,9 +67,6 @@ export class Info extends Schema.Class<Info>("Config.Info")({
   snapshots: Schema.Boolean.pipe(optional).annotate({
     description: "Enable snapshots used for undo and revert behavior",
   }),
-  language: Schema.String.pipe(optional).annotate({
-    description: "Interface language for the terminal app, for example 'en' or 'ko'; defaults to the system locale",
-  }),
   watcher: ConfigWatcher.Info.pipe(optional).annotate({
     description: "Filesystem watcher configuration",
   }),
