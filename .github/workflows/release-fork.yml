@@ -1,0 +1,191 @@
+name: release-fork
+
+# Builds the fork's CLI binaries and publishes them as GitHub release assets, so users can install
+# without npm:
+#   curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+#
+# This is a fork-only workflow: upstream releases are produced by .github/workflows/release.yml, which
+# needs R2 credentials, signing identities and blacksmith runners this fork does not have.
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "all, or a comma separated list of targets (linux-x64, darwin-arm64, windows-x64, ...)"
+        required: false
+        default: "all"
+      tag:
+        description: "Release tag (default: v<package version>-krfoss.<run number>)"
+        required: false
+        default: ""
+      draft:
+        description: "Create the release as a draft"
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-fork
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build ${{ matrix.group }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # One job per platform family: each target needs its own `bun build --compile` pass, and the
+        # shared install + web-asset build dominates the runtime, so grouping is cheaper than one job
+        # per target and much faster than one job for all twelve.
+        group: [linux, darwin, windows]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+          cache: true
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Build
+        working-directory: packages/cli
+        env:
+          GROUP: ${{ matrix.group }}
+          # Cross-compiles by downloading the matching Bun release binary for each target.
+          BUN_COMPILE_RELEASE: bun-v1.4.4
+          # Read-only; raises the rate limit for Bun release downloads.
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ inputs.targets }}
+        run: |
+          set -euo pipefail
+          case "$GROUP" in
+            linux)   group_targets="linux-x64 linux-arm64 linux-x64-baseline linux-arm64-musl linux-x64-musl linux-x64-baseline-musl" ;;
+            darwin)  group_targets="darwin-arm64 darwin-x64 darwin-x64-baseline" ;;
+            windows) group_targets="windows-x64 windows-arm64 windows-x64-baseline" ;;
+          esac
+
+          targets=""
+          for t in $group_targets; do
+            if [ -z "$REQUESTED" ] || [ "$REQUESTED" = "all" ]; then
+              targets="$targets $t"
+              continue
+            fi
+            case ",${REQUESTED// /}," in
+              *",$t,"*) targets="$targets $t" ;;
+            esac
+          done
+
+          if [ -z "${targets// /}" ] && [ -n "$REQUESTED" ] && [ "$REQUESTED" != "all" ]; then
+            echo "::notice::no $GROUP target was requested; skipping"
+            mkdir -p dist
+            exit 0
+          fi
+
+          for t in $targets; do
+            echo "::group::build $t"
+            # A separate outdir per target: build.ts wipes the outdir on every run.
+            OPENCODE_TARGET="$t" bun run build --outdir="dist-one/$t"
+            echo "::endgroup::"
+          done
+
+          rm -rf dist-one/*/.bun
+          mkdir -p dist
+          for dir in dist-one/*/cli-*; do
+            [ -d "$dir" ] || continue
+            cp -a "$dir" "dist/$(basename "$dir")"
+          done
+          ls -d dist/cli-*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.group }}
+          path: packages/cli/dist/cli-*
+          if-no-files-found: ignore
+          compression-level: 0
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages/cli/dist
+          pattern: cli-*
+          merge-multiple: true
+      - name: Archive
+        env:
+          WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/archives
+          cd packages/cli/dist
+          count=0
+          for dir in cli-*; do
+            [ -d "$dir/bin" ] || continue
+            target="${dir#cli-}"
+            exe="opencode"
+            case "$target" in windows-*) exe="opencode.exe" ;; esac
+            if [ ! -f "$dir/bin/$exe" ]; then
+              echo "::error::$dir/bin/$exe is missing"
+              exit 1
+            fi
+            if [ "${target#linux-}" != "$target" ]; then
+              tar --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$WORKSPACE/dist/archives/opencode-$target.tar.gz" -C "$dir/bin" "$exe"
+            else
+              ( cd "$dir/bin" && zip -X -q "$WORKSPACE/dist/archives/opencode-$target.zip" "$exe" )
+            fi
+            count=$((count + 1))
+          done
+          if [ "$count" -eq 0 ]; then
+            echo "::error::no CLI build was found to archive"
+            exit 1
+          fi
+          echo "packaged $count target(s)"
+      - name: Smoke test the Linux build
+        run: |
+          set -euo pipefail
+          bin=packages/cli/dist/cli-linux-x64/bin/opencode
+          chmod +x "$bin"
+          timeout 120 "$bin" --version || { echo "::error::the linux-x64 binary does not start"; exit 1; }
+      - name: Checksums and installer
+        run: |
+          set -euo pipefail
+          cp install.sh dist/archives/install.sh
+          cd dist/archives
+          sha256sum opencode-* > SHA256SUMS
+          ls -lh
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version packages/cli/package.json)
+          tag="${INPUT_TAG:-v${version}-krfoss.${GITHUB_RUN_NUMBER}}"
+          case "$tag" in v*) ;; *) tag="v$tag" ;; esac
+
+          flags=()
+          if [ "$INPUT_DRAFT" = "true" ]; then flags+=("--draft"); fi
+
+          echo "publishing $tag"
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "ROKFOSS OpenCode $tag" \
+            --generate-notes \
+            "${flags[@]}" \
+            dist/archives/*
+
+          echo "### Released $tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
