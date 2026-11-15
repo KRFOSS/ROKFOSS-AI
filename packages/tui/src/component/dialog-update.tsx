@@ -5,6 +5,7 @@ import type { UpdateState } from "../context/update-notification"
 import { DialogButtons, DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { errorMessage } from "../util/error"
 import { Spinner } from "./spinner"
+import { t } from "../i18n"
 
 export function DialogUpdate(props: {
   check?: (signal: AbortSignal) => Promise<string | undefined>
@@ -124,7 +125,7 @@ export function DialogUpdate(props: {
               </text>
             </Match>
             <Match when={current.type === "current"}>
-              <text fg={theme.text.muted}>OpenCode is already up to date.</text>
+              <text fg={theme.text.muted}>{t("OpenCode is already up to date.")}</text>
             </Match>
             <Match when={current.type === "unavailable"}>
               <text fg={theme.text.muted} wrapMode="word">

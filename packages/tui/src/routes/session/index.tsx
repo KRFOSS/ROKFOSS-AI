@@ -136,6 +136,7 @@ import { containsAnchor, createTimelineAnchors, groupID } from "./anchors"
 import { rowsAfter, rowsBefore, rowWeight } from "./mount-budget"
 export { InlineToolRow } from "./message-parts"
 export { toolDisplay } from "./message-parts"
+import { t } from "../../i18n"
 
 addDefaultParsers(parsers.parsers)
 
@@ -1576,7 +1577,7 @@ export function Session(props: {
             </box>
             <box height={1} flexShrink={0} flexDirection="row" justifyContent="flex-end">
               <Show when={firstJump()}>
-                <text fg={theme.text.feedback.info.base}>Loading session history…</text>
+                <text fg={theme.text.feedback.info.base}>{t("Loading session history…")}</text>
               </Show>
               <Show when={!firstJump() && awayFromBottom()}>
                 <box
@@ -1589,7 +1590,7 @@ export function Session(props: {
                   <text
                     fg={latestHovered() ? theme.text.action.secondary.hovered : theme.text.action.secondary.base}
                   >
-                    Jump to latest ↓
+                    {t("Jump to latest ↓")}
                   </text>
                 </box>
               </Show>
@@ -2247,7 +2248,7 @@ function CompactionQueued() {
       <box border={["top"]} borderColor={theme.border.base} flexGrow={1} />
       <box flexDirection="row" gap={1} paddingLeft={1} paddingRight={1}>
         <text fg={theme.text.muted}>◇</text>
-        <text fg={theme.text.muted}>Compaction queued</text>
+        <text fg={theme.text.muted}>{t("Compaction queued")}</text>
       </box>
       <box border={["top"]} borderColor={theme.border.base} flexGrow={1} />
     </box>
@@ -2694,7 +2695,7 @@ function SessionImages(props: { images: readonly { uri: string }[]; paddingLeft?
                   dialog.replace(() => <DialogImagePreview images={images()} initial={index()} />)
                 }}
               >
-                <Show when={!media.failed()} fallback={<text>No preview</text>}>
+                <Show when={!media.failed()} fallback={<text>{t("No preview")}</text>}>
                   <image
                     source={media.source()}
                     fit="cover"
@@ -3132,7 +3133,7 @@ function ShellDisplay(props: {
             isRunning() || props.status === "streaming" ? (
               <Spinner color={color()}>Writing command…</Spinner>
             ) : (
-              <text fg={theme.text.muted}>Writing command…</text>
+              <text fg={theme.text.muted}>{t("Writing command…")}</text>
             )
           }
         >

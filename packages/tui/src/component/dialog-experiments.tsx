@@ -4,6 +4,7 @@ import { DIALOG_LIST_INSET } from "../ui/dialog"
 import { DialogSelect } from "../ui/dialog-select"
 import { useTheme } from "../context/theme"
 import { useToast } from "../ui/toast"
+import { t } from "../i18n"
 
 type Experiment = {
   id: string
@@ -70,7 +71,7 @@ export function DialogExperiments() {
       onSelect={(option) => void change(option.value)}
       emptyView={
         <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-          <text fg={theme.text.muted}>No experiments available</text>
+          <text fg={theme.text.muted}>{t("No experiments available")}</text>
         </box>
       }
       footerHints={experiments.length > 0 && !newDesigns() ? [{ title: "change", label: "←/→" }] : []}

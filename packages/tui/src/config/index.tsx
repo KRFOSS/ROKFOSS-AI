@@ -8,6 +8,7 @@ import { createStore, reconcile } from "solid-js/store"
 import { safeWatch } from "../util/watch"
 import path from "path"
 import { TuiKeybind } from "./keybind"
+import { detectLanguage } from "../i18n/language"
 
 export interface Interface {
   readonly path?: string
@@ -75,6 +76,9 @@ export const Info = Schema.Struct({
       }),
     }),
   ).annotate({ description: "Color theme settings" }),
+  language: Schema.optional(Schema.String).annotate({
+    description: "Interface language, for example 'en' or 'ko'; defaults to the system locale",
+  }),
   keybinds: Schema.optional(TuiKeybind.KeybindOverrides).annotate({ description: "Custom key bindings" }),
   plugins: Schema.optional(Schema.Array(Plugin)).annotate({
     description: "Ordered plugin enablement directives and external package declarations",
@@ -259,7 +263,11 @@ export const Info = Schema.Struct({
 })
 export type Info = Schema.Schema.Type<typeof Info>
 
-export type Resolved = Omit<Info, "attention" | "cursor" | "keybinds" | "leader" | "mouse" | "session" | "tabs"> & {
+export type Resolved = Omit<
+  Info,
+  "attention" | "cursor" | "keybinds" | "language" | "leader" | "mouse" | "session" | "tabs"
+> & {
+  language: string
   attention: {
     notifications: boolean
     sound: boolean
@@ -317,6 +325,7 @@ export function resolve(
       bindingDefaults: TuiKeybind.bindingDefaults(),
     }),
     leader: { timeout: input.leader?.timeout ?? 2000 },
+    language: detectLanguage(input.language, options.environment ?? process.env),
     mouse: input.mouse ?? true,
     cursor: {
       style: input.cursor?.style ?? "block",

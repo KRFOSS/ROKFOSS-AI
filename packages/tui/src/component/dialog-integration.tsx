@@ -45,6 +45,7 @@ import {
   formValidateValue,
   type FormAnswerField,
 } from "../util/form"
+import { t } from "../i18n"
 
 const INTEGRATION_PRIORITY: Record<string, number> = {
   opencode: 0,
@@ -158,12 +159,12 @@ export function DialogIntegration(
       options={options()}
       emptyView={
         <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-          <text fg={theme.text.muted}>No integrations available</text>
+          <text fg={theme.text.muted}>{t("No integrations available")}</text>
         </box>
       }
       noMatchView={
         <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-          <text fg={theme.text.muted}>No integrations found</text>
+          <text fg={theme.text.muted}>{t("No integrations found")}</text>
         </box>
       }
     />

@@ -38,6 +38,17 @@ export const settings: Setting[] = [
       )),
   },
   {
+    title: "Language",
+    category: "Appearance",
+    path: ["language"],
+    description: "Interface language",
+    default: "en",
+    values: ["en", "ko"],
+    // Language names stay in their own language; translating "한국어" would defeat the point.
+    labels: ["English", "한국어"],
+    keywords: ["language", "locale", "i18n", "한국어", "영어"],
+  },
+  {
     title: "Color mode",
     category: "Appearance",
     path: ["theme", "mode"],

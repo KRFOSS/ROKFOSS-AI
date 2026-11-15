@@ -23,6 +23,7 @@ import { withTimestampedFallback } from "@opencode/util/session-title-fallback"
 import { sessionStatusGutter } from "./dialog-session-list"
 import { Spinner } from "./spinner"
 import { projectName } from "../util/project"
+import { t } from "../i18n"
 
 const RECENT_LIMIT = 8
 export const DialogOpenKey = Symbol("DialogOpen")
@@ -354,7 +355,7 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
             emptyView={
               <Show when={!recent.loading && !projects.loading}>
                 <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-                  <text fg={theme.text.muted}>No recent sessions or projects</text>
+                  <text fg={theme.text.muted}>{t("No recent sessions or projects")}</text>
                 </box>
               </Show>
             }
@@ -452,7 +453,7 @@ export function DialogOpen(props: { sessions: SessionInfo[]; onLoad: (sessions: 
           size="large"
           title={`${projectName(data.project.get(projectID()!)) ?? "Project"} / New worktree`}
           placeholder="Worktree name (optional)"
-          description={() => <text fg={theme.text.muted}>Leave blank for a random name.</text>}
+          description={() => <text fg={theme.text.muted}>{t("Leave blank for a random name.")}</text>}
           busy={creating()}
           busyText="Creating worktree…"
           onCancel={cancelCreation}

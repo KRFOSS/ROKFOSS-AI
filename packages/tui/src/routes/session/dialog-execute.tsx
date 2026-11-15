@@ -20,6 +20,7 @@ import { useToast } from "../../ui/toast"
 import { Locale } from "../../util/locale"
 import { getScrollAcceleration } from "../../util/scroll"
 import { formatExecuteOutput } from "@opencode/util/execute-output"
+import { t } from "../../i18n"
 
 // The part is the live store object, so the dialog follows the tool while child
 // calls stream and the output arrives.
@@ -147,15 +148,15 @@ export function DialogExecute(props: { part: SessionMessageAssistantTool }) {
           <box gap={1} paddingLeft={DIALOG_INSET} paddingRight={DIALOG_INSET} paddingTop={1} paddingBottom={1}>
             <box>
               <text fg={contentTheme.text.muted} attributes={TextAttributes.BOLD}>
-                Code
+                {t("Code")}
               </text>
-              <Show when={code()} fallback={<text fg={contentTheme.text.muted}>Waiting for code…</text>}>
+              <Show when={code()} fallback={<text fg={contentTheme.text.muted}>{t("Waiting for code…")}</text>}>
                 {(value) => <GutteredCode content={value()} filetype="typescript" digits={digits()} />}
               </Show>
             </box>
             <box>
               <text fg={contentTheme.text.muted} attributes={TextAttributes.BOLD}>
-                Output
+                {t("Output")}
               </text>
               <Show
                 when={highlighted()}

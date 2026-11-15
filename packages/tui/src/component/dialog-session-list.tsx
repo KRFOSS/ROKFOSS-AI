@@ -23,6 +23,7 @@ import { useConfig, useNewDesigns } from "../config"
 import { withTimestampedFallback } from "@opencode/util/session-title-fallback"
 import { projectName } from "../util/project"
 import { useLocation } from "../context/location"
+import { t } from "../i18n"
 
 export function DialogSessionList() {
   const dialog = useDialog()
@@ -202,7 +203,7 @@ export function DialogSessionList() {
       titleView={
         <box flexDirection="row">
           <text fg={theme.text.base} attributes={TextAttributes.BOLD}>
-            Sessions
+            {t("Sessions")}
           </text>
           <Show when={!allProjects() && currentProjectName()}>
             <text fg={theme.text.muted}> for {currentProjectName()}</text>

@@ -5,6 +5,7 @@ import { Keymap } from "../context/keymap"
 import { useTheme } from "../context/theme"
 import { DialogHeader, DialogLayout, useDialog, type DialogContext } from "./dialog"
 import { useToast } from "./toast"
+import { t } from "../i18n"
 
 export function DialogExportResult(props: { path: string; onClose?: () => void }) {
   const dialog = useDialog()
@@ -65,7 +66,7 @@ export function DialogExportResult(props: { path: string; onClose?: () => void }
             backgroundColor={theme.background.action.primary.focused}
             onMouseUp={close}
           >
-            <text fg={theme.text.action.primary.focused}>Close</text>
+            <text fg={theme.text.action.primary.focused}>{t("Close")}</text>
           </box>
         </box>
       }

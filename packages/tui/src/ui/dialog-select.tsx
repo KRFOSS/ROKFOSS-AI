@@ -19,6 +19,7 @@ import {
   type DialogContext,
 } from "./dialog"
 import { Locale } from "../util/locale"
+import { t } from "../i18n"
 import { getScrollAcceleration } from "../util/scroll"
 import { useConfig, useCursorStyle, useNewDesigns } from "../config"
 import { moveSelection, reconcileSelection } from "./select-controller"
@@ -228,7 +229,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
       })
       .map((x) => x.obj)
 
-    return result
+    // Titles are stored in English, so a needle typed in the active language would otherwise always come
+    // up empty. Appending the translated matches keeps the fuzzy ranking unchanged for English input.
+    const localized = options.filter((option) => {
+      const title = t(option.title)
+      return title !== option.title && title.toLowerCase().includes(needle)
+    })
+
+    return localized.length === 0 ? result : [...result, ...localized.filter((option) => !result.includes(option))]
   })
 
   const flatten = createMemo(() => props.search !== undefined || (props.flat && store.filter.length > 0))
@@ -679,7 +687,7 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
           r.focus()
         }, 1)
       }}
-      placeholder={(searchInTitle() ? props.titlePlaceholder : undefined) ?? props.placeholder ?? "Search"}
+      placeholder={t((searchInTitle() ? props.titlePlaceholder : undefined) ?? props.placeholder ?? "Search")}
       placeholderColor={theme.text.muted}
     />
   )
@@ -743,14 +751,14 @@ export function DialogSelect<T>(props: DialogSelectProps<T>) {
               fallback={
                 props.emptyView ?? (
                   <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-                    <text fg={theme.text.muted}>No items available</text>
+                    <text fg={theme.text.muted}>{t("No items available")}</text>
                   </box>
                 )
               }
             >
               {props.noMatchView ?? (
                 <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-                  <text fg={theme.text.muted}>No results found</text>
+                  <text fg={theme.text.muted}>{t("No results found")}</text>
                 </box>
               )}
             </Show>
@@ -877,7 +885,7 @@ function DialogSelectCategory(props: { title: string; first: boolean }) {
   return (
     <box paddingTop={props.first ? 0 : 1} paddingLeft={DIALOG_LIST_INSET - (newDesigns() ? 0 : 1)}>
       <text fg={newDesigns() ? theme.text.muted : theme.hue.accent[200]} attributes={TextAttributes.BOLD}>
-        {props.title}
+        {t(props.title)}
       </text>
     </box>
   )
@@ -901,6 +909,11 @@ function DialogSelectRow(props: {
 }) {
   const theme = useTheme().surface("dialog")
   const newDesigns = useNewDesigns()
+  // Rows carry model names, session titles and paths as well as UI copy, so translation happens here, at the
+  // last moment before drawing: a dictionary miss leaves the value untouched.
+  const title = () => t(props.title)
+  const description = () => (props.description === undefined ? undefined : t(props.description))
+  const footer = () => (typeof props.footer === "string" ? t(props.footer) : props.footer)
   const text = createMemo(() => {
     if (props.active) return props.activeColor ?? theme.text.action.primary.focused
     if (props.current && !newDesigns()) return theme.text.formfield.selected
@@ -948,17 +961,17 @@ function DialogSelectRow(props: {
       >
         {props.titleView ??
           (props.truncateTitle === false
-            ? props.title
+            ? title()
             : props.truncateTitle === "left"
-              ? Locale.truncateLeft(props.title, props.titleWidth ?? 61)
-              : Locale.truncate(props.title, props.titleWidth ?? 61))}
+              ? Locale.truncateLeft(title(), props.titleWidth ?? 61)
+              : Locale.truncateWidth(title(), props.titleWidth ?? 61))}
         <Show when={props.description}>
-          <span style={{ fg: secondary() }}>{" " + props.description}</span>
+          <span style={{ fg: secondary() }}>{" " + description()}</span>
         </Show>
       </text>
       <Show when={props.footer}>
         <box flexShrink={0} marginRight={props.footerOverhang ? -props.footerOverhang : undefined}>
-          <text fg={props.active || !props.footerColor ? secondary() : props.footerColor}>{props.footer}</text>
+          <text fg={props.active || !props.footerColor ? secondary() : props.footerColor}>{footer()}</text>
         </box>
       </Show>
     </box>

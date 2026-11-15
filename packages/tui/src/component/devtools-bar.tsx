@@ -17,6 +17,7 @@ import { useDialog } from "../ui/dialog"
 import { DialogExperiments } from "./dialog-experiments"
 import { usePlugin } from "../plugin/context"
 import { errorMessage } from "../util/error"
+import { t } from "../i18n"
 
 const graphWidth = 23
 const sampleIntervalMilliseconds = 2_000
@@ -286,7 +287,7 @@ export function DevToolsBar() {
               )}
             </Show>
             <Show when={server.error}>
-              <text fg={elevatedTheme.text.feedback.error.base}>Server details unavailable</text>
+              <text fg={elevatedTheme.text.feedback.error.base}>{t("Server details unavailable")}</text>
             </Show>
           </PanelBox>
         </Show>
@@ -339,7 +340,7 @@ export function DevToolsBar() {
         </Show>
       </BarItem>
       <BarItem active={panel() === "theme"} onClick={() => toggle("theme")}>
-        <text fg={panel() === "theme" ? theme.text.action.primary.focused : theme.text.muted}>Theme</text>
+        <text fg={panel() === "theme" ? theme.text.action.primary.focused : theme.text.muted}>{t("Theme")}</text>
         <Show when={panel() === "theme"}>
           <PanelBox>
             <PanelTitle>Theme</PanelTitle>
@@ -355,7 +356,7 @@ export function DevToolsBar() {
         </Show>
       </BarItem>
       <BarItem active={panel() === "tools"} onClick={() => toggle("tools")}>
-        <text fg={panel() === "tools" ? theme.text.action.primary.focused : theme.text.muted}>Tools</text>
+        <text fg={panel() === "tools" ? theme.text.action.primary.focused : theme.text.muted}>{t("Tools")}</text>
         <Show when={panel() === "tools"}>
           <PanelBox>
             <PanelTitle>Tools</PanelTitle>
@@ -378,7 +379,7 @@ export function DevToolsBar() {
             </Show>
             <box marginTop={1}>
               <text fg={elevatedTheme.text.base} attributes={TextAttributes.BOLD}>
-                Render
+                {t("Render")}
               </text>
               <Action
                 onClick={() =>
@@ -433,7 +434,7 @@ export function DevToolsBar() {
           dialog.replace(() => <DialogExperiments />)
         }}
       >
-        <text fg={theme.text.muted}>Experiments</text>
+        <text fg={theme.text.muted}>{t("Experiments")}</text>
       </BarItem>
       <box flexGrow={1} minWidth={0}>
         <TimeToFirstDraw visible={timing()} width="100%" fg={theme.text.muted} label="Time to first draw" />

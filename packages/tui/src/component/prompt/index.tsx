@@ -70,6 +70,7 @@ import { directoryRecentValue } from "../../prompt/directory-completion"
 import { useWorkingDirectoryActions } from "../../ui/working-directory-actions"
 import { truncateFilePath } from "../../ui/file-path"
 import { PromptMetadataRow } from "./metadata"
+import { t } from "../../i18n"
 import { limitLabel, useUsageLimits } from "../usage"
 
 export type PromptProps = {
@@ -1615,10 +1616,10 @@ export function Prompt(props: PromptProps) {
     const value = (() => {
       if (store.mode === "shell") {
         if (!shell().length) return undefined
-        return `Run a command… "${shell()[store.placeholder % shell().length]}"`
+        return t('Run a command… "{{example}}"', { example: shell()[store.placeholder % shell().length] })
       }
       if (!list().length) return undefined
-      return `Ask anything… "${list()[store.placeholder % list().length]}"`
+      return t('Ask anything… "{{example}}"', { example: list()[store.placeholder % list().length] })
     })()
     if (!value) return undefined
     const width = dimensions().width < 44 ? dimensions().width - 5 : Math.min(75, dimensions().width - 4) - 5
@@ -1724,7 +1725,7 @@ export function Prompt(props: PromptProps) {
                           when={!failed()}
                           fallback={
                             <box width="100%" height="100%" alignItems="center" justifyContent="center">
-                              <text fg={theme.text.muted}>No preview</text>
+                              <text fg={theme.text.muted}>{t("No preview")}</text>
                             </box>
                           }
                         >

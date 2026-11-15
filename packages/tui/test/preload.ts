@@ -1,5 +1,9 @@
 import { NativeError, NativeStatus, OptimizedBuffer } from "@opentui/core"
 
+// Suites assert the English interface copy. Language detection would otherwise follow the
+// developer's LANG and turn those frames Korean, so tests pin English unless they ask for more.
+process.env.OPENCODE_TUI_LANGUAGE ??= "en"
+
 // Workaround: OpenTUI's test renderer can read a frame while the native writer is still flushing
 // output, which throws OutputBusy until the event loop runs. Frame reads poll, so fall back to the
 // last frame read from the buffer. Remove once captureCharFrame waits for output idle upstream.

@@ -9,6 +9,7 @@ import { useToast } from "../ui/toast"
 import { describeOS, describeTerminal } from "../util/system"
 import { useTuiApp } from "../context/runtime"
 import { useNewDesigns } from "../config"
+import { t } from "../i18n"
 
 export function DialogDebug() {
   const theme = useTheme()
@@ -67,7 +68,7 @@ export function DialogDebug() {
         actions: { primary: [copyAction()] },
         get children() {
           if (newDesigns()) return undefined
-          return <text fg={theme.text.muted}>Share this when reporting an issue.</text>
+          return <text fg={theme.text.muted}>{t("Share this when reporting an issue.")}</text>
         },
       }}
     >

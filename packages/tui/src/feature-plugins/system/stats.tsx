@@ -8,6 +8,7 @@ import { Logo } from "../../component/logo"
 import { useTheme } from "../../context/theme"
 import { tint } from "../../theme/color"
 import { statsMetrics, statsNumber } from "./stats-data"
+import { t } from "../../i18n"
 
 const digits: Record<string, string[]> = {
   "0": ["111", "101", "101", "101", "111"],
@@ -90,7 +91,7 @@ export function StatsPoster(props: { stats: SessionStatsInfo }) {
             </For>
           </box>
         </Show>
-        <text fg={theme.text.muted}>TOKENS</text>
+        <text fg={theme.text.muted}>{t("TOKENS")}</text>
       </box>
       <box alignItems="center">
         <text fg={theme.text.muted}>
@@ -167,10 +168,10 @@ function StatsPage(props: { context: Plugin.Context; onClose: () => void }) {
         <Show
           when={!result.error}
           fallback={
-            <text fg={theme.text.feedback.error.base}>Could not load stats. Reopen /stats to try again.</text>
+            <text fg={theme.text.feedback.error.base}>{t("Could not load stats. Reopen /stats to try again.")}</text>
           }
         >
-          <Show when={result()} fallback={<text fg={theme.text.muted}>Gathering your stats…</text>}>
+          <Show when={result()} fallback={<text fg={theme.text.muted}>{t("Gathering your stats…")}</text>}>
             {(value) => <StatsPoster stats={value()} />}
           </Show>
         </Show>

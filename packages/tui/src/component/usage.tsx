@@ -24,6 +24,7 @@ import {
   usageLevel,
   type ModelUsage,
 } from "../util/usage-limits"
+import { t } from "../i18n"
 
 /**
  * The OpenCode Console limits on this location's models. Limits load once; `refresh` reloads them, since spend moves
@@ -128,7 +129,7 @@ export function DialogUsage() {
       </Match>
       <Match when={true}>
         <DialogLayout header={<DialogHeader title="Usage" />}>
-          <text fg={theme.text.muted}>Loading…</text>
+          <text fg={theme.text.muted}>{t("Loading…")}</text>
         </DialogLayout>
       </Match>
     </Switch>
@@ -171,7 +172,7 @@ export function DialogUsageModel(props: { model: ModelInfo }) {
               <text fg={theme.text.muted}>Resets {formatReset(value().resetsAt)}</text>
             </box>
             <box>
-              <text fg={theme.text.muted}>Limits</text>
+              <text fg={theme.text.muted}>{t("Limits")}</text>
               <For each={value().limits}>
                 {(item, index) => (
                   <box>

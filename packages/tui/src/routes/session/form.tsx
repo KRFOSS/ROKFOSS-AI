@@ -35,6 +35,7 @@ import {
   isFormAnswerField,
 } from "../../util/form"
 import type { FormAnswerField } from "../../util/form"
+import { t } from "../../i18n"
 
 export const FORM_MODE = "form"
 
@@ -842,7 +843,7 @@ export function FormPrompt(props: { form: FormWithLocation }) {
                 }
                 attributes={confirm() ? TextAttributes.BOLD : undefined}
               >
-                Submit
+                {t("Submit")}
               </text>
             </box>
           </box>

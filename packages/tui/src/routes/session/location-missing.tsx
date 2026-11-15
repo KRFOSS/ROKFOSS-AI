@@ -10,6 +10,7 @@ import { useToast } from "../../ui/toast"
 import { errorMessage } from "../../util/error"
 import { DialogWorkspaces, type WorkspaceSelection } from "../../component/dialog-workspaces"
 import { useData } from "../../context/data"
+import { t } from "../../i18n"
 
 export function SessionLocationMissing(props: { directory: string; projectID: string; sessionID: string }) {
   const dialog = useDialog()
@@ -71,7 +72,7 @@ export function SessionLocationUnavailable(props: { directory: string; onMove: (
       body={
         <box paddingLeft={1} gap={1}>
           <text fg={theme.text.muted}>{directory()}</text>
-          <text fg={theme.text.base}>Choose another directory to continue this session.</text>
+          <text fg={theme.text.base}>{t("Choose another directory to continue this session.")}</text>
         </box>
       }
       options={{ move: "Choose directory" }}

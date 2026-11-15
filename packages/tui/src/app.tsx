@@ -52,6 +52,7 @@ import { ErrorComponent } from "./component/error-component"
 import { PluginRouteMissing } from "./component/plugin-route-missing"
 import { EditorContextProvider } from "./context/editor"
 import { useEvent } from "./context/event"
+import { I18nProvider } from "./i18n/provider"
 import { ClientProvider, useClient } from "./context/client"
 import { StartupLoading } from "./component/startup-loading"
 import { DevToolsBar } from "./component/devtools-bar"
@@ -66,6 +67,7 @@ import { DialogModel } from "./component/dialog-model"
 import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogUsage } from "./component/usage"
+import { DialogRai } from "./component/dialog-rai"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
@@ -390,6 +392,8 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                                       service={input.config}
                                       options={{ terminalSuspend: process.platform !== "win32" }}
                                     >
+                                      {/* Localises the tree below; reads the language from the config provider above. */}
+                                      <I18nProvider>
                                       <Keymap.Provider>
                                         <ToastProvider>
                                           <RouteProvider
@@ -457,6 +461,7 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                                           </RouteProvider>
                                         </ToastProvider>
                                       </Keymap.Provider>
+                                      </I18nProvider>
                                     </ConfigProvider>
                                   </ArgsProvider>
                                 </ClipboardProvider>
@@ -961,6 +966,15 @@ function App() {
         slash: { name: "usage" },
         run: () => {
           dialog.replace(() => <DialogUsage />)
+        },
+      },
+      {
+        name: "rai.settings",
+        title: "ROKFOSS AI settings",
+        category: "Integration",
+        slash: { name: "credentials", aliases: ["rai"] },
+        run: () => {
+          dialog.replace(() => <DialogRai />)
         },
       },
       {

@@ -35,6 +35,7 @@ import type { FormBodyState } from "./form.shared"
 import type { RunFooterTheme } from "./theme"
 import type { FormCancel, FormReply, MiniFormRequest } from "./types"
 import { stringWidth } from "../util/string-width"
+import { t } from "../i18n"
 
 export function RunFormBody(props: {
   request: MiniFormRequest
@@ -374,7 +375,7 @@ export function RunFormBody(props: {
                   {value()}
                 </text>
                 <text width="100%" fg={props.theme.muted} flexShrink={0}>
-                  This request remains pending until you dismiss it.
+                  {t("This request remains pending until you dismiss it.")}
                 </text>
               </box>
             )}
@@ -514,7 +515,7 @@ export function RunFormBody(props: {
                             : props.theme.formfieldText
                         }
                       >
-                        Type your own answer
+                        {t("Type your own answer")}
                       </text>
                     </box>
                   </Show>

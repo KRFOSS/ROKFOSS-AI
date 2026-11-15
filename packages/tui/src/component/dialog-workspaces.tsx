@@ -19,6 +19,7 @@ import { DialogWorkspaceFileChanges } from "./dialog-workspace-file-changes"
 import type { WorktreeListOutput } from "@opencode/client"
 import { useRoute } from "../context/route"
 import { DialogWorktreeName } from "./dialog-worktree-name"
+import { t } from "../i18n"
 
 export type WorkspaceSelection =
   | { type: "directory"; directory: string; subdirectory: boolean }
@@ -329,7 +330,7 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
         titleView={
           <box flexDirection="row" gap={1}>
             <text fg={theme.text.base} attributes={TextAttributes.BOLD}>
-              Worktrees
+              {t("Worktrees")}
             </text>
             <Show when={working() || directories.loading || loadedProject.loading}>
               <Spinner />
@@ -343,24 +344,24 @@ export function DialogWorkspaces(props: DialogWorkspacesProps) {
           showError() ? (
             <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
               <text fg={theme.text.feedback.error.base} attributes={TextAttributes.BOLD}>
-                Could not load worktrees
+                {t("Could not load worktrees")}
               </text>
               <text fg={theme.text.muted}>{errorMessage(loadError())}</text>
-              <text fg={theme.text.muted}>Close and reopen Worktrees to try again.</text>
+              <text fg={theme.text.muted}>{t("Close and reopen Worktrees to try again.")}</text>
             </box>
           ) : directories.loading || loadedProject.loading ? (
             <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-              <text fg={theme.text.muted}>Loading worktrees…</text>
+              <text fg={theme.text.muted}>{t("Loading worktrees…")}</text>
             </box>
           ) : (
             <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-              <text fg={theme.text.muted}>No worktrees available</text>
+              <text fg={theme.text.muted}>{t("No worktrees available")}</text>
             </box>
           )
         }
         noMatchView={
           <box paddingLeft={DIALOG_LIST_INSET} paddingRight={DIALOG_LIST_INSET}>
-            <text fg={theme.text.muted}>No worktrees found</text>
+            <text fg={theme.text.muted}>{t("No worktrees found")}</text>
           </box>
         }
         locked={showError() || directories.loading || loadedProject.loading || Boolean(removing())}

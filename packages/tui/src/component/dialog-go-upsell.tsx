@@ -19,6 +19,7 @@ import { errorMessage } from "../util/error"
 import { credentialConnections } from "./dialog-integration"
 import { DialogModel } from "./dialog-model"
 import "./go-upsell-art"
+import { t } from "../i18n"
 
 export const GO_URL = "https://opencode.ai/go"
 const ACTIONS = ["don't show again", "dismiss", "subscribe"] as const
@@ -155,7 +156,7 @@ export function DialogGoUpsell(props: {
       <box zIndex={1} paddingLeft={inset()} paddingRight={inset()} paddingBottom={short() ? 0 : 1} gap={short() ? 0 : 1}>
         <box flexDirection="row" justifyContent="space-between" flexShrink={0}>
           <text attributes={TextAttributes.BOLD} fg={theme.text.base} bg={textBg()}>
-            Free limit reached
+            {t("Free limit reached")}
           </text>
           <text fg={theme.text.muted} bg={textBg()} onMouseUp={() => dialog.clear()}>
             esc

@@ -7,6 +7,7 @@ import { useTheme } from "../context/theme"
 import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { Link } from "../ui/link"
 import { errorMessage } from "../util/error"
+import { t } from "../i18n"
 
 export function DialogPair() {
   const client = useClient()
@@ -49,7 +50,7 @@ export function DialogPair() {
           <Show when={value.localhost}>
             {(url) => (
               <box>
-                <text fg={theme.text.muted}>This device</text>
+                <text fg={theme.text.muted}>{t("This device")}</text>
                 <Link href={url()} fg={theme.text.base}>
                   {url()}
                 </Link>
@@ -57,7 +58,7 @@ export function DialogPair() {
             )}
           </Show>
           <box>
-            <text fg={theme.text.muted}>Links</text>
+            <text fg={theme.text.muted}>{t("Links")}</text>
             <For each={value.links}>
               {(url) => (
                 <Link href={url} fg={theme.text.base}>
@@ -91,7 +92,7 @@ export function DialogPair() {
       <Show
         when={loadError()}
         fallback={
-          <Show when={info()} fallback={<text fg={theme.text.muted}>Loading server information…</text>}>
+          <Show when={info()} fallback={<text fg={theme.text.muted}>{t("Loading server information…")}</text>}>
             <Show
               when={dimensions().height >= 36}
               fallback={
@@ -111,10 +112,10 @@ export function DialogPair() {
         {(error) => (
           <box>
             <text fg={theme.text.feedback.error.base} attributes={TextAttributes.BOLD}>
-              Could not load server information
+              {t("Could not load server information")}
             </text>
             <text fg={theme.text.muted}>{errorMessage(error())}</text>
-            <text fg={theme.text.muted}>Close and reopen Pair to try again.</text>
+            <text fg={theme.text.muted}>{t("Close and reopen Pair to try again.")}</text>
           </box>
         )}
       </Show>

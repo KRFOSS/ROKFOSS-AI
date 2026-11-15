@@ -10,6 +10,7 @@ import { Keymap } from "../context/keymap"
 import { useTheme } from "../context/theme"
 import { DialogFooter, DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
+import { t } from "../i18n"
 
 const PAGE_BYTES = 64 * 1024
 
@@ -133,7 +134,7 @@ export function DialogShellOutput(props: { shell: ShellInfo; location: LocationR
           gap={dimensions().width < 60 ? 1 : 2}
           titleView={
             <text fg={theme.text.base} attributes={TextAttributes.BOLD} flexGrow={1}>
-              Shell output
+              {t("Shell output")}
             </text>
           }
         >
@@ -166,7 +167,7 @@ export function DialogShellOutput(props: { shell: ShellInfo; location: LocationR
           {props.shell.command}
         </text>
         <Show when={omitted()}>
-          <text fg={theme.text.muted}>Earlier output omitted · showing recent output</text>
+          <text fg={theme.text.muted}>{t("Earlier output omitted · showing recent output")}</text>
         </Show>
         <scrollbox
           id="shell-output-scroll"

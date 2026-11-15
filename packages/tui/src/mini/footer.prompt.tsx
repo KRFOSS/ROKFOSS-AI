@@ -67,6 +67,7 @@ import type {
   RunTuiConfig,
 } from "./types"
 import { EmptyBorder } from "../ui/border"
+import { t } from "../i18n"
 
 const AUTOCOMPLETE_ROWS = FOOTER_MENU_ROWS
 
@@ -286,7 +287,7 @@ export function RunPromptBody(props: {
                 const [failed, setFailed] = createSignal(false)
                 return (
                   <box width={props.layout().images * 2} height="100%" flexShrink={1}>
-                    <Show when={!failed()} fallback={<text fg={props.theme().muted}>No preview</text>}>
+                    <Show when={!failed()} fallback={<text fg={props.theme().muted}>{t("No preview")}</text>}>
                       <image
                         id={`mini-prompt-image-${index()}`}
                         source={image}

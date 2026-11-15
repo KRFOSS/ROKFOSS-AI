@@ -5,6 +5,7 @@ import { DialogHeader, DialogLayout, type DialogContext } from "./dialog"
 import { DialogSelect, DialogSelectChoice } from "./dialog-select"
 import { createStore } from "solid-js/store"
 import { createMemo, createSignal, For, Show } from "solid-js"
+import { t } from "../i18n"
 
 export type ExportFormat = "markdown" | "json"
 
@@ -200,7 +201,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
             onMouseUp={() => confirm("copy")}
           >
             <text fg={store.active === "copy" ? theme.text.action.primary.focused : theme.text.action.primary.base}>
-              Copy
+              {t("Copy")}
             </text>
           </box>
           <box
@@ -212,7 +213,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
             onMouseUp={() => confirm("export")}
           >
             <text fg={store.active === "export" ? theme.text.action.primary.focused : theme.text.action.primary.base}>
-              Export
+              {t("Export")}
             </text>
           </box>
         </box>
@@ -220,7 +221,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
     >
       <box gap={1}>
         <box flexDirection="row" gap={1}>
-          <text fg={theme.text.base}>Export as:</text>
+          <text fg={theme.text.base}>{t("Export as:")}</text>
           <box flexDirection="row" gap={1}>
             <For each={["markdown", "json"] as const}>
               {(format) => (
@@ -250,7 +251,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
             }}
           >
             <text fg={markColor(store.active === "thinking", store.thinking)}>{store.thinking ? "[x]" : "[ ]"}</text>
-            <text fg={labelColor(store.active === "thinking")}>Include thinking</text>
+            <text fg={labelColor(store.active === "thinking")}>{t("Include thinking")}</text>
           </box>
           <box
             flexDirection="row"
@@ -261,7 +262,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
             }}
           >
             <text fg={markColor(store.active === "tools", store.tools)}>{store.tools ? "[x]" : "[ ]"}</text>
-            <text fg={labelColor(store.active === "tools")}>Include tools</text>
+            <text fg={labelColor(store.active === "tools")}>{t("Include tools")}</text>
           </box>
         </Show>
         <Show when={store.format === "json"}>
@@ -274,7 +275,7 @@ function LegacyDialogExportOptions(props: DialogExportOptionsProps) {
             }}
           >
             <text fg={markColor(store.active === "sanitize", store.sanitize)}>{store.sanitize ? "[x]" : "[ ]"}</text>
-            <text fg={labelColor(store.active === "sanitize")}>Sanitize sensitive data</text>
+            <text fg={labelColor(store.active === "sanitize")}>{t("Sanitize sensitive data")}</text>
           </box>
         </Show>
       </box>

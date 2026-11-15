@@ -1,6 +1,7 @@
 import { Keymap } from "../context/keymap"
 import { useTheme } from "../context/theme"
 import { DialogHeader, DialogLayout, useDialog } from "./dialog"
+import { t } from "../i18n"
 
 export function DialogHelp() {
   const dialog = useDialog()
@@ -10,8 +11,8 @@ export function DialogHelp() {
   Keymap.createLayer(() => ({
     mode: "modal",
     commands: [
-      { bind: "return", title: "Close help", group: "Dialog", run: () => dialog.clear() },
-      { bind: "escape", title: "Close help", group: "Dialog", run: () => dialog.clear() },
+      { bind: "return", title: t("Close help"), group: "Dialog", run: () => dialog.clear() },
+      { bind: "escape", title: t("Close help"), group: "Dialog", run: () => dialog.clear() },
     ],
   }))
 
@@ -27,13 +28,15 @@ export function DialogHelp() {
             backgroundColor={theme.background.action.primary.focused}
             onMouseUp={() => dialog.clear()}
           >
-            <text fg={theme.text.action.primary.focused}>ok</text>
+            <text fg={theme.text.action.primary.focused}>{t("ok")}</text>
           </box>
         </box>
       }
     >
       <text fg={theme.text.muted}>
-        Press {shortcuts.get("command.palette.show")} to see all available actions and commands in any context.
+        {t("Press {{key}} to see all available actions and commands in any context.", {
+          key: shortcuts.get("command.palette.show"),
+        })}
       </text>
     </DialogLayout>
   )

@@ -1,5 +1,6 @@
 import { Locale } from "./locale"
 import { canonicalToolName, finiteNumber, webSearchProviderLabel } from "./tool-display"
+import { t } from "../i18n"
 
 type Dict = Record<string, unknown>
 
@@ -160,11 +161,11 @@ export function permissionAlwaysLines(input: { action: string; save?: ReadonlyAr
 }
 
 export function permissionOptionLabel(option: "once" | "always" | "reject" | "confirm" | "cancel") {
-  if (option === "once") return "Allow once"
-  if (option === "always") return "Always allow"
-  if (option === "reject") return "Reject"
-  if (option === "confirm") return "Confirm"
-  return "Cancel"
+  if (option === "once") return t("Allow once")
+  if (option === "always") return t("Always allow")
+  if (option === "reject") return t("Reject")
+  if (option === "confirm") return t("Confirm")
+  return t("Cancel")
 }
 
 function normalizeInput(action: string, value: unknown): Dict {

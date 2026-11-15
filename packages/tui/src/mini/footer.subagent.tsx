@@ -9,6 +9,7 @@ import type { FooterSubagentDetail, FooterSubagentTab } from "./types"
 import type { RunFooterTheme, RunTheme } from "./theme"
 import { stringWidth } from "../util/string-width"
 import { footerMenuText } from "./footer.menu"
+import { t } from "../i18n"
 
 export const SUBAGENT_INSPECTOR_ROWS = 14
 
@@ -227,7 +228,7 @@ export function RunFooterSubagentBody(props: {
             rows()
           ) : (
             <text width="100%" fg={footer().muted} wrapMode="word" flexShrink={0}>
-              No subagent activity yet
+              {t("No subagent activity yet")}
             </text>
           )}
         </box>

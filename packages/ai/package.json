@@ -120,6 +120,7 @@
     "./providers/openrouter/images": "./src/providers/openrouter/images.ts",
     "./providers/openrouter/videos": "./src/providers/openrouter/videos.ts",
     "./providers/openrouter/responses": "./src/providers/openrouter/responses.ts",
+    "./providers/rai": "./src/providers/rai.ts",
     "./providers/togetherai": "./src/providers/togetherai.ts",
     "./providers/typesafe-ai": "./src/providers/typesafe-ai.ts",
     "./providers/typesafe-ai/decisions": "./src/providers/typesafe-ai/decisions.ts",

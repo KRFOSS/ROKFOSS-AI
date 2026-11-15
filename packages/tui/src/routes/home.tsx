@@ -15,6 +15,7 @@ import { useTheme } from "../context/theme"
 import { useUpdateNotification } from "../context/update-notification"
 import { useExit } from "../context/exit"
 import { FadeInText } from "../component/fade-in-text"
+import { t } from "../i18n"
 
 let once = false
 const placeholder = {
@@ -162,10 +163,10 @@ function UpdateNotification(props: { width: number }) {
                   </span>
                 </Show>
                 {remote
-                  ? "remote server update available"
+                  ? t("remote server update available")
                   : state.type === "installed"
-                    ? ` restart to use v${state.version}`
-                    : ` to install v${state.version}`}
+                    ? " " + t("restart to use v{{version}}", { version: state.version })
+                    : " " + t("to install v{{version}}", { version: state.version })}
               </FadeInText>
             </box>
           </Show>

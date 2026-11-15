@@ -2,6 +2,7 @@ import { useTheme } from "../context/theme"
 import { DialogHeader, DialogLayout } from "../ui/dialog"
 import { useData } from "../context/data"
 import { For, Match, Switch, Show, createMemo } from "solid-js"
+import { t } from "../i18n"
 
 export function DialogStatus() {
   const data = useData()
@@ -16,7 +17,7 @@ export function DialogStatus() {
   }
   return (
     <DialogLayout header={<DialogHeader title="Status" />}>
-      <Show when={mcp().length > 0} fallback={<text fg={theme.text.base}>No MCP servers</text>}>
+      <Show when={mcp().length > 0} fallback={<text fg={theme.text.base}>{t("No MCP servers")}</text>}>
         <box>
           <text fg={theme.text.base}>
             {mcp().length} MCP server{mcp().length === 1 ? "" : "s"}

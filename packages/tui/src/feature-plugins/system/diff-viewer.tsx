@@ -40,6 +40,7 @@ import {
   singlePatchFileIndex,
   toggleFileTreeDirectory,
 } from "./diff-viewer-file-tree-utils"
+import { t } from "../../i18n"
 
 const ROUTE = "diff"
 const MIN_SPLIT_WIDTH = 100
@@ -288,7 +289,7 @@ function DiffBaseDialog(props: {
       onFilter={setSearch}
       emptyView={<Empty />}
       noMatchView={<Empty />}
-      footer={<text fg={theme.text.muted}>Remembered until the TUI exits</text>}
+      footer={<text fg={theme.text.muted}>{t("Remembered until the TUI exits")}</text>}
       options={(branches.loading || branches.error ? [] : (branches()?.data ?? [])).map((name) => ({
         title: name,
         value: name,
@@ -905,7 +906,7 @@ export function DiffViewerContent(props: {
         <Switch>
           <Match when={props.loading}>
             <box flexGrow={1} padding={2} paddingTop={compact() ? 1 : 2}>
-              <text fg={theme.text.muted}>Loading diff…</text>
+              <text fg={theme.text.muted}>{t("Loading diff…")}</text>
             </box>
           </Match>
           <Match when={!props.loading && props.error}>
@@ -926,7 +927,7 @@ export function DiffViewerContent(props: {
           </Match>
           <Match when={!props.loading && files().length === 0}>
             <box flexGrow={1} padding={2} paddingTop={compact() ? 1 : 2}>
-              <text fg={theme.text.muted}>No changes to show</text>
+              <text fg={theme.text.muted}>{t("No changes to show")}</text>
             </box>
           </Match>
           <Match when={!props.loading}>
@@ -1041,7 +1042,7 @@ export function DiffViewerContent(props: {
                                   ✓
                                 </text>
                               </Show>
-                              <Show when={!image()} fallback={<text fg={theme.text.muted}>Image</text>}>
+                              <Show when={!image()} fallback={<text fg={theme.text.muted}>{t("Image")}</text>}>
                                 <text flexShrink={0} fg={reviewed() ? theme.text.muted : theme.diff.text.added}>
                                   +{entry.file.additions}
                                 </text>

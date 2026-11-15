@@ -24,6 +24,7 @@ import { OpencodePlugin } from "./provider/opencode.js"
 import { OpenRouterPlugin } from "./provider/openrouter.js"
 import { PoePlugin } from "./provider/poe.js"
 import { PromptCacheKeyPlugin } from "./provider/prompt-cache-key.js"
+import { RaiPlugin } from "./provider/rai.js"
 import { SapAICorePlugin } from "./provider/sap-ai-core.js"
 import { VLLMPlugin } from "./provider/vllm.js"
 import { XAIPlugin } from "./provider/xai.js"
@@ -56,6 +57,7 @@ export const ProviderPlugins: PluginInternal.InternalPlugin[] = [
   OpenRouterPlugin,
   PoePlugin,
   PromptCacheKeyPlugin,
+  RaiPlugin,
   SapAICorePlugin,
   VLLMPlugin,
   XAIPlugin,

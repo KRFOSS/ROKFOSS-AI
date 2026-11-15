@@ -13,6 +13,7 @@ import {
   type ParentProps,
 } from "solid-js"
 import { Keymap } from "../context/keymap"
+import { t, tChild } from "../i18n"
 import { ThemeContextProvider, useTheme } from "../context/theme"
 import { InputRenderable, MouseButton, Renderable, RGBA, TextAttributes } from "@opentui/core"
 import { createStore } from "solid-js/store"
@@ -107,7 +108,7 @@ export function DialogHeader(
     <box flexDirection="row" justifyContent="space-between" gap={props.gap}>
       {props.titleView ?? (
         <text attributes={newDesigns() ? undefined : TextAttributes.BOLD} fg={theme.text.base}>
-          {props.title}
+          {tChild(props.title ?? "")}
         </text>
       )}
       {props.children}
@@ -193,7 +194,7 @@ export function DialogButtons(props: { buttons: DialogButton[]; active: number; 
             onMouseUp={() => button.run()}
           >
             <text fg={props.active === index() ? theme.text.action.primary.focused : theme.text.muted}>
-              {button.label}
+              {t(button.label)}
             </text>
           </box>
         )}
@@ -307,7 +308,7 @@ function DialogFooterItem(props: { action: DialogFooterAction; variant: "primary
           fg: props.action.disabled ? theme.text.action.primary.disabled : (props.action.color ?? theme.text.base),
         }}
       >
-        {props.action.title}
+        {t(props.action.title)}
       </span>
       <Show when={props.action.key}>
         <span style={{ fg: props.action.disabled ? theme.text.action.primary.disabled : (props.action.color ?? key) }}>
@@ -380,7 +381,7 @@ function init() {
     commands: [
       {
         bind: "escape",
-        title: "Close dialog",
+        title: t("Close dialog"),
         group: "Dialog",
         run: () => {
           if (renderer.getSelection()) {
@@ -395,7 +396,7 @@ function init() {
       },
       {
         bind: "ctrl+c",
-        title: "Close dialog",
+        title: t("Close dialog"),
         group: "Dialog",
         run: () => {
           if (renderer.getSelection()) {

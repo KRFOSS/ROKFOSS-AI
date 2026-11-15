@@ -33,6 +33,7 @@ import { toolFiletype } from "./tool"
 import { transparent, type RunBlockTheme, type RunFooterTheme } from "./theme"
 import type { MiniPermissionRequest, PermissionReply } from "./types"
 import { PatchDiff } from "../component/patch-diff"
+import { t } from "../i18n"
 
 function buttons(
   list: PermissionOption[],
@@ -323,7 +324,7 @@ export function RunPermissionBody(props: {
           {title()}
         </text>
         <Show when={!compact() && stage() === "reject"}>
-          <text fg={props.theme.muted}>Tell OpenCode what to do differently</text>
+          <text fg={props.theme.muted}>{t("Tell OpenCode what to do differently")}</text>
         </Show>
       </box>
 
@@ -486,7 +487,7 @@ export function RunPermissionBody(props: {
                   </Show>
                   <Show when={!info().diff && !info().patch && info().lines.length === 0}>
                     <text width="100%" fg={props.theme.muted} flexShrink={0}>
-                      No diff provided
+                      {t("No diff provided")}
                     </text>
                   </Show>
                 </box>
