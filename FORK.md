@@ -11,24 +11,24 @@ Everything else tracks upstream `dev`.
 ## Install
 
 ```sh
-curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash
 ```
 
 The installer detects the platform, downloads the matching release asset, verifies it against
 `SHA256SUMS`, and installs to `~/.opencode/bin`. Reopen the shell (or `exec $SHELL`) so `opencode`
 is on `PATH`.
 
+The script itself is developed on `dev`, so the `raw.githubusercontent.com` URL above is always the
+current installer. Each release also carries a snapshot of it:
+`https://github.com/KRFOSS/opencode/releases/latest/download/install.sh`.
+
 ```sh
 # a specific release
-curl -fsSL .../releases/latest/download/install.sh | bash -s -- --version v2.3.0-krfoss.1
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --version v2.3.0-krfoss.1
 
 # somewhere else on disk, without touching shell config
-curl -fsSL .../releases/latest/download/install.sh | bash -s -- --dir ~/bin --no-modify-path
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --dir ~/bin --no-modify-path
 ```
-
-Releases carry both the prebuilt archives and the installer itself, so
-`https://github.com/KRFOSS/opencode/releases/latest/download/install.sh` always matches the
-released binaries.
 
 | Target | Asset |
 | :--- | :--- |
@@ -101,3 +101,10 @@ The fork keeps its changes in as few places as possible:
 
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
+
+## Known issues
+
+- Binaries from `v2.3.0-krfoss.1` report `v0.0.0-dev-1` from `opencode --version`, because that build
+  did not pass `OPENCODE_VERSION`. The workflow now decides the tag in a `plan` job and stamps it
+  into the build, and its smoke test fails if the binary reports anything else; the next release run
+  picks that up.
