@@ -24,7 +24,8 @@ test("the dev route wrapper restores the current route without replaying its pro
       { width: 80, height: 24 },
     )
   }
-  const routes: Route[] = [
+  // RoomsRoute has no one-shot prompt, so this factory only covers the routes that do.
+  const routes: Exclude<Route, { type: "rooms" }>[] = [
     { type: "home", location: { directory: "/selected/worktree", workspaceID: "wrk_test" } },
     { type: "home", location: { directory: "/another/worktree", workspaceID: "wrk_other" } },
     { type: "session", sessionID: "ses_selected" },

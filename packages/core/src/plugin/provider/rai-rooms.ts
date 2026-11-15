@@ -823,7 +823,7 @@ function waitChunk(audience: string) {
     )
     const arrived = yield* Deferred.await(waiter).pipe(
       Effect.timeout("15 seconds"),
-      Effect.catch(() => Effect.succeed(null as RaiRooms.Chunk | null)),
+      Effect.orElseSucceed(() => null as RaiRooms.Chunk | null),
     )
     const index = box.waiters.indexOf(waiter)
     if (index >= 0) box.waiters.splice(index, 1)
@@ -984,13 +984,13 @@ export function registerRooms(ctx: Context, http: HttpClient.HttpClient) {
             reserveBox(token)
             return { ok: true }
           }),
-          Effect.catch(() => Effect.succeed({ ok: false })),
+          Effect.orElseSucceed(() => ({ ok: false })),
           Effect.catchDefect(() => Effect.succeed({ ok: false })),
         ),
       take: (input) =>
         authorize(ctx).pipe(
           Effect.flatMap(() => Effect.scoped(waitChunk(input.audience))),
-          Effect.catch(() => Effect.succeed({ chunk: null, open: false })),
+          Effect.orElseSucceed(() => ({ chunk: null, open: false })),
           Effect.catchDefect(() => Effect.succeed({ chunk: null, open: false })),
         ),
       // The token is the capability. Closing must still work if the key check fails, or a dropped dialog waits out the TTL.
