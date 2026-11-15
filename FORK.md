@@ -108,3 +108,18 @@ unwrapped English candidates, which is the worklist after an upstream merge.
   did not pass `OPENCODE_VERSION`. The workflow now decides the tag in a `plan` job and stamps it
   into the build, and its smoke test fails if the binary reports anything else; the next release run
   picks that up.
+
+## Fixed after v2.3.0-krfoss.2 (in `dev`, needs one more release run)
+
+- **The provider did not load from a packaged binary.** Core resolves a provider package through the
+  `builtins` map in `packages/core/src/provider.ts`, because the CLI is one bundled file and
+  `import("@opencode/ai/providers/rai")` has nothing to resolve at runtime. The `rai` entry was
+  missing, so a checkout worked (node_modules) and an installed binary failed with
+  `Cannot initialize rai/<model>: Cannot find package '@opencode/ai'`. A test now asserts the entry
+  exists, and a locally built binary was checked to load the provider with no `node_modules` nearby.
+- **An installed fork was told to update to its own base version.** The update check asked upstream's
+  service, which answers the plain `2.3.0`; semver sorts that above every `2.3.0-krfoss.<n>`, and
+  accepting the update would have replaced the fork with an upstream build. A fork build now reads
+  the newest tag from this repository's releases and downloads this fork's installer.
+- **The gateway was buried in the provider list.** The model picker and `/connect` now rank ROKFOSS AI
+  first; everything after it keeps upstream's order.
