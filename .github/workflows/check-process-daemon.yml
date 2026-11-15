@@ -53,7 +53,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, blacksmith-6vcpu-macos-15]
+        os:
+          - ubuntu-22.04
+          # macOS jobs are temporarily disabled.
+          # - macos-15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: mlugg/setup-zig@8d6198c65fb0feaa111df26e6b467fea8345e46f # v2.0.5
@@ -72,9 +75,9 @@ jobs:
         if: runner.os == 'Linux'
         run: cargo test --locked
       # Match the release workflow's macOS playground exclusion.
-      - name: Test macOS
-        if: runner.os == 'macOS'
-        run: cargo test --locked --lib --test service --test runtime --test ownership --test pipe --test rows --test ghostty-effects
+      # - name: Test macOS
+      #   if: runner.os == 'macOS'
+      #   run: cargo test --locked --lib --test service --test runtime --test ownership --test pipe --test rows --test ghostty-effects
 
   windows:
     name: Windows (${{ matrix.arch }})

@@ -11,8 +11,9 @@ const dist = path.resolve(root, process.argv[2] ?? "dist")
 const output = path.join(dist, "npm")
 const manifest = JSON.parse(await readFile(path.join(root, "npm/package.json"), "utf8"))
 const targets = [
-  { target: "aarch64-apple-darwin", platform: "darwin", arch: "arm64" },
-  { target: "x86_64-apple-darwin", platform: "darwin", arch: "x64" },
+  // macOS builds are temporarily disabled in release-process-daemon.yml.
+  // { target: "aarch64-apple-darwin", platform: "darwin", arch: "arm64" },
+  // { target: "x86_64-apple-darwin", platform: "darwin", arch: "x64" },
   { target: "aarch64-unknown-linux-gnu", platform: "linux", arch: "arm64", libc: "glibc", suffix: "gnu" },
   { target: "aarch64-unknown-linux-musl", platform: "linux", arch: "arm64", libc: "musl", suffix: "musl" },
   { target: "x86_64-unknown-linux-gnu", platform: "linux", arch: "x64", libc: "glibc", suffix: "gnu" },
@@ -66,4 +67,20 @@ for (const target of targets) {
 const dispatcher = path.join(output, "opencode-pty")
 await cp(path.join(root, "npm"), dispatcher, { recursive: true })
 await copyFile(path.join(root, "LICENSE"), path.join(dispatcher, "LICENSE"))
+await writeFile(
+  path.join(dispatcher, "package.json"),
+  JSON.stringify(
+    {
+      ...manifest,
+      optionalDependencies: Object.fromEntries(
+        targets.map((target) => {
+          const name = `@opencode/pty-${[target.platform, target.arch, target.suffix].filter(Boolean).join("-")}`
+          return [name, manifest.optionalDependencies[name]]
+        }),
+      ),
+    },
+    null,
+    2,
+  ) + "\n",
+)
 console.log(manifest.name)

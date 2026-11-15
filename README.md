@@ -25,7 +25,7 @@
 ### Installation
 
 ```bash
-# Install the latest CLI release (Linux / macOS)
+# Install the latest CLI release (Linux)
 curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 
 # Run from source with Nix
@@ -37,8 +37,8 @@ nix profile add github:KRFOSS/opencode/dev
 
 The [release-fork workflow](.github/workflows/release-fork.yml) publishes CLI binaries,
 `install.sh`, and `SHA256SUMS` to [GitHub Releases](https://github.com/KRFOSS/opencode/releases).
-Download an archive directly for Linux (`opencode-linux-*.tar.gz`), macOS
-(`opencode-darwin-*.zip`), or Windows (`opencode-windows-*.zip`).
+Download an archive directly for Linux (`opencode-linux-*.tar.gz`) or
+Windows (`opencode-windows-*.zip`). macOS release builds are temporarily disabled.
 
 To install a specific release:
 

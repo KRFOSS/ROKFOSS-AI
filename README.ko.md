@@ -25,7 +25,7 @@
 ### 설치
 
 ```bash
-# 최신 CLI 릴리스 설치 (Linux / macOS)
+# 최신 CLI 릴리스 설치 (Linux)
 curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 
 # Nix로 소스에서 실행
@@ -37,8 +37,8 @@ nix profile add github:KRFOSS/opencode/dev
 
 [release-fork 워크플로](.github/workflows/release-fork.yml)는 CLI 바이너리,
 `install.sh`, `SHA256SUMS`를 [GitHub Releases](https://github.com/KRFOSS/opencode/releases)에 배포합니다.
-Linux(`opencode-linux-*.tar.gz`), macOS(`opencode-darwin-*.zip`),
-Windows(`opencode-windows-*.zip`)용 압축 파일을 직접 다운로드할 수도 있습니다.
+Linux(`opencode-linux-*.tar.gz`), Windows(`opencode-windows-*.zip`)용 압축 파일을
+직접 다운로드할 수도 있습니다. macOS 릴리스 빌드는 일시적으로 중단했습니다.
 
 특정 릴리스를 설치하려면 다음과 같이 실행하세요.
 

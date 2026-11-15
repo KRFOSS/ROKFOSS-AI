@@ -51,8 +51,21 @@ bash "$here/validate.sh" "$file"
 "${git[@]}" push --no-verify --force origin "HEAD:refs/heads/$branch"
 
 if [ -z "$pr" ]; then
-  gh pr create --repo "$GH_REPO" --base dev --head "$branch" --title "$title" \
-    --body "Updates \`$file\` to the node_modules hashes computed for $GITHUB_SHA by bot-nix-hashes. check-bot-scope keeps this branch to that file."
+  if ! output=$(gh pr create --repo "$GH_REPO" --base dev --head "$branch" --title "$title" \
+    --body "Updates \`$file\` to the node_modules hashes computed for $GITHUB_SHA by bot-nix-hashes. check-bot-scope keeps this branch to that file." 2>&1); then
+    printf '%s\n' "$output" >&2
+    if [[ "$output" == *"GitHub Actions is not permitted to create or approve pull requests"* ]]; then
+      echo "::error::Enable 'Allow GitHub Actions to create and approve pull requests' under Workflow permissions at https://github.com/$GH_REPO/settings/actions, then rerun this workflow. Organization policy may also need to allow it."
+      {
+        echo "### Nix hashes: repository permission required"
+        echo "Hashes were pushed to \`$branch\`, but GitHub blocked pull request creation."
+        echo "Enable **Allow GitHub Actions to create and approve pull requests** under **Workflow permissions** in https://github.com/$GH_REPO/settings/actions and rerun this workflow."
+        echo "If the option is disabled, check the organization's Actions policy."
+      } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+    fi
+    exit 1
+  fi
+  printf '%s\n' "$output"
   pr=$(find_pr)
 fi
 

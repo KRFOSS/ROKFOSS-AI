@@ -45,8 +45,9 @@ jobs:
             runner: ubuntu-24.04
           - system: aarch64-linux
             runner: ubuntu-24.04-arm
-          - system: aarch64-darwin
-            runner: macos-15
+          # macOS builds are temporarily disabled.
+          # - system: aarch64-darwin
+          #   runner: macos-15
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -131,8 +132,11 @@ jobs:
 
           [ -f "$HASH_FILE" ] || echo '{"nodeModules":{}}' > "$HASH_FILE"
 
-          for SYSTEM in x86_64-linux aarch64-linux aarch64-darwin; do
-            HASH="$(tr -d '[:space:]' < "$HASHES/hash-${SYSTEM}/hash.txt")"
+          # Preserve hashes for disabled platforms; update only the downloaded artifacts.
+          for HASH_PATH in "$HASHES"/hash-*/hash.txt; do
+            SYSTEM="$(basename "$(dirname "$HASH_PATH")")"
+            SYSTEM="${SYSTEM#hash-}"
+            HASH="$(tr -d '[:space:]' < "$HASH_PATH")"
             echo "${SYSTEM}: ${HASH}"
             jq --arg sys "$SYSTEM" --arg h "$HASH" '.nodeModules[$sys] = $h' "$HASH_FILE" > tmp.json
             mv tmp.json "$HASH_FILE"
@@ -160,6 +164,7 @@ jobs:
           retention-days: 1
 
   # Runs even when compute found no change, so an open bot pull request with stale hashes is closed, not merged.
+  # Repository Settings > Actions > General must allow GitHub Actions to create and approve pull requests.
   publish:
     needs: compute
     if: github.repository == 'KRFOSS/opencode' && github.ref == 'refs/heads/dev'
