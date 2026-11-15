@@ -48,6 +48,23 @@ const decodeManifestVersion = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Struct({ version: Schema.String })),
 )
 
+// A fork build is a GitHub tag (`v2.3.0-krfoss.2`), while the upstream update service answers with the plain
+// `2.3.0`; semver sorts `2.3.0` above every `2.3.0-krfoss.*`, so a fork copy was told to "update" to its own base
+// version, and running it would have replaced the fork with an upstream build that has no ROKFOSS AI.
+const forkRepository = "KRFOSS/opencode"
+const forkReleaseUrl = `https://api.github.com/repos/${forkRepository}/releases/latest`
+const forkInstallerUrl = `https://github.com/${forkRepository}/releases/latest/download/install.sh`
+
+/** Whether this copy was built by the fork: its version carries the `-krfoss.<n>` suffix. */
+export function forkBuild(version: string) {
+  return /-krfoss\.[0-9]+$/.test(version)
+}
+
+/** The installer a fork copy has to run, because upstream's would replace it with a build without ROKFOSS AI. */
+export function installerUrl(version: string) {
+  return forkBuild(version) ? forkInstallerUrl : "https://opencode.ai/v2/install"
+}
+
 const installNames: Record<Method, string> = {
   curl: "The OpenCode installer",
   npm: "npm",
@@ -312,7 +329,63 @@ const make = Effect.gen(function* () {
     }
   }
 
+  /**
+   * The fork's newest release, read from its own GitHub tags. Everything else here works on bare versions, so the
+   * leading `v` is stripped. A fork copy that cannot be checked reports the failure instead of guessing a version.
+   */
+  const forkRelease = Effect.fnUntraced(function* () {
+    const response = yield* Effect.tryPromise({
+      try: (signal) =>
+        fetch(forkReleaseUrl, {
+          headers: { accept: "application/vnd.github+json" },
+          signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
+        }),
+      catch: (cause) =>
+        new UpgradeError(
+          {
+            title: "Could not check for ROKFOSS OpenCode updates",
+            detail: errorDetail(cause),
+            retry: "Check your network, then run opencode upgrade again.",
+          },
+          { cause },
+        ),
+    })
+    if (!response.ok)
+      return yield* Effect.fail(
+        new UpgradeError({
+          title: "Could not check for ROKFOSS OpenCode updates",
+          detail: `GitHub returned HTTP ${response.status}.`,
+          retry: "Try again in a few minutes.",
+        }),
+      )
+    const data: { tag_name?: string } = yield* Effect.tryPromise({
+      try: () => response.json(),
+      catch: (cause) =>
+        new UpgradeError(
+          {
+            title: "Could not read the ROKFOSS OpenCode release",
+            detail: errorDetail(cause),
+            retry: "Try again in a few minutes.",
+          },
+          { cause },
+        ),
+    })
+    const version = data.tag_name?.trim().replace(/^v/, "")
+    if (!version)
+      return yield* Effect.fail(
+        new UpgradeError({
+          title: "Could not read the ROKFOSS OpenCode release",
+          detail: "GitHub did not name a release tag.",
+          retry: "Try again in a few minutes.",
+        }),
+      )
+    return { package: OPENCODE_ARTIFACT, version }
+  })
+
   const release = Effect.fnUntraced(function* (method?: Method) {
+    // A fork copy updates from the fork's own tags, not from the upstream service: that service answers with the plain
+    // base version, which the updater always reads as newer than any fork build.
+    if (forkBuild(OPENCODE_VERSION) && method !== "brew" && method !== "winget") return yield* forkRelease()
     const distribution = method === "brew" ? "homebrew" : "npm"
     // Homebrew Core builds its formula on its own schedule, so the tap release does not describe it.
     const core = method === "brew" && installedFormula === "opencode"
@@ -539,8 +612,8 @@ const make = Effect.gen(function* () {
           const installer = path.join(directory, "install")
           yield* runUpgrade({
             method,
-            command: ["curl", "-fsSL", "-o", installer, "https://opencode.ai/v2/install"],
-            displayCommand: ["curl", "-fsSL", "https://opencode.ai/v2/install"],
+            command: ["curl", "-fsSL", "-o", installer, installerUrl(OPENCODE_VERSION)],
+            displayCommand: ["curl", "-fsSL", installerUrl(OPENCODE_VERSION)],
             title: "Could not download the OpenCode installer",
             retry: "Check your network, then run opencode upgrade again.",
           })

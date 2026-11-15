@@ -12,6 +12,15 @@ export function prioritizeFavorites<T extends { value: { providerID: string; mod
   )
 }
 
+// The fork's own gateway is what its users open the picker for, so it ranks above the bundled providers; everything
+// after it keeps upstream's order (`opencode-go`, then `opencode`, then by name).
+function providerRank(id: string | undefined) {
+  if (id === "rai") return 0
+  if (id === "opencode-go") return 1
+  if (id === "opencode") return 2
+  return 3
+}
+
 // The server owns model order (`Model.available()`: preferred free models first when signed out, newest first
 // otherwise). This only applies the picker's grouping and keeps the server's order for everything else.
 export function sortModelOptions<
@@ -22,10 +31,7 @@ export function sortModelOptions<
   },
 >(options: T[], grouped = true) {
   return options.toSorted((a, b) => {
-    const provider = grouped
-      ? Number(b.providerID === "opencode-go") - Number(a.providerID === "opencode-go") ||
-        Number(b.providerID === "opencode") - Number(a.providerID === "opencode")
-      : 0
+    const provider = grouped ? providerRank(a.providerID) - providerRank(b.providerID) : 0
     if (provider !== 0) return provider
 
     const name = grouped ? (a.providerName ?? "").localeCompare(b.providerName ?? "") : 0

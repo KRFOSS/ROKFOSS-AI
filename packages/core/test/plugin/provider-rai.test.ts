@@ -121,6 +121,15 @@ describe("RaiPlugin", () => {
     }),
   )
 
+  it.effect("registers its package so a compiled binary can load it", () =>
+    Effect.gen(function* () {
+      // The CLI ships as one bundled file, so a provider package resolves at runtime only through this
+      // map. Without the entry a checkout works (node_modules) and a release fails with
+      // "Cannot find package '@opencode/ai'", which is what happened to v2.3.0-krfoss.2.
+      expect(Provider.builtinPackages.has("@opencode/ai/providers/rai")).toBe(true)
+    }),
+  )
+
   it.effect("turns the gateway inventory into models with the marketed reasoning steps", () =>
     Effect.gen(function* () {
       const test = yield* fixture()

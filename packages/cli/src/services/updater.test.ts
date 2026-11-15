@@ -1,8 +1,21 @@
 import { describe, expect, test } from "bun:test"
 import { action } from "./updater-action"
-import { decodePolicy } from "./updater"
+import { decodePolicy, forkBuild, installerUrl } from "./updater"
 
 describe("updater", () => {
+  test("recognizes a fork build and keeps its updates on the fork", () => {
+    // v2.3.0-krfoss.2 sorts below the upstream 2.3.0, so the upstream service always looked like an update, and
+    // installing it would have replaced the fork with a build that has no ROKFOSS AI.
+    expect(forkBuild("2.3.0-krfoss.2")).toBe(true)
+    expect(forkBuild("2.3.0-krfoss.10")).toBe(true)
+    expect(forkBuild("2.3.0")).toBe(false)
+    expect(forkBuild("2.3.0-dev-1")).toBe(false)
+    expect(installerUrl("2.3.0-krfoss.2")).toBe(
+      "https://github.com/KRFOSS/opencode/releases/latest/download/install.sh",
+    )
+    expect(installerUrl("2.3.0")).toBe("https://opencode.ai/v2/install")
+  })
+
   test("reads update policy from JSONC", () => {
     expect(decodePolicy('{ // preference\n "update": "notify",\n}')).toBe("notify")
     expect(decodePolicy('{ "update": "disable" }')).toBe("disable")
