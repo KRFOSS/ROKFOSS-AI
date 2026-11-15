@@ -115,7 +115,7 @@ export function StatsPoster(props: { stats: SessionStatsInfo }) {
           )}
         </For>
         <Show when={calendar().clipped}>
-          <text fg={theme.text.muted}>Your last {calendar().weeks.length} weeks</text>
+          <text fg={theme.text.muted}>{t("Your last {{count}} weeks", { count: String(calendar().weeks.length) })}</text>
         </Show>
       </box>
       <box width="100%" flexDirection="row" justifyContent="space-around">
@@ -123,10 +123,11 @@ export function StatsPoster(props: { stats: SessionStatsInfo }) {
           {(metric) => (
             <box alignItems="center">
               <text fg={theme.text.base} attributes={TextAttributes.BOLD}>
-                {statsNumber(metric.value)}
-                {metric.label === "best streak" ? " days" : ""}
+                {metric.label === "best streak"
+                  ? t("{{count}} days", { count: statsNumber(metric.value) })
+                  : statsNumber(metric.value)}
               </text>
-              <text fg={theme.text.muted}>{metric.label}</text>
+              <text fg={theme.text.muted}>{t(metric.label)}</text>
             </box>
           )}
         </For>

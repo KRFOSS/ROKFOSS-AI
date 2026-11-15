@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test"
 import type { SessionMessageAssistant, SessionMessageAssistantTool, SessionMessageInfo } from "@opencode/client"
 import { activitySummary, busyLabel, summarizeActivity } from "../../../src/routes/session/activity-summary"
+import { currentLanguage, setLanguage, t } from "../../../src/i18n"
+import { localizedDuration } from "../../../src/util/locale"
 import {
   append,
   groupRefs,
@@ -181,6 +183,31 @@ test("activity summary counts finished work by category", () => {
     label: "2 commands, 2 edits, 1 thought, 1 read, 1 tool, 2 instructions",
     active: false,
   })
+})
+
+test("session activity summaries and thought durations follow the selected language", () => {
+  const previous = currentLanguage()
+  try {
+    const message = assistant("a", [])
+    const items = [
+      { message, part: { type: "reasoning" as const, text: "t", time: { created: 1, completed: 2 } } },
+      { message, part: tool("s1", "shell") },
+      { message, part: tool("s2", "shell") },
+      { message, part: tool("r", "read") },
+      { message, part: tool("g", "grep") },
+    ]
+    setLanguage("ko")
+    expect(activitySummary(items, 0).label).toBe("명령 2개, 생각 1개, 읽기 1건, 도구 1개")
+    expect(busyLabel(tool("s", "shell", "running"))).toBe("명령 실행 중…")
+    expect(t("Thought")).toBe("생각")
+    expect(localizedDuration(61000)).toBe("1분 1초")
+    expect(localizedDuration(850)).toBe("850밀리초")
+    setLanguage("en")
+    expect(activitySummary(items, 0).label).toBe("2 commands, 1 thought, 1 read, 1 tool")
+    expect(localizedDuration(61000)).toBe("1m 1s")
+  } finally {
+    setLanguage(previous)
+  }
 })
 
 test("running work is active but not counted, and failed tools are counted", () => {
