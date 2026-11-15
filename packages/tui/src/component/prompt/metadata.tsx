@@ -4,6 +4,7 @@ import { createMemo, Show } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { Locale } from "../../util/locale"
 import { stringWidth } from "../../util/string-width"
+import { t } from "../../i18n"
 
 export function PromptMetadataRow(props: {
   mode: "normal" | "shell"
@@ -22,6 +23,9 @@ export function PromptMetadataRow(props: {
 }) {
   const theme = useTheme()
   const dimensions = useTerminalDimensions()
+  // The variant is a provider-reported effort id (`low`, `xhigh`, …); translating it here keeps the width
+  // calculation and the rendered text in step.
+  const variantLabel = () => (props.variant ? t(props.variant) : undefined)
   const layout = createMemo(() => {
     if (props.mode === "shell") return { agent: props.agent ?? "Shell", model: "" }
     return promptMetadataLayout({
@@ -31,7 +35,7 @@ export function PromptMetadataRow(props: {
       auto: props.auto,
       model: props.model,
       provider: props.provider,
-      variant: props.variant,
+      variant: variantLabel(),
       limit: props.limit?.text,
     })
   })

@@ -2,6 +2,7 @@ import type { ModelInfo } from "@opencode/client"
 import { For, Show } from "solid-js"
 import { useTheme } from "../context/theme"
 import { modelPreferenceKey } from "../model-preference"
+import { t } from "../i18n"
 
 export function prioritizeFavorites<T extends { value: { providerID: string; modelID: string } }>(
   options: T[],
@@ -69,9 +70,9 @@ export function ModelDetail(props: {
   }
   const facts = () =>
     [
-      props.model.capabilities.input.map(modality).join(", "),
+      props.model.capabilities.input.map((input) => t(modality(input))).join(", "),
       tokens(props.model.limit.context),
-      ...(props.model.variants.length > 0 ? ["Reasoning"] : []),
+      ...(props.model.variants.length > 0 ? [t("Reasoning")] : []),
     ].filter(Boolean)
   const list = (items: string[]) => (
     <text fg={theme.text.muted} wrapMode="none" flexShrink={0}>
@@ -104,7 +105,7 @@ export function ModelDetail(props: {
           <text fg={usage().danger ? theme.text.feedback.error.base : theme.text.muted} wrapMode="none">
             {usage().text}
           </text>
-          {list([...(price() && price() !== "Free" ? [`${price()} per 1M`] : [price()]), ...facts()].filter(Boolean))}
+          {list([...(price() && price() !== "Free" ? [`${price()} ${t("per 1M")}`] : [price() ? t("Free") : ""]), ...facts()].filter(Boolean))}
         </box>
       )}
     </Show>

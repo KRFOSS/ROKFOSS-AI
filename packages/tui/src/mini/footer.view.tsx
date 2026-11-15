@@ -237,7 +237,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     const current = model()?.model ?? props.state().model.trim()
     const variant = props.currentVariant()
     const details = [busy() ? "running" : "idle", `agent ${props.currentAgent()}`]
-    if (current) details.push(variant ? `${current} ${variant}` : current)
+    if (current) details.push(variant ? `${current} ${t(variant)}` : current)
     if (contextUsage()) details.push(contextUsage())
     if (cost()) details.push(cost())
     if (queuedPrompts().length > 0) details.push(`${queuedPrompts().length} pending`)
@@ -435,7 +435,7 @@ export function RunFooterView(props: RunFooterViewProps) {
     return {
       model: current,
       provider: model()?.provider,
-      variant: props.currentVariant(),
+      variant: props.currentVariant() ? t(props.currentVariant()!) : undefined,
     }
   })
   const statusColor = createMemo(() => {

@@ -9,6 +9,7 @@
 import { createSession, sessionVariant, type RunSession, type SessionMessages } from "./session.shared"
 import type { RunInput, RunProvider } from "./types"
 import { cycleModelVariant, normalizeModelVariant } from "../model-preference"
+import { t } from "../i18n"
 
 export function modelInfo(providers: RunProvider[] | undefined, model: NonNullable<RunInput["model"]>) {
   const provider = providers?.find((item) => item.id === model.providerID)
@@ -24,7 +25,9 @@ export function formatModelLabel(
   providers?: RunProvider[],
 ): string {
   const names = modelInfo(providers, model)
-  const label = variant ? ` · ${variant}` : ""
+  // The variant is a provider-reported effort id (`low`, `xhigh`, …), so it is translated at the one place
+  // a label is built: the picker and the footer both read this string.
+  const label = variant ? ` · ${t(variant)}` : ""
   return `${names.model} · ${names.provider}${label}`
 }
 
