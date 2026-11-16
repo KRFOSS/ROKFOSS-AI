@@ -65,8 +65,9 @@ jobs:
   affected:
     name: affected packages
     if: ${{ !github.event.pull_request.draft && github.event_name != 'pull_request' }}
-    # Never runs on a pull request, so a fork's code cannot reach the self-hosted machine here.
-    runs-on: [self-hosted, linux, x64]
+    # Never runs on a pull request, so a fork's code cannot reach the self-hosted machine here. It stays hosted
+    # because it gates `e2e`, and a job queued behind the single self-hosted machine would delay those.
+    runs-on: ubuntu-24.04
     outputs:
       e2e: ${{ steps.packages.outputs.app }}
     steps:

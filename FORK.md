@@ -143,16 +143,16 @@ GitHub-hosted one:
 
 | Workflow | Job | Runner |
 | :--- | :--- | :--- |
-| `check.yml` | `typecheck` (whole-workspace `tsc`) | self-hosted |
-| `check-test.yml` | `affected` | self-hosted |
 | `check-test.yml` | `unit` — Linux leg | self-hosted |
 
-Everything else stays on GitHub-hosted runners. Three reasons matter when extending this:
+Everything else stays on GitHub-hosted runners. Four reasons matter when extending this:
 
 - **One machine runs one job.** `r3` is a single runner, so every job sent to it queues behind the
-  others. Only the jobs whose wall time dominates a run belong there; adding `build` or `nix-eval`
-  made the run *slower*, because `unit (linux)` then waited for them. When moving another job over,
-  prefer to take one back.
+  others, and a dev push never cancels the run before it (each run gets its own concurrency group, so
+  every commit gets a verdict). Only the one job whose wall time dominates a run belongs there. Adding
+  `build`, `nix-eval`, `typecheck` or `affected` was tried and made feedback *slower*: a measured
+  `build (linux)` took 8m45s on `r3` against 8m05s on a hosted runner, so nothing was gained but the
+  queue. If a second runner is ever added, `typecheck` is the next one to move.
 - **A pull request from a fork must never reach the self-hosted machine.** The runner is ours, so
   untrusted code would execute on our hardware. Each `runs-on` above therefore evaluates
   `github.event.pull_request.head.repo.full_name == github.repository` and falls back to
