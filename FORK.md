@@ -97,6 +97,18 @@ Upstream's `.github/workflows/release.yml` is left untouched: it needs R2 creden
 identities and self-hosted runners this fork does not have. The fork workflow deliberately lives in
 its own file so an upstream release change never collides with it.
 
+## Nix dependency hashes
+
+Use this repository's locked nixpkgs when consuming its packages; overriding that input can change
+the dependency hash. On a native machine, `nix build .#node_modules_updater --no-link` reports the
+computed hash as `got:` in an expected hash-mismatch error. Update only that machine's entry in
+`nix/hashes.json`, then verify with `nix build .#opencode --no-link` and the resulting CLI's `--version`.
+
+`bot-nix-hashes.yml` computes both Linux hashes on native runners. If the recorded hashes differ,
+the workflow uploads a `nix-hashes` artifact for manual review and fails the check. It has read-only
+repository permissions and never commits, pushes, creates PRs, or merges them. The macOS hash stays
+unchanged until it can be computed on a native Apple Silicon runner.
+
 ## Merging upstream
 
 The fork keeps its changes in as few places as possible:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# validate.sh <file>: fails unless <file> has exactly the shape of nix/hashes.json, so the hashes bot can only ever publish
-# three SRI hashes. Used by bot-nix-hashes.yml before it commits and by check-bot-scope.yml on the bot's pull request.
+# validate.sh <file>: fails unless <file> has exactly the shape of nix/hashes.json with three SRI hashes.
+# Used before uploading hash artifacts and when checking a manually prepared bot/nix-hashes branch.
 # Adding a system to the flake means adding it to SYSTEMS here.
 set -euo pipefail
 
