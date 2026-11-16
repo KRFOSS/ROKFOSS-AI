@@ -1,3 +1,4 @@
+import { createSignal } from "solid-js"
 import type { Route } from "../context/route"
 
 /**
@@ -39,6 +40,26 @@ export function rememberRoomsReturn(route: Route) {
 
 export function roomsReturn(): Route {
   return back
+}
+
+/**
+ * Room a session is recording into. Kept client-side so the prompt footer can show it without asking the gateway on
+ * every frame; the value itself comes from the turns RPC and never contains message text.
+ */
+const [bound, setBound] = createSignal<ReadonlyMap<string, string>>(new Map())
+
+export function boundRoomTitle(sessionID: string | undefined): string | undefined {
+  if (!sessionID) return undefined
+  return bound().get(sessionID)
+}
+
+export function setBoundRoom(sessionID: string, title: string | undefined) {
+  setBound((current) => {
+    const next = new Map(current)
+    if (title === undefined) next.delete(sessionID)
+    else next.set(sessionID, title)
+    return next
+  })
 }
 
 let opened = 0

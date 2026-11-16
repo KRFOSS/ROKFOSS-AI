@@ -413,7 +413,7 @@ export function parsePage(body: unknown): Omit<RaiRooms.Page, "error"> | undefin
   }
 }
 
-function failureFrom(status: number, body: string, scope: Scope) {
+export function failureFrom(status: number, body: string, scope: Scope) {
   const retry = status === 502 || status === 503 || status === 504
   if (body.trim() === "" || body.trim().startsWith("<")) {
     return new RoomsRequestError(`ROKFOSS AI request failed (${status})`, { status, retry })
@@ -434,7 +434,7 @@ function failureFrom(status: number, body: string, scope: Scope) {
   })
 }
 
-function authed(request: HttpClientRequest.HttpClientRequest, key: string, accept: "json" | "sse") {
+export function authed(request: HttpClientRequest.HttpClientRequest, key: string, accept: "json" | "sse") {
   const withAccept =
     accept === "json"
       ? HttpClientRequest.acceptJson(request)
@@ -442,7 +442,7 @@ function authed(request: HttpClientRequest.HttpClientRequest, key: string, accep
   return HttpClientRequest.setHeader(HttpClientRequest.bearerToken(withAccept, key), "User-Agent", userAgent)
 }
 
-const jsonGet = (http: HttpClient.HttpClient, url: string, auth: Auth, scope: Scope) =>
+export const jsonGet = (http: HttpClient.HttpClient, url: string, auth: Auth, scope: Scope) =>
   Effect.gen(function* () {
     const response = yield* http.execute(authed(HttpClientRequest.get(url), auth.key, "json")).pipe(
       Effect.timeout(listTimeout),
@@ -648,7 +648,7 @@ function userScoped(entry: Document, roots: readonly string[]) {
   return file === undefined || roots.some((root) => FSUtil.contains(root, file))
 }
 
-const resolveEndpoint = Effect.fn("RaiRooms.endpoint")(function* () {
+export const resolveEndpoint = Effect.fn("RaiRooms.endpoint")(function* () {
   const environment = parseBaseURL(process.env.RAI_BASE_URL)
   if (environment.url) return environment.url
   const config = yield* Effect.serviceOption(Config.Service)
@@ -667,7 +667,7 @@ const resolveEndpoint = Effect.fn("RaiRooms.endpoint")(function* () {
   return pickEndpoint({ user: user?.baseURL, project: configured?.baseURL })
 })
 
-const authorize = (ctx: Context) =>
+export const authorize = (ctx: Context) =>
   Effect.gen(function* () {
     const { credential } = yield* activeCredential(ctx, providerID)
     const key = keyOf(credential)

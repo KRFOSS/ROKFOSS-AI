@@ -7,6 +7,7 @@ import { useInteractivity } from "../../context/interactivity"
 import { stringWidth } from "../../util/string-width"
 import { t } from "../../i18n"
 import { createGoal, GoalStatus } from "./goal"
+import { boundRoomTitle } from "../../component/rooms-nav"
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -35,6 +36,7 @@ export function PromptFooter(props: {
       .filter((shell) => shell.metadata.sessionID === props.sessionID).length
     return count ? t(count === 1 ? "{{count}} shell" : "{{count}} shells", { count }) : undefined
   })
+  const room = createMemo(() => boundRoomTitle(props.sessionID))
   const status = createMemo(() => {
     if (!props.sessionID) return []
     const session = props.context.data.session.get(props.sessionID)
@@ -46,6 +48,7 @@ export function PromptFooter(props: {
     )
     const cost = props.context.data.session.cost(props.sessionID)
     return [
+      room() ? t("Room {{room}} · recording", { room: room() ?? "" }) : undefined,
       usage ? formatContextUsage(usage.tokens, usage.percent) : undefined,
       cost > 0 ? money.format(cost) : undefined,
     ].filter((item): item is string => Boolean(item))

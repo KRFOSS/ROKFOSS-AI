@@ -26,6 +26,7 @@ import { PoePlugin } from "./provider/poe.js"
 import { PromptCacheKeyPlugin } from "./provider/prompt-cache-key.js"
 import { RaiPlugin } from "./provider/rai.js"
 import { RaiRoomsPlugin } from "./provider/rai-rooms.js"
+import { RaiTurnsPlugin } from "./provider/rai-turns.js"
 import { SapAICorePlugin } from "./provider/sap-ai-core.js"
 import { VLLMPlugin } from "./provider/vllm.js"
 import { XAIPlugin } from "./provider/xai.js"
@@ -60,6 +61,7 @@ export const ProviderPlugins: PluginInternal.InternalPlugin[] = [
   PromptCacheKeyPlugin,
   RaiPlugin,
   RaiRoomsPlugin,
+  RaiTurnsPlugin,
   SapAICorePlugin,
   VLLMPlugin,
   XAIPlugin,

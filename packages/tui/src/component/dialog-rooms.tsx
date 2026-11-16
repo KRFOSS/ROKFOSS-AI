@@ -1,6 +1,7 @@
 import { TextAttributes, type ScrollBoxRenderable } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { RaiRooms } from "@opencode/schema/rai-rooms"
+import { RaiTurns } from "@opencode/schema/rai-turns"
 import { batch, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { useClient } from "../context/client"
 import { useData } from "../context/data"
@@ -11,10 +12,12 @@ import { useRoute, type RoomsRoute } from "../context/route"
 import { useTheme } from "../context/theme"
 import { t } from "../i18n"
 import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
+import { useToast } from "../ui/toast"
 import type { JsonValue } from "@opencode/client"
-import { accessOf, nextRoomToken, rememberRoomsReturn } from "./rooms-nav"
+import { accessOf, nextRoomToken, rememberRoomsReturn, roomsReturn, setBoundRoom } from "./rooms-nav"
 
 const rpcID = "opencode.rai.rooms"
+const turnsID = "opencode.rai.turns"
 
 function splitModel(modelID: string | undefined) {
   if (!modelID) return undefined
@@ -37,6 +40,7 @@ export function DialogRooms() {
   const local = useLocal()
   const route = useRoute()
   const dialog = useDialog()
+  const toast = useToast()
   const theme = useTheme().surface("dialog")
   const dimensions = useTerminalDimensions()
   const directory = location.current?.directory ?? data.location.default().directory
@@ -48,6 +52,7 @@ export function DialogRooms() {
   const [rooms, setRooms] = createSignal<RaiRooms.Room[]>([])
   const [projectIndex, setProjectIndex] = createSignal(0)
   const [index, setIndex] = createSignal(0)
+  const [saving, setSaving] = createSignal(false)
   let disposed = false
   const calls = new AbortController()
 
@@ -76,6 +81,65 @@ export function DialogRooms() {
       { signal: calls.signal },
     )
     return result.output as T
+  }
+
+  async function callTurns<T>(method: string, input: Record<string, unknown>) {
+    const result = await client.api.rpc.call(
+      {
+        rpcID: turnsID,
+        method,
+        input: input as JsonValue,
+        location: { directory },
+      },
+      { signal: calls.signal },
+    )
+    return result.output as T
+  }
+
+  /** The session the next turn would be recorded from: the open one, or the one `/rooms` was opened over. */
+  function boundSession() {
+    const current = route.data
+    if (current.type === "session") return current.sessionID
+    const back = roomsReturn()
+    return back.type === "session" ? back.sessionID : undefined
+  }
+
+  /**
+   * A room behaves like a chat tab: choosing it binds the open session, and the answer the session produces locally is
+   * relayed into the room. Recording never owns the screen, so the session stays open.
+   */
+  async function bind(room: RaiRooms.Room) {
+    const sessionID = boundSession()
+    if (!sessionID || saving()) return false
+    if (room.perm === "read") {
+      setError(t("Read-only rooms cannot be recorded into"))
+      return false
+    }
+    setSaving(true)
+    try {
+      const bound = await callTurns<RaiTurns.Bound>("bind", { sessionID, roomID: room.id, title: room.title })
+      if (!bound.roomID) {
+        setError(bound.error ?? t("Could not bind this room"))
+        return false
+      }
+      setBoundRoom(sessionID, bound.title ?? room.title)
+      dialog.clear()
+      toast.show({
+        variant: "success",
+        message: t("Recording this session into room {{room}}", { room: RaiRooms.displayText(bound.title ?? room.id, 40) }),
+      })
+      return true
+    } catch (cause) {
+      showError(cause)
+      return false
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function choose(room: RaiRooms.Room) {
+    const bound = await bind(room)
+    if (!bound) openRoom(room)
   }
 
   function showError(cause: unknown) {
@@ -186,6 +250,15 @@ export function DialogRooms() {
         group: "Dialog",
         run: () => {
           const room = visibleRooms()[index()]
+          if (room) void choose(room)
+        },
+      },
+      {
+        bind: "v",
+        title: t("Open room view"),
+        group: "Dialog",
+        run: () => {
+          const room = visibleRooms()[index()]
           if (room) openRoom(room)
         },
       },
@@ -205,6 +278,14 @@ export function DialogRooms() {
             {
               title: "Open room",
               key: "enter",
+              onTrigger: () => {
+                const room = visibleRooms()[index()]
+                if (room) void choose(room)
+              },
+            },
+            {
+              title: "Open room view",
+              key: "v",
               onTrigger: () => {
                 const room = visibleRooms()[index()]
                 if (room) openRoom(room)

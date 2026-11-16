@@ -68,8 +68,10 @@ import { useConnected } from "./component/use-connected"
 import { DialogMcp } from "./component/dialog-mcp"
 import { DialogUsage } from "./component/usage"
 import { DialogRai } from "./component/dialog-rai"
+import type { JsonValue } from "@opencode/client"
 import { DialogRooms } from "./component/dialog-rooms"
 import { RoomsView } from "./component/rooms-view"
+import { setBoundRoom } from "./component/rooms-nav"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogConfig } from "./component/dialog-config"
 import { DialogDebug } from "./component/dialog-debug"
@@ -543,6 +545,48 @@ function App() {
       .environment({ sessionID: session.id, variables: terminalEnvironment.variables })
       .catch(toast.error)
   })
+
+  const unbindRoom = async () => {
+    if (route.data.type !== "session") return
+    const sessionID = route.data.sessionID
+    await client.api.rpc
+      .call({
+        rpcID: "opencode.rai.turns",
+        method: "unbind",
+        input: { sessionID } as unknown as JsonValue,
+        location: { directory: location.current?.directory ?? data.location.default().directory },
+      })
+      .then(() => {
+        setBoundRoom(sessionID, undefined)
+        toast.show({ variant: "success", message: "이 세션은 더 이상 대화방에 기록하지 않습니다" })
+      })
+      .catch(toast.error)
+  }
+
+  // A session bound to a room shows that room in the prompt footer. The answer itself is relayed by the core plugin,
+  // so the client only needs the label, fetched once per session.
+  createEffect(() => {
+    if (route.data.type !== "session") return
+    if (client.connection.status() !== "connected") return
+    const sessionID = route.data.sessionID
+    let cancelled = false
+    void client.api.rpc
+      .call({
+        rpcID: "opencode.rai.turns",
+        method: "bound",
+        input: { sessionID } as unknown as JsonValue,
+        location: { directory: location.current?.directory ?? data.location.default().directory },
+      })
+      .then((result) => {
+        if (cancelled) return
+        const bound = result.output as { roomID: string | null; title: string | null } | undefined
+        setBoundRoom(sessionID, bound?.roomID ? (bound.title ?? bound.roomID) : undefined)
+      })
+      .catch(() => {})
+    onCleanup(() => {
+      cancelled = true
+    })
+  })
   const [layout, updateLayout] = useStorage().store<{ verticalTabsWidth?: number }>("layout", {
     initial: { verticalTabsWidth: SESSION_SIDEBAR_WIDTH },
   })
@@ -992,8 +1036,13 @@ function App() {
         name: "rai.rooms",
         title: "ROKFOSS AI rooms",
         category: "Integration",
-        slash: { name: "rooms" },
-        run: () => {
+        slash: { name: "rooms", arguments: true as const },
+        run: (input: string | undefined) => {
+          // `/rooms off` releases the binding; anything else opens the list.
+          if ((input ?? "").trim().toLowerCase() === "off") {
+            void unbindRoom()
+            return
+          }
           dialog.replace(() => <DialogRooms />, undefined, { size: "xlarge" })
         },
       },

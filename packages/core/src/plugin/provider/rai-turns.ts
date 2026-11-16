@@ -1,0 +1,666 @@
+export * as RaiTurnsClient from "./rai-turns.js"
+
+import type { Context } from "@opencode/plugin/effect/plugin"
+import { define } from "@opencode/plugin/effect/plugin"
+import { RaiTurns } from "@opencode/schema/rai-turns"
+import { Duration, Effect, Ref, Stream } from "effect"
+import { HttpClient, HttpClientRequest } from "effect/http"
+import { authorize, authed, failureFrom, readMessages, requestURL, roomSegment, type Auth } from "./rai-rooms.js"
+
+/**
+ * External response turns (spec 3.7). OpenCode calls the model itself — a free OpenCode model cannot be called by the
+ * gateway — and this module only records the turn into a room: `turns` → `events` … → `done`.
+ *
+ * Everything stays in memory except the session binding (a room id, a title, and the last message id that was
+ * reconciled). Message text, thinking text and tool arguments never reach storage or a log.
+ */
+
+const storagePrefix = "rai-turn/"
+const flushMs = 400
+/** 15 seconds is the server's hard limit; this stays under it so a stop is noticed in time. */
+const heartbeatMs = 5_000
+const maxEventChars = 64_000
+const maxContentChars = 8_000_000
+const maxQueue = 4_000
+
+export const turnIDPattern = /^[0-9a-f]{32}$/
+const modelPattern = /^[^\r\n]{1,200}$/
+const providerPattern = /^[a-z0-9._-]{1,64}$/
+
+export type Binding = {
+  readonly roomID: string
+  readonly title: string
+  readonly lastMessageID: string | null
+}
+
+export type StartBody = { readonly ok: true; readonly body: Readonly<Record<string, unknown>> } | { readonly ok: false; readonly error: string }
+
+/** `POST /rooms/{id}/turns`. Only the three fields the contract names are copied. */
+export function turnStartBody(input: { readonly message: string; readonly model: string; readonly provider?: string }): StartBody {
+  if (typeof input.message !== "string" || input.message.trim() === "") return { ok: false, error: "메시지를 입력하세요" }
+  const model = typeof input.model === "string" ? input.model.trim() : ""
+  if (!modelPattern.test(model)) return { ok: false, error: "모델 이름이 올바르지 않습니다" }
+  const body: Record<string, unknown> = { message: input.message, model }
+  const provider = input.provider?.trim().toLowerCase()
+  if (provider !== undefined && provider !== "") {
+    if (!providerPattern.test(provider)) return { ok: false, error: "공급자 이름이 올바르지 않습니다" }
+    body.provider = provider
+  }
+  return { ok: true, body }
+}
+
+export type ToolMark = { readonly name: string; readonly state: "start" | "end" }
+
+/** A tool mark carries the tool id only: command arguments and file contents must never leave the process. */
+export function toolMark(name: string, state: "start" | "end"): ToolMark | undefined {
+  const trimmed = name.trim()
+  if (trimmed === "" || trimmed.length > 64 || /[^\w.:-]/.test(trimmed)) return undefined
+  return { name: trimmed, state }
+}
+
+export type EventBody = {
+  readonly delta?: string
+  readonly thinking?: string
+  readonly tool?: ToolMark
+}
+
+/** An empty object is a liveness signal on its own, so an empty body is valid. */
+export function turnEventBody(input: EventBody) {
+  const body: Record<string, unknown> = {}
+  if (input.delta !== undefined && input.delta !== "") body.delta = input.delta.slice(0, maxEventChars)
+  if (input.thinking !== undefined && input.thinking !== "") body.thinking = input.thinking.slice(0, maxEventChars)
+  if (input.tool !== undefined) body.tool = input.tool
+  return body
+}
+
+export function turnDoneBody(input: {
+  readonly content: string
+  readonly model?: string | undefined
+  readonly stopped?: boolean | undefined
+  readonly error?: string | undefined
+}) {
+  const body: Record<string, unknown> = { content: input.content.slice(0, maxContentChars) }
+  const model = input.model?.trim()
+  if (model !== undefined && modelPattern.test(model)) body.model = model
+  if (input.stopped === true) body.stopped = true
+  const error = input.error?.trim()
+  if (error !== undefined && error !== "") body.error = error.slice(0, 2_000)
+  return body
+}
+
+function record(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+}
+
+function integer(value: unknown) {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return value
+  if (typeof value === "string" && /^\d+$/.test(value)) {
+    const parsed = Number(value)
+    if (Number.isSafeInteger(parsed) && parsed > 0) return parsed
+  }
+  return undefined
+}
+
+export type TurnStarted = {
+  readonly turnID: string
+  readonly userMessageID: number | undefined
+  readonly heartbeatSeconds: number | undefined
+}
+
+/** A turn id that is not the documented 32 hex characters is refused instead of being pasted into a path. */
+export function parseTurnStart(body: unknown): TurnStarted | undefined {
+  const obj = record(body)
+  if (!obj) return undefined
+  const turnID = typeof obj.turn_id === "string" ? obj.turn_id.trim() : ""
+  if (!turnIDPattern.test(turnID)) return undefined
+  return {
+    turnID,
+    userMessageID: integer(obj.user_message_id),
+    heartbeatSeconds: integer(obj.heartbeat_seconds),
+  }
+}
+
+export type Steer = { readonly messageID: number | undefined; readonly text: string }
+
+/** The events reply is read on every request: it is the only way a stop or an interjection arrives. */
+export function parseTurnEvents(body: unknown): { readonly stop: boolean; readonly steers: ReadonlyArray<Steer> } {
+  const obj = record(body)
+  if (!obj) return { stop: false, steers: [] }
+  const raw = Array.isArray(obj.steers) ? obj.steers : []
+  const steers: Steer[] = []
+  for (const item of raw) {
+    const entry = record(item)
+    if (!entry) continue
+    const text = typeof entry.text === "string" ? entry.text : ""
+    if (text.trim() === "") continue
+    steers.push({ messageID: integer(entry.message_id), text })
+  }
+  return { stop: obj.stop === true, steers }
+}
+
+export function parseTurnDone(body: unknown) {
+  const obj = record(body)
+  return { assistantMessageID: integer(obj?.assistant_message_id) }
+}
+
+export type TurnURLs = { readonly start: string; readonly events: string; readonly done: string }
+
+function turnURL(endpoint: string, roomID: string, suffix: string) {
+  const segment = roomSegment(roomID)
+  return segment === undefined ? undefined : requestURL(endpoint, `/rooms/${segment}${suffix}`)
+}
+
+/** Every path is built from a validated room id and a validated turn id, so the key cannot be sent elsewhere. */
+export function turnURLs(endpoint: string, roomID: string, turnID: string): TurnURLs | undefined {
+  if (!turnIDPattern.test(turnID)) return undefined
+  const start = turnURL(endpoint, roomID, "/turns")
+  const events = turnURL(endpoint, roomID, `/turns/${turnID}/events`)
+  const done = turnURL(endpoint, roomID, `/turns/${turnID}/done`)
+  if (!start || !events || !done) return undefined
+  return { start, events, done }
+}
+
+const post = (http: HttpClient.HttpClient, url: string, auth: Auth, body: Readonly<Record<string, unknown>>) =>
+  Effect.gen(function* () {
+    const request = yield* HttpClientRequest.post(url).pipe(
+      (self) => authed(self, auth.key, "json"),
+      HttpClientRequest.bodyJson(body),
+    )
+    const response = yield* http.execute(request).pipe(
+      Effect.timeout(Duration.seconds(20)),
+      Effect.mapError(() => new Error("ROKFOSS AI 대화방에 연결하지 못했습니다")),
+    )
+    const text = yield* response.text.pipe(Effect.orElseSucceed(() => ""))
+    if (response.status < 200 || response.status >= 300) {
+      const failure = failureFrom(response.status, text, "rooms_write")
+      return yield* Effect.fail(failure)
+    }
+    if (text.trim() === "") return undefined
+    try {
+      return JSON.parse(text) as unknown
+    } catch {
+      return undefined
+    }
+  })
+
+export const startTurn = (http: HttpClient.HttpClient, auth: Auth, roomID: string, body: Readonly<Record<string, unknown>>) =>
+  Effect.gen(function* () {
+    const segment = roomSegment(roomID)
+    const url = segment === undefined ? undefined : requestURL(auth.endpoint, `/rooms/${segment}/turns`)
+    if (!url) return yield* Effect.fail(new Error("대화방 번호가 올바르지 않습니다"))
+    return parseTurnStart(yield* post(http, url, auth, body))
+  })
+
+export const sendEvents = (http: HttpClient.HttpClient, auth: Auth, roomID: string, turnID: string, body: Readonly<Record<string, unknown>>) =>
+  Effect.gen(function* () {
+    const urls = turnURLs(auth.endpoint, roomID, turnID)
+    if (!urls) return undefined
+    return parseTurnEvents(yield* post(http, urls.events, auth, body))
+  })
+
+export const sendDone = (http: HttpClient.HttpClient, auth: Auth, roomID: string, turnID: string, body: Readonly<Record<string, unknown>>) =>
+  Effect.gen(function* () {
+    const urls = turnURLs(auth.endpoint, roomID, turnID)
+    if (!urls) return undefined
+    return parseTurnDone(yield* post(http, urls.done, auth, body))
+  })
+
+type Queued = { readonly kind: "delta" | "thinking"; readonly text: string } | { readonly kind: "tool"; readonly tool: ToolMark }
+
+export type Turn = {
+  readonly sessionID: string
+  readonly roomID: string
+  readonly turnID: string
+  readonly model: string
+  readonly provider: string
+  readonly texts: Map<string, string>
+  readonly queue: Queued[]
+  content: string
+  stopped: boolean
+  failure: string | undefined
+  closed: boolean
+  lastSentAt: number
+  readonly sent: { delta: number }
+}
+
+export function activeTurn(input: {
+  readonly sessionID: string
+  readonly roomID: string
+  readonly turnID: string
+  readonly model: string
+  readonly provider: string
+}): Turn {
+  return {
+    ...input,
+    texts: new Map(),
+    queue: [],
+    content: "",
+    stopped: false,
+    failure: undefined,
+    closed: false,
+    lastSentAt: Date.now(),
+    sent: { delta: 0 },
+  }
+}
+
+/**
+ * Appends a stream fragment. `text.ended` is the replayable full value for one ordinal, so it replaces whatever the
+ * live deltas produced for that ordinal instead of being appended to them.
+ */
+export function appendText(turn: Turn, key: string, delta: string) {
+  const previous = turn.texts.get(key) ?? ""
+  turn.texts.set(key, (previous + delta).slice(0, maxContentChars))
+  push(turn, { kind: "delta", text: delta })
+}
+
+export function settleText(turn: Turn, key: string, text: string) {
+  if (turn.texts.has(key) || text !== "") turn.texts.set(key, text.slice(0, maxContentChars))
+}
+
+export function appendThinking(turn: Turn, text: string) {
+  push(turn, { kind: "thinking", text })
+}
+
+export function markTool(turn: Turn, tool: ToolMark) {
+  push(turn, { kind: "tool", tool })
+}
+
+function push(turn: Turn, item: Queued) {
+  if (turn.queue.length >= maxQueue) return
+  turn.queue.push(item)
+}
+
+/** One request carries at most one delta, one thinking fragment and one tool mark, so a run of deltas is merged. */
+export function drain(turn: Turn): EventBody | undefined {
+  const first = turn.queue.shift()
+  if (!first) return undefined
+  if (first.kind === "tool") return { tool: first.tool }
+  let text = first.text
+  while (text.length < maxEventChars) {
+    const next = turn.queue[0]
+    if (!next || next.kind !== first.kind) break
+    text += next.text
+    turn.queue.shift()
+  }
+  return first.kind === "delta" ? { delta: text.slice(0, maxEventChars) } : { thinking: text.slice(0, maxEventChars) }
+}
+
+export function finalContent(turn: Turn) {
+  if (turn.texts.size === 0) return turn.content
+  return [...turn.texts.values()].join("")
+}
+
+const notice = (ctx: Context, sessionID: string, text: string) =>
+  ctx.session.synthetic({ sessionID: sessionID as never, text, resume: false }).pipe(Effect.ignore)
+
+const STATUS_MESSAGES: Record<string, string> = {
+  room_busy: "이 방은 지금 다른 답이 도는 중입니다. 끝난 뒤 다시 보내 주세요",
+  room_read_only: "읽기 전용 방에는 기록할 수 없습니다. 다른 방을 골라 주세요",
+  turn_closed: "회차가 이미 닫혀 기록을 마칩니다",
+  turn_not_found: "회차를 찾지 못해 기록을 마칩니다",
+}
+
+function turnFailure(error: unknown): { readonly code: string | undefined; readonly status: number | undefined; readonly retry: boolean } {
+  const shaped = error as { code?: string; status?: number; retry?: boolean } | undefined
+  return { code: shaped?.code, status: shaped?.status, retry: shaped?.retry === true }
+}
+
+export interface TurnHandlers {
+  readonly bind: (input: { readonly sessionID: string; readonly roomID: string; readonly title: string }) => Effect.Effect<RaiTurns.Bound>
+  readonly unbind: (input: { readonly sessionID: string }) => Effect.Effect<RaiTurns.Bound>
+  readonly bound: (input: { readonly sessionID: string }) => Effect.Effect<RaiTurns.Bound>
+}
+
+const unbound: RaiTurns.Bound = { roomID: null, title: null, error: null }
+
+/**
+ * Starts the relay. A bound session records each turn it runs with a model the gateway cannot call (anything but the
+ * RAI provider). Nothing is sent for an unbound session, and nothing about a turn is written to storage.
+ */
+export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
+  Effect.gen(function* () {
+    const bindings = yield* Ref.make(new Map<string, Binding>())
+    const pending = yield* Ref.make(new Map<string, { readonly text: string; readonly at: number }>())
+    const turns = yield* Ref.make(new Map<string, Turn>())
+
+    const bindingOf = (sessionID: string) =>
+      Effect.gen(function* () {
+        const cached = (yield* Ref.get(bindings)).get(sessionID)
+        if (cached) return cached
+        const stored = yield* ctx.storage.get(storagePrefix + sessionID).pipe(Effect.orElseSucceed(() => undefined))
+        const obj = record(stored)
+        const roomID = typeof obj?.roomID === "string" ? obj.roomID : undefined
+        if (!roomID || !roomSegment(roomID)) return undefined
+        const binding: Binding = {
+          roomID,
+          title: typeof obj?.title === "string" ? obj.title.slice(0, 200) : roomID,
+          lastMessageID: typeof obj?.lastMessageID === "string" ? obj.lastMessageID : null,
+        }
+        yield* Ref.update(bindings, (map) => new Map(map).set(sessionID, binding))
+        return binding
+      })
+
+    const unbind = (sessionID: string) =>
+      Effect.gen(function* () {
+        yield* Ref.update(bindings, (map) => {
+          const next = new Map(map)
+          next.delete(sessionID)
+          return next
+        })
+        yield* Ref.update(pending, (map) => {
+          const next = new Map(map)
+          next.delete(sessionID)
+          return next
+        })
+        yield* ctx.storage.remove(storagePrefix + sessionID).pipe(Effect.ignore)
+      })
+
+    const persist = (sessionID: string, binding: Binding) =>
+      Effect.gen(function* () {
+        yield* Ref.update(bindings, (map) => new Map(map).set(sessionID, binding))
+        yield* ctx.storage
+          .set(storagePrefix + sessionID, { roomID: binding.roomID, title: binding.title, lastMessageID: binding.lastMessageID } as never)
+          .pipe(Effect.ignore)
+      })
+
+    const finish = (sessionID: string, options: { readonly stopped?: boolean; readonly error?: string }) =>
+      Effect.gen(function* () {
+        const turn = (yield* Ref.get(turns)).get(sessionID)
+        if (!turn || turn.closed) return
+        turn.closed = true
+        yield* Ref.update(turns, (map) => {
+          const next = new Map(map)
+          next.delete(sessionID)
+          return next
+        })
+        yield* Ref.update(pending, (map) => {
+          const next = new Map(map)
+          next.delete(sessionID)
+          return next
+        })
+        const auth = yield* authorize(ctx).pipe(Effect.orElseSucceed(() => undefined))
+        if (!auth) return
+        yield* sendDone(
+          http,
+          auth,
+          turn.roomID,
+          turn.turnID,
+          turnDoneBody({
+            content: finalContent(turn),
+            model: turn.model,
+            stopped: options.stopped === true,
+            error: options.error,
+          }),
+        ).pipe(
+          Effect.catch((error) => {
+            const failure = turnFailure(error)
+            if (failure.code === "turn_closed" || failure.status === 409) return Effect.void
+            if (failure.status === 401 || failure.code === "scope_missing") {
+              return notice(ctx, sessionID, "서버 기록이 중단되었습니다. RAI 키 권한과 상태를 확인해 주세요")
+            }
+            return Effect.void
+          }),
+          Effect.ignore,
+        )
+        if (turn.stopped) yield* ctx.session.interrupt({ sessionID: sessionID as never }).pipe(Effect.ignore)
+      })
+
+    const pump = (turn: Turn) =>
+      Effect.gen(function* () {
+        const auth = yield* authorize(ctx).pipe(Effect.orElseSucceed(() => undefined))
+        if (!auth) {
+          turn.closed = true
+          return
+        }
+        while (!turn.closed) {
+          yield* Effect.sleep(Duration.millis(flushMs))
+          if (turn.closed) break
+          let body = drain(turn)
+          let budget = 8
+          while (!turn.closed && body !== undefined && budget > 0) {
+            const reply = yield* sendEvents(http, auth, turn.roomID, turn.turnID, body).pipe(
+              Effect.map((value) => ({ value, failure: undefined as unknown })),
+              Effect.catch((error) => Effect.succeed({ value: undefined, failure: error })),
+            )
+            if (reply.failure !== undefined) {
+              const failure = turnFailure(reply.failure)
+              // Only a dropped connection or a gateway failure is retried; a closed turn or a bad key is final.
+              if (!failure.retry) {
+                turn.failure = STATUS_MESSAGES[failure.code ?? ""] ?? undefined
+                const closed = failure.code === "turn_closed" || failure.status === 409
+                if (closed) turn.failure = undefined
+                turn.closed = true
+                if (failure.status === 401 || failure.code === "scope_missing") turn.failure = undefined
+                return
+              }
+              yield* Effect.sleep(Duration.seconds(1))
+              break
+            }
+            turn.lastSentAt = Date.now()
+            if (reply.value?.stop === true) turn.stopped = true
+            for (const steer of reply.value?.steers ?? []) {
+              yield* ctx.session
+                .prompt({ sessionID: turn.sessionID as never, text: `웹에서 온 지시: ${steer.text}`, delivery: "steer" })
+                .pipe(Effect.ignore)
+            }
+            if (turn.stopped) {
+              // The web asked to stop: interrupt here, so the session ends and `done` can report `stopped`.
+              yield* ctx.session.interrupt({ sessionID: turn.sessionID as never }).pipe(Effect.ignore)
+              turn.closed = true
+              return
+            }
+            budget -= 1
+            body = drain(turn)
+          }
+          if (turn.closed) break
+          if (body === undefined && Date.now() - turn.lastSentAt >= heartbeatMs) {
+            const reply = yield* sendEvents(http, auth, turn.roomID, turn.turnID, {}).pipe(
+              Effect.map((value) => ({ value, failure: undefined as unknown })),
+              Effect.catch((error) => Effect.succeed({ value: undefined, failure: error })),
+            )
+            if (reply.failure !== undefined) {
+              const failure = turnFailure(reply.failure)
+              if (!failure.retry) {
+                turn.closed = true
+                return
+              }
+              yield* Effect.sleep(Duration.seconds(1))
+              continue
+            }
+            turn.lastSentAt = Date.now()
+            if (reply.value?.stop === true) {
+              turn.stopped = true
+              yield* ctx.session.interrupt({ sessionID: turn.sessionID as never }).pipe(Effect.ignore)
+              turn.closed = true
+              return
+            }
+            for (const steer of reply.value?.steers ?? []) {
+              yield* ctx.session
+                .prompt({ sessionID: turn.sessionID as never, text: `웹에서 온 지시: ${steer.text}`, delivery: "steer" })
+                .pipe(Effect.ignore)
+            }
+          }
+        }
+      }).pipe(Effect.ignore)
+
+    const begin = (sessionID: string) =>
+      Effect.gen(function* () {
+        if ((yield* Ref.get(turns)).has(sessionID)) return
+        const binding = yield* bindingOf(sessionID)
+        if (!binding) return
+        const request = (yield* Ref.get(pending)).get(sessionID)
+        if (!request) return
+        const info = yield* ctx.session.get({ sessionID: sessionID as never }).pipe(Effect.orElseSucceed(() => undefined))
+        const provider = (info?.model?.providerID as string | undefined) ?? "opencode"
+        const model = (info?.model?.id as string | undefined) ?? ""
+        // A RAI model is served by the gateway itself and recorded there; only a locally answered turn is relayed.
+        if (provider === "rai") return
+        const body = turnStartBody({ message: request.text, model, provider })
+        if (!body.ok) return
+        const auth = yield* authorize(ctx).pipe(Effect.orElseSucceed(() => undefined))
+        if (!auth) {
+          yield* notice(ctx, sessionID, "RAI를 먼저 연결해 주세요. 이 회차는 서버에 기록되지 않았습니다")
+          return
+        }
+        const started = yield* startTurn(http, auth, binding.roomID, body.body).pipe(
+          Effect.map((value) => ({ value, failure: undefined as unknown })),
+          Effect.catch((error) => Effect.succeed({ value: undefined, failure: error })),
+        )
+        if (started.failure !== undefined) {
+          const failure = turnFailure(started.failure)
+          const message = STATUS_MESSAGES[failure.code ?? ""]
+          if (failure.code === "room_read_only" || failure.status === 404) {
+            yield* unbind(sessionID)
+            yield* notice(ctx, sessionID, message ?? "이 방에는 더 이상 기록할 수 없습니다")
+            return
+          }
+          if (failure.code === "scope_missing" || failure.status === 403) {
+            yield* notice(ctx, sessionID, "AI 앱 설정에서 이 키의 「대화방 쓰기」 권한을 켜 주세요")
+            return
+          }
+          if (message) {
+            yield* notice(ctx, sessionID, message)
+            return
+          }
+          if (failure.status === 401) {
+            yield* notice(ctx, sessionID, "RAI 키가 만료되었거나 지워져 기록하지 못했습니다")
+            return
+          }
+          // A recording failure must never stop the local answer.
+          yield* notice(ctx, sessionID, "이 회차는 서버에 기록되지 않았습니다")
+          return
+        }
+        if (!started.value) {
+          yield* notice(ctx, sessionID, "이 회차는 서버에 기록되지 않았습니다")
+          return
+        }
+        const turn = activeTurn({
+          sessionID,
+          roomID: binding.roomID,
+          turnID: started.value.turnID,
+          model,
+          provider,
+        })
+        yield* Ref.update(turns, (map) => new Map(map).set(sessionID, turn))
+        if (started.value.userMessageID !== undefined) {
+          yield* persist(sessionID, { ...binding, lastMessageID: String(started.value.userMessageID) })
+        }
+        yield* Effect.forkScoped(pump(turn))
+      }).pipe(Effect.ignore)
+
+    yield* ctx.session.hook("prompt", (event) =>
+      Effect.gen(function* () {
+        // An interjection belongs to the turn already running; it must not start another one.
+        if (event.delivery === "steer") return
+        const text = event.prompt.text
+        if (typeof text !== "string" || text.trim() === "") return
+        yield* Ref.update(pending, (map) => new Map(map).set(event.sessionID as unknown as string, { text, at: Date.now() }))
+      }).pipe(Effect.ignore),
+    )
+
+    const relay = (event: {
+      readonly type: string
+      readonly data: { readonly sessionID?: string; readonly assistantMessageID?: string; readonly ordinal?: number; readonly delta?: string; readonly text?: string; readonly tool?: unknown }
+    }) =>
+      Effect.gen(function* () {
+        const sessionID = event.data.sessionID
+        if (!sessionID) return
+        if (event.type === "session.execution.started") return yield* begin(sessionID)
+        const turn = (yield* Ref.get(turns)).get(sessionID)
+        if (!turn) {
+          if (event.type === "session.execution.succeeded" || event.type === "session.execution.failed" || event.type === "session.execution.interrupted")
+            yield* Ref.update(pending, (map) => {
+              const next = new Map(map)
+              next.delete(sessionID)
+              return next
+            })
+          return
+        }
+        const key = `${event.data.assistantMessageID ?? ""}:${event.data.ordinal ?? 0}`
+        if (event.type === "session.text.delta" && typeof event.data.delta === "string") appendText(turn, key, event.data.delta)
+        if (event.type === "session.text.ended" && typeof event.data.text === "string") settleText(turn, key, event.data.text)
+        if (event.type === "session.reasoning.delta" && typeof event.data.delta === "string") appendThinking(turn, event.data.delta)
+        if (event.type === "session.tool.called") {
+          const mark = toolMark(String((event.data.tool as { name?: unknown } | undefined)?.name ?? ""), "start")
+          if (mark) markTool(turn, mark)
+        }
+        if (event.type === "session.tool.success" || event.type === "session.tool.failed") {
+          const mark = toolMark(String((event.data.tool as { name?: unknown } | undefined)?.name ?? ""), "end")
+          if (mark) markTool(turn, mark)
+        }
+        if (event.type === "session.execution.succeeded") yield* finish(sessionID, {})
+        if (event.type === "session.execution.interrupted") yield* finish(sessionID, { stopped: true })
+        if (event.type === "session.execution.failed") yield* finish(sessionID, { error: "생성이 실패했습니다" })
+      }).pipe(Effect.ignore)
+
+    yield* ctx.event
+      .subscribe({
+        types: [
+          "session.execution.started",
+          "session.execution.succeeded",
+          "session.execution.failed",
+          "session.execution.interrupted",
+          "session.text.delta",
+          "session.text.ended",
+          "session.reasoning.delta",
+          "session.tool.called",
+          "session.tool.success",
+          "session.tool.failed",
+        ],
+      })
+      .pipe(
+        Stream.runForEach((event) => relay(event as never)),
+        Effect.forkScoped({ startImmediately: true }),
+      )
+
+    const handlers: TurnHandlers = {
+      bind: (input) =>
+        Effect.gen(function* () {
+          if (!roomSegment(input.roomID)) return unbound
+          const auth = yield* authorize(ctx)
+          const page = yield* readMessages(http, auth, { roomID: input.roomID, limit: 1 }).pipe(
+            Effect.catch((error) => Effect.fail(error)),
+          )
+          if (page.access === "read") return { roomID: null, title: null, error: "읽기 전용 방에는 기록할 수 없습니다" }
+          if (page.room?.running === true) return { roomID: null, title: null, error: "이 방은 지금 다른 답이 도는 중입니다" }
+          const newest = page.messages.at(-1)?.id ?? null
+          const binding: Binding = { roomID: input.roomID, title: input.title.slice(0, 200), lastMessageID: newest }
+          yield* persist(input.sessionID, binding)
+          return { roomID: binding.roomID, title: binding.title, error: null } satisfies RaiTurns.Bound
+        }).pipe(
+          Effect.catch((error) =>
+            Effect.succeed({
+              roomID: null,
+              title: null,
+              error: error instanceof Error ? error.message : "대화방에 묶지 못했습니다",
+            } satisfies RaiTurns.Bound),
+          ),
+        ),
+      unbind: (input) =>
+        Effect.gen(function* () {
+          yield* unbind(input.sessionID)
+          return unbound
+        }),
+      bound: (input) =>
+        Effect.gen(function* () {
+          const binding = yield* bindingOf(input.sessionID)
+          return binding ? ({ roomID: binding.roomID, title: binding.title, error: null } satisfies RaiTurns.Bound) : unbound
+        }).pipe(Effect.orElseSucceed(() => unbound)),
+    }
+
+    return handlers
+  })
+
+export const RaiTurnsPlugin = define({
+  id: "opencode.provider.rai.turns",
+  effect: Effect.fn("RaiTurns.Plugin")(function* (ctx) {
+    const http = yield* HttpClient.HttpClient
+    const handlers = yield* startTurns(ctx, http).pipe(Effect.orDie)
+    // The relay above and these three methods share one binding map: a method call sees the same state a turn uses.
+    yield* ctx.rpc.register(RaiTurns.Definition, {
+      bind: (input) => handlers.bind(input),
+      unbind: (input) => handlers.unbind(input),
+      bound: (input) => handlers.bound(input),
+    }).pipe(Effect.orDie)
+  }),
+})
