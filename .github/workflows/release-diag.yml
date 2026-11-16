@@ -1,0 +1,91 @@
+name: release-diag
+
+# 임시 진단(dev 가 아니라 diag/release-check 브랜치에만 둔다). 끝나면 브랜치째 지운다.
+# 실제 publish 와 같은 산출물로 두 가지를 시험한다.
+#  A) 정식(비초안) 릴리스 + 산출물 업로드  → 실제 publish 와 같은 조합
+#  B) 초안으로 만들고 산출물 올린 뒤 정식으로 전환 → 우회책 후보
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 아티팩트 가져오기 (실패한 #15 실행)
+        uses: actions/download-artifact@v4
+        with:
+          path: packages/cli/dist
+          pattern: cli-*
+          merge-multiple: true
+          run-id: 43841711140
+          github-token: ${{ github.token }}
+
+      - name: Archive (publish 단계와 같은 스크립트)
+        env:
+          WORKSPACE: ${{ github.workspace }}
+        run: |
+          set -uo pipefail
+          mkdir -p dist/archives
+          cd packages/cli/dist
+          for dir in cli-*; do
+            [ -d "$dir/bin" ] || continue
+            target="${dir#cli-}"
+            exe="opencode"
+            case "$target" in windows-*) exe="opencode.exe" ;; esac
+            if [ "${target#linux-}" != "$target" ]; then
+              chmod +x "$dir/bin/$exe"
+              tar --mtime=@0 --owner=0 --group=0 --numeric-owner -czf "$WORKSPACE/dist/archives/opencode-$target.tar.gz" -C "$dir/bin" "$exe"
+            else
+              ( cd "$dir/bin" && zip -X -q "$WORKSPACE/dist/archives/opencode-$target.zip" "$exe" )
+            fi
+          done
+          cp "$WORKSPACE/install.sh" "$WORKSPACE/dist/archives/install.sh"
+          cd "$WORKSPACE/dist/archives"
+          sha256sum opencode-* > SHA256SUMS
+          ls -l
+          du -sh .
+
+      - name: A) 정식 릴리스 + 산출물
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          tag="v0.0.0-diagA.${GITHUB_RUN_NUMBER}"
+          out=$(gh release create "$tag" --target "$GITHUB_SHA" \
+                  --title "diag A" --generate-notes dist/archives/* 2>&1); code=$?
+          if [ "$code" -eq 0 ]; then
+            echo "::notice::A) 정식+산출물 성공"
+          else
+            msg=$(printf '%s' "$out" | tr '\n' ' ')
+            echo "::error::A) 정식+산출물 실패(exit $code): ${msg:0:700}"
+          fi
+          gh release delete "$tag" --yes >/dev/null 2>&1 || true
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}" >/dev/null 2>&1 || true
+
+      - name: B) 초안 + 산출물 후 정식 전환
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          tag="v0.0.0-diagB.${GITHUB_RUN_NUMBER}"
+          if ! out=$(gh release create "$tag" --target "$GITHUB_SHA" --draft \
+                        --title "diag B" --generate-notes dist/archives/* 2>&1); then
+            msg=$(printf '%s' "$out" | tr '\n' ' ')
+            echo "::error::B) 초안+산출물 실패: ${msg:0:700}"
+          elif ! out2=$(gh release edit "$tag" --draft=false 2>&1); then
+            msg2=$(printf '%s' "$out2" | tr '\n' ' ')
+            echo "::error::B) 초안 생성은 되고 정식 전환이 실패: ${msg2:0:700}"
+          else
+            echo "::notice::B) 초안+산출물 성공, 정식 전환도 성공"
+          fi
+          gh release delete "$tag" --yes >/dev/null 2>&1 || true
+          gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${tag}" >/dev/null 2>&1 || true
