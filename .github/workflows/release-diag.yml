@@ -1,0 +1,64 @@
+name: release-diag
+
+# 임시 진단 워크플로. release-fork 의 publish 단계에서 gh release create 가 실패하는데
+# 잡 로그는 로그인해야 보이므로, 실패 사유를 공개 주석(::error::)으로 드러내기 위해 잠깐 둔다.
+# 원인을 찾으면 이 파일은 지운다.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Diagnose release creation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          tag="v0.0.0-diag.${GITHUB_RUN_NUMBER}"
+
+          echo "== gh version =="
+          gh --version | head -1
+          echo "== auth status =="
+          gh auth status 2>&1 | sed 's/gh[psou]_[A-Za-z0-9]*/***/g' || true
+          echo "== repo permissions =="
+          gh api "repos/${GITHUB_REPOSITORY}" --jq '.permissions' 2>&1 || true
+          echo "== actions permissions =="
+          gh api "repos/${GITHUB_REPOSITORY}/actions/permissions" 2>&1 || true
+          echo "== workflow default permissions =="
+          gh api "repos/${GITHUB_REPOSITORY}/actions/permissions/workflow" 2>&1 || true
+          echo "== rulesets =="
+          gh api "repos/${GITHUB_REPOSITORY}/rulesets" --jq '.[] | "\(.name) \(.target) \(.enforcement)"' 2>&1 || true
+
+          echo "== create draft release (with --generate-notes) =="
+          out=$(gh release create "$tag" --target "$GITHUB_SHA" --draft \
+                  --title "diag ${tag}" --generate-notes 2>&1); code=$?
+          printf '%s\n' "$out"
+          if [ "$code" -eq 0 ]; then
+            gh release delete "$tag" --yes >/dev/null 2>&1 || true
+            echo "::notice::generate-notes 방식은 성공(초안은 지움)"
+          else
+            msg=$(printf '%s' "$out" | tr '\n' ' ')
+            echo "::error::generate-notes 실패(exit $code): ${msg:0:600}"
+          fi
+
+          echo "== create draft release (plain notes) =="
+          out2=$(gh release create "${tag}-plain" --target "$GITHUB_SHA" --draft \
+                   --title "diag" --notes "diag" 2>&1); code2=$?
+          printf '%s\n' "$out2"
+          if [ "$code2" -eq 0 ]; then
+            gh release delete "${tag}-plain" --yes >/dev/null 2>&1 || true
+            echo "::notice::일반 노트 방식은 성공(초안은 지움)"
+          else
+            msg2=$(printf '%s' "$out2" | tr '\n' ' ')
+            echo "::error::일반 노트 실패(exit $code2): ${msg2:0:600}"
+          fi
