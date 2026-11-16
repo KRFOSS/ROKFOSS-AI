@@ -585,8 +585,10 @@ export function RoomsView() {
     }
   }
 
-  async function follow(id: string) {
+  /** Attaches to the room's running turn. Resolves true once a turn was found, whether or not it has ended since. */
+  async function follow(id: string): Promise<boolean> {
     // A turn's stream replays from its start, so anything already drawn for it is dropped and drawn again.
+    let attached = false
     following = true
     reconnecting = false
     setActive(true)
@@ -603,11 +605,13 @@ export function RoomsView() {
       )
       if (disposed || !watched || watched.error) {
         if (watched?.error) setError(watched.error)
-        return
+        return attached
       }
+      attached = watched.active
       if (!streamed) finishLive(watched.text)
       if (watched.thought) setPhase(t("thinking…"))
       if (watched.done || watched.error) {
+        setPhase("")
         settleApprovals()
         void reloadSaved(id)
       } else if (watched.reconnect) {
@@ -626,6 +630,7 @@ export function RoomsView() {
         publish()
       }
     }
+    return attached
   }
 
   async function send() {
@@ -794,6 +799,7 @@ export function RoomsView() {
       const target = sessionID
       textarea?.setText("")
       setDraft("")
+      const baseline = lastSavedID()
       pushLine({ id: `user-${Date.now()}`, role: "user", text: RaiRooms.displayText(message) })
       setLocalSession(target)
       // The model the user picked is committed first, so a reused session answers with it too.
@@ -804,7 +810,7 @@ export function RoomsView() {
         prepare: () => client.api.session.switchModel({ sessionID: target, model: selection }),
       })
       setPhase(t("Answering on this computer…"))
-      chaseLocalTurn(id)
+      chaseLocalTurn(id, baseline)
     } catch (cause) {
       if (!disposed) showError(cause)
     } finally {
@@ -817,19 +823,55 @@ export function RoomsView() {
    * The relay opens the room's turn once the session starts running, a moment after the prompt is admitted. Until the
    * room reports it, the saved page is checked every second; once it does, the regular poll attaches the stream.
    */
-  function chaseLocalTurn(id: string) {
+  function chaseLocalTurn(id: string, baseline: number) {
     if (chaseTimer) clearInterval(chaseTimer)
     let tries = 0
+    let trying = false
+    const stop = () => {
+      if (chaseTimer) clearInterval(chaseTimer)
+      chaseTimer = undefined
+    }
     chaseTimer = setInterval(() => {
+      if (trying) return
       tries++
-      if (disposed || following || tries > 30 || roomID() !== id) {
-        if (chaseTimer) clearInterval(chaseTimer)
-        chaseTimer = undefined
-        if (!disposed && !following) setPhase("")
+      if (disposed || roomID() !== id) return stop()
+      if (following) return
+      if (tries > 60) {
+        stop()
+        setPhase("")
+        void reloadSaved(id)
         return
       }
-      void poll()
+      // The room stream is tried directly: whether a turn runs is not something every server reports on the page.
+      trying = true
+      void (async () => {
+        try {
+          if (await follow(id)) return stop()
+          if (disposed || !(await answeredSince(id, baseline))) return
+          // A short answer can end before the stream is reached; the saved answer is shown instead.
+          stop()
+          setPhase("")
+          await reloadSaved(id)
+        } finally {
+          trying = false
+        }
+      })()
     }, 1_000)
+  }
+
+  /** The newest saved message id on screen; a local turn's answer is saved after it. */
+  function lastSavedID() {
+    for (const line of [...lines()].reverse()) if (/^\d+$/.test(line.id)) return Number(line.id)
+    return 0
+  }
+
+  async function answeredSince(id: string, baseline: number) {
+    try {
+      const page = await call<RaiRooms.Page>("messages", { roomID: id, limit: 5, before: null })
+      return page.messages.some((message) => message.role === "assistant" && Number(message.id) > baseline)
+    } catch {
+      return false
+    }
   }
 
   /** The pick names a gateway model, so the room's saved model must not replace it. */

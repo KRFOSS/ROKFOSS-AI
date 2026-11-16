@@ -449,6 +449,13 @@ describe("RAI rooms protocol", () => {
     expect(JSON.stringify(stranger)).not.toContain(secret)
   })
 
+  test("reads whether a turn runs from the page, beside the room object", () => {
+    const running = parsePage({ room: { id: 5, title: "방" }, messages: [], running: true })
+    const idle = parsePage({ room: { id: 5, title: "방" }, messages: [] })
+    expect(running?.room?.running).toBe(true)
+    expect(idle?.room?.running).toBe(false)
+  })
+
   test("collapses a run of thinking chunks and drains the mailbox in one take", async () => {
     const audience = "c".repeat(22)
     const thinking = Array.from({ length: 3_000 }, (_, i) => `data: {"thinking":"t${i}"}\n\n`).join("")

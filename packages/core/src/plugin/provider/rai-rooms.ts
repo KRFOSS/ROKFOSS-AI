@@ -452,6 +452,13 @@ function parseMessage(value: unknown, index: number): RaiRooms.Message | undefin
   }
 }
 
+/** The room object of a page carries no `running`; the page reports it beside the room. */
+function roomOfPage(obj: Record<string, unknown>) {
+  const room = parseRoom(obj.room)
+  if (!room) return null
+  return boolOf(obj.running) ? { ...room, running: true } : room
+}
+
 export function parsePage(body: unknown): Omit<RaiRooms.Page, "error"> | undefined {
   const obj = record(body)
   if (!obj) return undefined
@@ -472,7 +479,7 @@ export function parsePage(body: unknown): Omit<RaiRooms.Page, "error"> | undefin
     access,
     owner: stringField(obj.owner) ?? stringField(record(obj.owner)?.label) ?? stringField(record(obj.owner)?.name) ?? null,
     me: stringField(obj.me) ?? stringField(record(obj.me)?.label) ?? stringField(record(obj.me)?.name) ?? null,
-    room: parseRoom(obj.room) ?? null,
+    room: roomOfPage(obj),
   }
 }
 
