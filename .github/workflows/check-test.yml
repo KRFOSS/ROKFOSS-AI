@@ -184,8 +184,9 @@ jobs:
             host: ubuntu-24.04
           - name: windows
             host: windows-2025
-    # This job never runs on a pull request, so the self-hosted machine is safe for its Linux leg.
-    runs-on: ${{ matrix.settings.name == 'linux' && fromJSON('["self-hosted","linux","x64"]') || matrix.settings.host }}
+    # Kept on a hosted runner: it competes with `unit` for the single self-hosted machine, and the unit suite is the
+    # longer of the two, so serialising them would make the whole run wait longer than running them in parallel.
+    runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         shell: bash

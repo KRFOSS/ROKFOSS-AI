@@ -18,9 +18,9 @@ permissions:
 jobs:
   nix-eval:
     if: ${{ !github.event.pull_request.draft }}
-    # `nix flake show` over every system is CPU-heavy; it runs on the self-hosted machine. A fork pull request
-    # stays on a GitHub-hosted runner so its code never executes on our hardware.
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted","linux","x64"]') || 'ubuntu-24.04' }}
+    # A hosted runner, not the self-hosted one: the machine is shared with `check` and `check-test`, and evaluating the
+    # flake here in parallel costs GitHub minutes but leaves the critical path shorter.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout repository
