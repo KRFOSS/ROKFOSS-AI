@@ -2,6 +2,7 @@ import { TextAttributes, type KeyEvent, type ScrollBoxRenderable, type TextareaR
 import { useTerminalDimensions } from "@opentui/solid"
 import { randomBytes } from "node:crypto"
 import { RaiRooms } from "@opencode/schema/rai-rooms"
+import { RaiTurns } from "@opencode/schema/rai-turns"
 import type { JsonValue } from "@opencode/client"
 import { batch, createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show } from "solid-js"
 import { useConfig, useCursorStyle } from "../config"
@@ -16,10 +17,11 @@ import { t } from "../i18n"
 import { usePlugin } from "../plugin/context"
 import { EmptyBorder, SplitBorder } from "../ui/border"
 import { useDialog } from "../ui/dialog"
+import { useToast } from "../ui/toast"
 import { DialogRooms } from "./dialog-rooms"
 import { PromptMetadataRow } from "./prompt/metadata"
-import { accessOf, roomsReturn } from "./rooms-nav"
-import { roomSeed } from "./rooms-seed"
+import { accessOf, forgetRoomSession, rememberRoomSession, roomSessionOf, roomsReturn, setBoundRoom } from "./rooms-nav"
+import { answersLocally, roomSeed } from "./rooms-seed"
 import { roomSlashCommands, roomSlashDirect, type SlashShape } from "./rooms-slash"
 
 type Line = {
@@ -34,6 +36,7 @@ type Line = {
 }
 
 const rpcID = "opencode.rai.rooms"
+const turnsID = "opencode.rai.turns"
 const maxLines = 260
 const maxChars = 48_000
 /** The web app folds older tool lines past this many in one turn; the transcript does the same. */
@@ -70,6 +73,7 @@ export function RoomsView() {
   const location = useLocation()
   const local = useLocal()
   const dialog = useDialog()
+  const toast = useToast()
   const theme = useTheme()
   const { currentSyntax: syntax } = useThemes()
   const plugins = usePlugin()
@@ -132,6 +136,18 @@ export function RoomsView() {
   const writable = () => RaiRooms.canSend(access())
   const fresh = () => roomID() === "0"
   const canPickModel = () => fresh() || !model().trim()
+  // The model picked in OpenCode decides who answers. A `rai` model is answered by the gateway through `POST /chat`;
+  // any other model (a free OpenCode model included) answers on this computer in a session bound to this room, and
+  // the room only records that turn (spec 3.7). The room's saved model never overrides the pick.
+  const picked = () => local.model.current()
+  const localAnswer = createMemo(() => answersLocally(picked()))
+  const needsModel = () => !localAnswer() && !model().trim()
+  const answerModel = () => {
+    const pick = picked()
+    if (localAnswer() && pick) return `${pick.providerID}/${pick.modelID}`
+    return model().trim() ? `${provider()}/${model()}` : t("Model")
+  }
+  const answerWhere = () => (localAnswer() ? t("This computer") : t("ROKFOSS server"))
   const promptBg = createMemo(() => theme.decrease(theme.background.raised.base))
   const heading = () => {
     const value = title()
@@ -164,6 +180,19 @@ export function RoomsView() {
     const result = await client.api.rpc.call(
       {
         rpcID,
+        method,
+        input: input as JsonValue,
+        location: { directory },
+      },
+      { signal: calls.signal },
+    )
+    return result.output as T
+  }
+
+  async function callTurns<T>(method: string, input: Record<string, unknown>) {
+    const result = await client.api.rpc.call(
+      {
+        rpcID: turnsID,
         method,
         input: input as JsonValue,
         location: { directory },
@@ -438,8 +467,10 @@ export function RoomsView() {
         if (page.access) setAccess(accessOf(page.access))
         if (page.room) {
           setTitle(page.room.title)
-          if (page.room.provider && RaiRooms.isProvider(page.room.provider)) setProvider(page.room.provider)
-          if (page.room.model) setModel(page.room.model)
+          if (!followsGatewayPick()) {
+            if (page.room.provider && RaiRooms.isProvider(page.room.provider)) setProvider(page.room.provider)
+            if (page.room.model) setModel(page.room.model)
+          }
         }
       })
       if (!older) stick()
@@ -491,8 +522,10 @@ export function RoomsView() {
         if (page.access) setAccess(accessOf(page.access))
         if (page.room) {
           setTitle(page.room.title)
-          if (page.room.provider && RaiRooms.isProvider(page.room.provider)) setProvider(page.room.provider)
-          if (page.room.model) setModel(page.room.model)
+          if (!followsGatewayPick()) {
+            if (page.room.provider && RaiRooms.isProvider(page.room.provider)) setProvider(page.room.provider)
+            if (page.room.model) setModel(page.room.model)
+          }
         }
       })
       stick()
@@ -570,6 +603,7 @@ export function RoomsView() {
       setError(t("Read only"))
       return
     }
+    if (localAnswer()) return sendLocal(message)
     if (!model().trim() || !RaiRooms.isProvider(provider())) {
       setError(t("Model is required"))
       return
@@ -660,14 +694,94 @@ export function RoomsView() {
     if (hasMore() && before && !busy()) void loadMessages(roomID(), before, true)
   }
 
-  // A new room follows the model the user already picked for ordinary chat, instead of a second form.
-  // The picked model may belong to a local provider, which the room maps to the gateway's entry for the
-  // same upstream model (see `roomSeed`).
+  /**
+   * A model on this computer cannot be called through the gateway, so the turn runs in an OpenCode session bound to
+   * this room: the session answers, and the relay (`rai-turns.ts`) records it into the room with the web showing it
+   * live (stop and steering work both ways). The session is reused while it stays bound to this room.
+   */
+  async function sendLocal(message: string) {
+    const pick = picked()
+    if (!pick) {
+      setError(t("Model is required"))
+      return
+    }
+    if (fresh()) {
+      setError(t("A new room starts with a ROKFOSS AI model. A model on this computer continues a room that already exists."))
+      return
+    }
+    const id = roomID()
+    const selection = { providerID: pick.providerID, id: pick.modelID, ...(pick.variant ? { variant: pick.variant } : {}) }
+    sending = true
+    setBusy(true)
+    setError("")
+    setPhase(t("Opening a session for this room…"))
+    try {
+      let sessionID = roomSessionOf(id)
+      if (sessionID) {
+        const bound = await callTurns<RaiTurns.Bound>("bound", { sessionID })
+        if (bound.roomID !== id) {
+          forgetRoomSession(id)
+          sessionID = undefined
+        }
+      }
+      if (!sessionID) {
+        const agentID = local.agent.current()?.id
+        const created = data.session.create({
+          ...(location.ref ? { location: location.ref } : {}),
+          ...(agentID ? { agent: agentID } : {}),
+          model: selection,
+        })
+        await created.request
+        if (disposed) return
+        const bound = await callTurns<RaiTurns.Bound>("bind", { sessionID: created.id, roomID: id, title: title() })
+        if (!bound.roomID) {
+          setError(bound.error ?? t("Could not bind this room"))
+          return
+        }
+        sessionID = created.id
+        setBoundRoom(sessionID, bound.title ?? title())
+        rememberRoomSession(id, sessionID)
+      }
+      if (disposed) return
+      const target = sessionID
+      textarea?.setText("")
+      setDraft("")
+      // Optimistic admission: the prompt is in the session store before the view below mounts, and the model the user
+      // picked is committed first so a reused session answers with it too.
+      void data.session
+        .prompt({
+          sessionID: target,
+          text: message,
+          delivery: "steer",
+          prepare: () => client.api.session.switchModel({ sessionID: target, model: selection }),
+        })
+        .catch(() => toast.show({ variant: "error", message: t("Failed to send prompt") }))
+      navigate({ type: "session", sessionID: target })
+    } catch (cause) {
+      if (!disposed) showError(cause)
+    } finally {
+      sending = false
+      if (!disposed) {
+        setBusy(false)
+        setPhase("")
+      }
+    }
+  }
+
+  /** The pick names a gateway model, so the room's saved model must not replace it. */
+  function followsGatewayPick() {
+    const pick = picked()
+    return pick !== undefined && !answersLocally(pick)
+  }
+
+  // The room follows the model the user picked in OpenCode — for a saved room as well as a new one. A gateway pick
+  // becomes the room's provider and model; a pick on this computer leaves them alone and answers locally (`sendLocal`).
   createEffect(
     on(
       () => local.model.current(),
       (current) => {
-        if (!fresh()) return
+        if (answersLocally(current ?? undefined)) return
+        if (!current && !fresh()) return
         const gateway = (data.location.model.list(location.ref) ?? []).map((item) => ({
           providerID: item.providerID,
           modelID: item.id,
@@ -793,7 +907,7 @@ export function RoomsView() {
   const placeholder = () => {
     if (!writable()) return t("Read only")
     if (busy()) return t("Writing…")
-    if (!model().trim()) return t("Model is required")
+    if (needsModel()) return t("Model is required")
     return t("Ask anything…")
   }
 
@@ -814,7 +928,7 @@ export function RoomsView() {
           {heading()}
         </text>
         <text fg={theme.text.muted} wrapMode="none" truncate flexShrink={1}>
-          {provider()}/{model() || t("Model")}
+          {answerModel()} · {answerWhere()}
         </text>
         <Show when={accessLabel()}>
           <text fg={access() === "read" ? theme.text.feedback.warning.base : theme.text.muted} wrapMode="none">
@@ -959,7 +1073,7 @@ export function RoomsView() {
             {statusText()}
           </text>
         </Show>
-        <Show when={!model().trim() && canPickModel()}>
+        <Show when={needsModel() && canPickModel()}>
           <text fg={theme.text.feedback.warning.base} wrapMode="word">
             {t("Model is required")}
             {modelKey() ? ` (${modelKey()})` : ""}
@@ -1036,8 +1150,8 @@ export function RoomsView() {
                   mode="normal"
                   agent={accessLabel() || t("Rooms")}
                   auto={false}
-                  model={model() || t("Model")}
-                  provider={provider()}
+                  model={answerModel()}
+                  provider={answerWhere()}
                   muted={!writable() || busy()}
                   highlight={theme.text.base}
                   agentAlpha={1}

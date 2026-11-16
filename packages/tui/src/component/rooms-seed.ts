@@ -39,7 +39,12 @@ export function splitModel(modelID: string | undefined): RoomSeed | undefined {
  * not silently leave the room on an unrelated default.
  */
 export function roomSeed(current: ModelRef | undefined, gateway: readonly ModelRef[]): RoomSeed {
-  const direct = current && RaiRooms.isProvider(current.providerID) ? splitModel(current.modelID) : undefined
+  // A gateway model (`rai/xai/grok-4.7`) names its routed provider inside the model id. Checking only
+  // `isProvider(providerID)` missed it, so every gateway pick fell through to the first listed model.
+  const direct =
+    current && (current.providerID === "rai" || RaiRooms.isProvider(current.providerID))
+      ? splitModel(current.modelID)
+      : undefined
   if (direct) return direct
 
   if (current) {
@@ -55,4 +60,13 @@ export function roomSeed(current: ModelRef | undefined, gateway: readonly ModelR
   // absent for this account.
   const first = gateway.find((item) => item.providerID === "rai")
   return (first && splitModel(first.modelID)) ?? fallback
+}
+
+/**
+ * Who answers a room turn for the model the user picked. The gateway (`POST /chat`) answers only its own
+ * `rai` models; any other provider — a free OpenCode model included — answers on this computer and the
+ * room only records the turn through a bound session (spec 3.7). Mirrors `relayable` in `rai-turns.ts`.
+ */
+export function answersLocally(current: ModelRef | undefined): boolean {
+  return current !== undefined && current.providerID.trim().toLowerCase() !== "rai"
 }

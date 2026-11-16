@@ -14,7 +14,7 @@ import { t } from "../i18n"
 import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
 import type { JsonValue } from "@opencode/client"
-import { accessOf, nextRoomToken, rememberRoomsReturn, roomsReturn, setBoundRoom } from "./rooms-nav"
+import { accessOf, nextRoomToken, rememberRoomSession, rememberRoomsReturn, roomsReturn, setBoundRoom } from "./rooms-nav"
 import { roomSeed } from "./rooms-seed"
 
 const rpcID = "opencode.rai.rooms"
@@ -114,6 +114,7 @@ export function DialogRooms() {
         return false
       }
       setBoundRoom(sessionID, bound.title ?? room.title)
+      rememberRoomSession(bound.roomID, sessionID)
       dialog.clear()
       toast.show({
         variant: "success",

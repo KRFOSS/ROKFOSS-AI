@@ -393,6 +393,12 @@ export const dict: Dictionary = {
   "Open room view": "대화방 화면 열기",
   "Read-only rooms cannot be recorded into": "읽기 전용 대화방에는 기록할 수 없습니다",
   "Could not bind this room": "이 대화방에 묶지 못했습니다",
+  "This computer": "내 컴퓨터",
+  "ROKFOSS server": "ROKFOSS 서버",
+  "Opening a session for this room…": "이 대화방에 묶을 세션을 여는 중…",
+  "A new room starts with a ROKFOSS AI model. A model on this computer continues a room that already exists.":
+    "새 대화방은 ROKFOSS AI 모델로 시작해야 합니다. 내 컴퓨터의 모델은 이미 있는 대화방을 이어 갈 때 쓸 수 있습니다.",
+  "Failed to send prompt": "글을 보내지 못했습니다",
   "Recording this session into room {{room}}": "이 세션을 대화방 {{room}}에 기록합니다",
   "Room {{room}} · recording": "대화방 {{room}} · 기록 중",
   "Previous room": "이전 대화방",

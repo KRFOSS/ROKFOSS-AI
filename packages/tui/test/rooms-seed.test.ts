@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { roomSeed, splitModel, type ModelRef } from "../src/component/rooms-seed"
+import { answersLocally, roomSeed, splitModel, type ModelRef } from "../src/component/rooms-seed"
 
 // The gateway lists its models as `<routed provider>/<upstream model>` (spec 3.4), while the local
 // providers name the same model without that prefix. A room is answered by the gateway, so the local
@@ -40,6 +40,15 @@ describe("roomSeed", () => {
     })
   })
 
+  // A gateway pick that is not the first listed model used to fall through to that first model.
+  test("keeps any gateway model the user picked, not just the first listed one", () => {
+    expect(roomSeed(gatewayModel("xai/grok-4.7"), gateway)).toEqual({ provider: "xai", model: "grok-4.7" })
+    expect(roomSeed(gatewayModel("opencode/opencode-go/deepseek-v4.1-flash"), gateway)).toEqual({
+      provider: "opencode",
+      model: "opencode-go/deepseek-v4.1-flash",
+    })
+  })
+
   // The reported bug: picking the OpenCode free model left a new room on the hardcoded `xai` default.
   test("maps a local provider model to the gateway's entry for the same upstream model", () => {
     expect(roomSeed(localModel("opencode", "opencode-go/deepseek-v4.1-flash"), gateway)).toEqual({
@@ -67,5 +76,24 @@ describe("roomSeed", () => {
       provider: "codex",
       model: "gpt-6.1-sol",
     })
+  })
+})
+
+// Who answers a room turn (spec 3.7): only a gateway model goes through `POST /chat`; anything else — a free
+// OpenCode model included — answers on this computer and is recorded through a bound session.
+describe("answersLocally", () => {
+  test("a gateway model is answered by the gateway", () => {
+    expect(answersLocally(gatewayModel("opencode/opencode-go/deepseek-v4.1-flash"))).toBe(false)
+    expect(answersLocally({ providerID: " RAI ", modelID: "xai/grok-4.7" })).toBe(false)
+  })
+
+  test("a free OpenCode model or any other provider answers on this computer", () => {
+    expect(answersLocally(localModel("opencode", "deepseek-v4.1-flash-free"))).toBe(true)
+    expect(answersLocally(localModel("opencode-go", "deepseek-v4.1-flash"))).toBe(true)
+    expect(answersLocally(localModel("anthropic", "claude-sonnet-5-5"))).toBe(true)
+  })
+
+  test("nothing picked is not a local answer", () => {
+    expect(answersLocally(undefined)).toBe(false)
   })
 })

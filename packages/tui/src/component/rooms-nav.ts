@@ -74,6 +74,26 @@ export function setBoundRoom(sessionID: string, title: string | undefined) {
   })
 }
 
+/**
+ * The session this window bound to each room, so a room view that answers with a model on this computer keeps
+ * sending into the same session instead of opening a new one per message. Memory only: after a restart the view
+ * binds a fresh session. Only ids live here, never message text.
+ */
+const roomSessions = new Map<string, string>()
+
+export function roomSessionOf(roomID: string): string | undefined {
+  return roomSessions.get(roomID)
+}
+
+export function rememberRoomSession(roomID: string, sessionID: string) {
+  for (const [room, session] of roomSessions) if (session === sessionID && room !== roomID) roomSessions.delete(room)
+  roomSessions.set(roomID, sessionID)
+}
+
+export function forgetRoomSession(roomID: string) {
+  roomSessions.delete(roomID)
+}
+
 let opened = 0
 
 /** Distinct each time the list opens a room, so the full-screen view remounts. */
