@@ -12,6 +12,7 @@ import {
   pageLimit,
   parsePage,
   parseRooms,
+  failureFrom,
   pickEndpoint,
   postChat,
   pushSse,
@@ -469,5 +470,38 @@ describe("RAI rooms protocol", () => {
     expect((sent as { text: string }).text).toBe(secret)
     expect((taken as { chunk: { text?: string | null } | null }).chunk?.text).toBe(secret)
     expect(other).toEqual({ chunk: null, open: false })
+  })
+})
+
+describe("오류 본문 두 꼴", () => {
+  // Spec 3.7 now answers an OpenAI-shaped error; spec 3.5 keeps the web shape. Both must yield the same code.
+  test("OpenAI 꼴에서 code 를 읽는다", () => {
+    const error = failureFrom(
+      409,
+      JSON.stringify({ error: { message: "이 방은 지금 답이 도는 중입니다", type: "rate_limit", code: "room_busy" } }),
+      "rooms_write",
+    )
+    expect(error.status).toBe(409)
+    expect(error.code).toBe("room_busy")
+    expect(error.retry).toBe(false)
+  })
+
+  test("웹 꼴에서도 code 와 문구를 읽는다", () => {
+    const error = failureFrom(409, JSON.stringify({ error: "이 방은 지금 답이 도는 중입니다", code: "room_busy" }), "rooms_write")
+    expect(error.code).toBe("room_busy")
+    expect(error.message).toContain("이 방은 지금 답이 도는 중입니다")
+  })
+
+  // 404 is the one exception the spec keeps in the web shape.
+  test("웹 꼴 404 는 문구를 그대로 쓴다", () => {
+    const error = failureFrom(404, JSON.stringify({ error: "채팅방을 찾을 수 없습니다" }), "rooms_read")
+    expect(error.status).toBe(404)
+    expect(error.message).toContain("채팅방을 찾을 수 없습니다")
+  })
+
+  test("HTML 403 은 상태만 남긴다", () => {
+    const error = failureFrom(403, "<!doctype html><html>blocked</html>", "rooms_read")
+    expect(error.status).toBe(403)
+    expect(error.message).not.toContain("<")
   })
 })

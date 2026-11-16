@@ -22,6 +22,8 @@ const heartbeatMs = 5_000
 const maxEventChars = 64_000
 const maxContentChars = 8_000_000
 const maxQueue = 4_000
+/** Attempts after a dropped connection or a 5xx (spec 3.7: "짧게 2~3번"). */
+const maxRetries = 3
 
 export const turnIDPattern = /^[0-9a-f]{32}$/
 const modelPattern = /^[^\r\n]{1,200}$/
@@ -230,6 +232,8 @@ export type Turn = {
   failure: string | undefined
   closed: boolean
   lastSentAt: number
+  /** Consecutive retryable failures. Spec 3.7 allows two or three, so a dead gateway must not be retried forever. */
+  retries: number
   readonly sent: { delta: number }
 }
 
@@ -249,6 +253,7 @@ export function activeTurn(input: {
     failure: undefined,
     closed: false,
     lastSentAt: Date.now(),
+    retries: 0,
     sent: { delta: 0 },
   }
 }
@@ -306,8 +311,40 @@ const notice = (ctx: Context, sessionID: string, text: string) =>
 const STATUS_MESSAGES: Record<string, string> = {
   room_busy: "이 방은 지금 다른 답이 도는 중입니다. 끝난 뒤 다시 보내 주세요",
   room_read_only: "읽기 전용 방에는 기록할 수 없습니다. 다른 방을 골라 주세요",
+  // The room is being answered by something else, or the project it belongs to is moving: both are temporary.
+  mcp_room_active: "다른 AI가 이 방을 쓰고 있습니다. 끝난 뒤 다시 보내 주세요",
+  project_transfer_busy: "프로젝트를 옮기는 중입니다. 잠시 뒤 다시 보내 주세요",
+  server_draining: "서버가 재시작을 준비하고 있습니다. 잠시 뒤 다시 보내 주세요",
+  // A room that a plugin owns, or a project that needs sharing, never accepts this window's turns.
+  plugin_external_room: "플러그인(디스코드 등)이 쓰는 방에는 기록할 수 없습니다. 다른 방을 골라 주세요",
+  project_share_required: "이 프로젝트는 공유 설정이 필요합니다. 웹 AI 앱에서 프로젝트 공유를 설정해 주세요",
   turn_closed: "회차가 이미 닫혀 기록을 마칩니다",
   turn_not_found: "회차를 찾지 못해 기록을 마칩니다",
+  invalid_provider: "공급자 이름이 올바르지 않아 기록하지 못했습니다",
+  invalid_model: "모델 이름이 올바르지 않아 기록하지 못했습니다",
+  invalid_tool: "도구 기록이 올바르지 않아 기록을 마칩니다",
+  error_too_long: "오류 설명이 너무 깁니다",
+  request_too_large: "요청 본문이 너무 큽니다. 조각을 나눠 보내 주세요",
+}
+
+/**
+ * What a refused `POST /rooms/{id}/turns` means for the session (spec 3.7). `unbind` means this window can never
+ * record into the room, so the binding is dropped; `notice` keeps the binding because the refusal may pass; `key` and
+ * `silent` leave the turn unrecorded and let the local answer run.
+ */
+export type StartRefusal = "unbind" | "notice" | "key" | "silent"
+
+const permanentRefusals = new Set(["room_read_only", "plugin_external_room", "project_share_required"])
+
+export function startRefusal(status: number | undefined, code: string | undefined): StartRefusal {
+  if (code === "scope_missing" || code === "room_read_only") return code === "room_read_only" ? "unbind" : "key"
+  if (permanentRefusals.has(code ?? "")) return "unbind"
+  // A room that is gone — or somebody else's now — cannot be recorded into any more.
+  if (status === 404) return "unbind"
+  if (status === 401) return "key"
+  if (status === 403) return "key"
+  if (code !== undefined && STATUS_MESSAGES[code] !== undefined) return "notice"
+  return "silent"
 }
 
 function turnFailure(error: unknown): { readonly code: string | undefined; readonly status: number | undefined; readonly retry: boolean } {
@@ -443,10 +480,17 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
                 if (failure.status === 401 || failure.code === "scope_missing") turn.failure = undefined
                 return
               }
+              // Spec 3.7 retries a dropped connection or a 5xx two or three times, then gives the turn up.
+              turn.retries += 1
+              if (turn.retries > maxRetries) {
+                turn.closed = true
+                return
+              }
               yield* Effect.sleep(Duration.seconds(1))
               break
             }
             turn.lastSentAt = Date.now()
+            turn.retries = 0
             if (reply.value?.stop === true) turn.stopped = true
             for (const steer of reply.value?.steers ?? []) {
               yield* ctx.session
@@ -474,10 +518,16 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
                 turn.closed = true
                 return
               }
+              turn.retries += 1
+              if (turn.retries > maxRetries) {
+                turn.closed = true
+                return
+              }
               yield* Effect.sleep(Duration.seconds(1))
               continue
             }
             turn.lastSentAt = Date.now()
+            turn.retries = 0
             if (reply.value?.stop === true) {
               turn.stopped = true
               yield* ctx.session.interrupt({ sessionID: turn.sessionID as never }).pipe(Effect.ignore)
@@ -520,21 +570,24 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
         if (started.failure !== undefined) {
           const failure = turnFailure(started.failure)
           const message = STATUS_MESSAGES[failure.code ?? ""]
-          if (failure.code === "room_read_only" || failure.status === 404) {
+          const refusal = startRefusal(failure.status, failure.code)
+          if (refusal === "unbind") {
             yield* unbind(sessionID)
             yield* notice(ctx, sessionID, message ?? "이 방에는 더 이상 기록할 수 없습니다")
             return
           }
-          if (failure.code === "scope_missing" || failure.status === 403) {
-            yield* notice(ctx, sessionID, "AI 앱 설정에서 이 키의 「대화방 쓰기」 권한을 켜 주세요")
+          if (refusal === "key") {
+            yield* notice(
+              ctx,
+              sessionID,
+              failure.status === 401 || failure.code === "expired_api_key"
+                ? "RAI 키가 만료되었거나 지워져 기록하지 못했습니다"
+                : "AI 앱 설정에서 이 키의 「대화방 쓰기」 권한을 켜 주세요",
+            )
             return
           }
-          if (message) {
-            yield* notice(ctx, sessionID, message)
-            return
-          }
-          if (failure.status === 401) {
-            yield* notice(ctx, sessionID, "RAI 키가 만료되었거나 지워져 기록하지 못했습니다")
+          if (refusal === "notice") {
+            yield* notice(ctx, sessionID, message ?? "이 회차는 서버에 기록되지 않았습니다")
             return
           }
           // A recording failure must never stop the local answer.

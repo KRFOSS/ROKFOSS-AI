@@ -11,6 +11,7 @@ import {
   parseTurnStart,
   relayable,
   settleText,
+  startRefusal,
   toolMark,
   turnDoneBody,
   turnEventBody,
@@ -210,5 +211,53 @@ describe("회차 내용 조립", () => {
     drain(state)
     drain(state)
     expect(finalContent(state)).toBe("답")
+  })
+})
+
+describe("회차 시작 거절", () => {
+  // Spec 3.7: a room this window can never record into is unbound; a refusal that may pass keeps the binding.
+  test("영구 거절은 묶기를 푼다", () => {
+    expect(startRefusal(403, "room_read_only")).toBe("unbind")
+    expect(startRefusal(400, "plugin_external_room")).toBe("unbind")
+    expect(startRefusal(403, "project_share_required")).toBe("unbind")
+    expect(startRefusal(404, undefined)).toBe("unbind")
+  })
+
+  test("잠시 거절은 묶기를 남기고 알리기만 한다", () => {
+    expect(startRefusal(409, "room_busy")).toBe("notice")
+    expect(startRefusal(409, "mcp_room_active")).toBe("notice")
+    expect(startRefusal(409, "project_transfer_busy")).toBe("notice")
+    expect(startRefusal(503, "server_draining")).toBe("notice")
+  })
+
+  test("키 문제는 따로 안내한다", () => {
+    expect(startRefusal(403, "scope_missing")).toBe("key")
+    expect(startRefusal(401, "expired_api_key")).toBe("key")
+    expect(startRefusal(403, undefined)).toBe("key")
+  })
+
+  test("모르는 실패는 기록 없이 로컬 답을 계속한다", () => {
+    expect(startRefusal(502, "upstream_error")).toBe("silent")
+    expect(startRefusal(undefined, undefined)).toBe("silent")
+  })
+
+  test("spec 3.7 이 이름한 거절에는 모두 안내 문구가 있다", () => {
+    for (const code of [
+      "room_busy",
+      "room_read_only",
+      "mcp_room_active",
+      "project_transfer_busy",
+      "server_draining",
+      "plugin_external_room",
+      "project_share_required",
+      "turn_closed",
+      "turn_not_found",
+      "invalid_provider",
+      "invalid_model",
+      "invalid_tool",
+      "error_too_long",
+      "request_too_large",
+    ])
+      expect(startRefusal(400, code), code).not.toBe("silent")
   })
 })
