@@ -446,7 +446,12 @@ export function RoomsView() {
         return
       }
       if (disposed || streamToken !== token || !next) return
-      if (next.chunk) applyChunk(next.chunk)
+      const taken = next
+      // A batch is drawn in one update, so a long burst does not redraw the transcript once per chunk.
+      batch(() => {
+        if (taken.chunk) applyChunk(taken.chunk)
+        for (const chunk of taken.more ?? []) applyChunk(chunk)
+      })
       if (!next.open && !next.chunk) return
     }
   }

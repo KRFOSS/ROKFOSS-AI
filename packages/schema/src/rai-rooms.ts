@@ -167,6 +167,8 @@ export interface CreateResult extends Schema.Schema.Type<typeof CreateResult> {}
 
 export const TakeResult = Schema.Struct({
   chunk: Schema.NullOr(Chunk),
+  /** Chunks queued behind `chunk`, in order. One call drains the mailbox so a fast stream does not trail behind. */
+  more: Schema.optional(Schema.Array(Chunk)),
   open: Schema.Boolean,
 }).annotate({ identifier: "RaiRooms.TakeResult" })
 export interface TakeResult extends Schema.Schema.Type<typeof TakeResult> {}

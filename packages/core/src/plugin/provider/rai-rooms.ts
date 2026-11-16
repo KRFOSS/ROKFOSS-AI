@@ -841,6 +841,12 @@ export function audienceOf(value: string | null | undefined) {
 }
 
 function enqueueChunk(box: RoomBox, chunk: RaiRooms.Chunk) {
+  // A thinking chunk carries no text, only that thinking goes on. A reasoning model sends one per token, so a run of
+  // them collapses into one; otherwise they bury the answer text and the cap below drops it.
+  if (chunk.kind === "thinking") {
+    const last = box.frames.at(-1)
+    if (last?.kind === "thinking" && last.roomID === chunk.roomID) return
+  }
   if (chunk.kind === "delta" && chunk.text) {
     const last = box.frames.at(-1)
     if (last?.kind === "delta" && last.roomID === chunk.roomID) {
@@ -909,6 +915,14 @@ function deliver(token: string | undefined, chunk: RaiRooms.Chunk) {
 
 const onFrame = (roomID: string, token: string | undefined) => (frame: Frame) => deliver(token, toChunk(frame, roomID))
 
+const maxTakeBatch = 512
+
+/** The first chunk plus whatever is already queued behind it, so one `take` round trip drains the mailbox. */
+function takeResult(box: RoomBox, chunk: RaiRooms.Chunk): RaiRooms.TakeResult {
+  const more = box.frames.splice(0, maxTakeBatch)
+  return { chunk, ...(more.length > 0 ? { more } : {}), open: !box.closed || box.frames.length > 0 }
+}
+
 function waitChunk(audience: string) {
   return Effect.gen(function* () {
     yield* sweepMailboxes
@@ -916,7 +930,7 @@ function waitChunk(audience: string) {
     const box = token ? roomMailboxes.get(token) : undefined
     if (!box) return { chunk: null, open: false } satisfies RaiRooms.TakeResult
     const queued = box.frames.shift()
-    if (queued) return { chunk: queued, open: !box.closed || box.frames.length > 0 } satisfies RaiRooms.TakeResult
+    if (queued) return takeResult(box, queued)
     if (box.closed) return { chunk: null, open: false } satisfies RaiRooms.TakeResult
     const waiter = yield* Deferred.make<RaiRooms.Chunk | null>()
     box.waiters.push(waiter)
@@ -932,9 +946,9 @@ function waitChunk(audience: string) {
     )
     const index = box.waiters.indexOf(waiter)
     if (index >= 0) box.waiters.splice(index, 1)
-    if (arrived) return { chunk: arrived, open: !box.closed || box.frames.length > 0 } satisfies RaiRooms.TakeResult
+    if (arrived) return takeResult(box, arrived)
     const late = box.frames.shift()
-    if (late) return { chunk: late, open: !box.closed || box.frames.length > 0 } satisfies RaiRooms.TakeResult
+    if (late) return takeResult(box, late)
     if (box.closed) return { chunk: null, open: false } satisfies RaiRooms.TakeResult
     return { chunk: null, open: true } satisfies RaiRooms.TakeResult
   })

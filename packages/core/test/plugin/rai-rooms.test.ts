@@ -449,6 +449,36 @@ describe("RAI rooms protocol", () => {
     expect(JSON.stringify(stranger)).not.toContain(secret)
   })
 
+  test("collapses a run of thinking chunks and drains the mailbox in one take", async () => {
+    const audience = "c".repeat(22)
+    const thinking = Array.from({ length: 3_000 }, (_, i) => `data: {"thinking":"t${i}"}\n\n`).join("")
+    const sse = `${thinking}data: {"delta":"첫 "}\n\ndata: {"tool":"web_search","label":"검색"}\n\ndata: {"delta":"답"}\n\ndata: {"done":true}\n\n`
+    const { http } = httpOf(() => new Response(sse, { status: 200, headers: { "content-type": "text/event-stream" } }))
+    const handlers: Record<string, (input: unknown) => Effect.Effect<unknown>> = {}
+    const ctx = {
+      rpc: {
+        register: (_definition: unknown, next: typeof handlers) => {
+          Object.assign(handlers, next)
+          return Effect.succeed({ events: { emit: () => Effect.void } })
+        },
+      },
+      integration: {
+        connection: {
+          active: () => Effect.succeed({ type: "credential", id: "rai" }),
+          resolve: () => Effect.succeed({ type: "key", key }),
+        },
+      },
+    }
+    await run(register(ctx, http))
+    await run(handlers.send({ ...sendInput, audience }))
+    const taken = (await run(handlers.take({ audience }))) as RaiRooms.TakeResult
+    const all = [taken.chunk, ...(taken.more ?? [])].filter((chunk) => chunk !== null)
+    expect(all.map((chunk) => chunk.kind)).toEqual(["thinking", "delta", "tool", "delta", "done"])
+    expect(all.filter((chunk) => chunk.kind === "delta").map((chunk) => chunk.text)).toEqual(["첫 ", "답"])
+    expect(taken.open).toBe(false)
+    expect(await run(handlers.take({ audience }))).toEqual({ chunk: null, open: false })
+  })
+
   test("wakes only the caller waiting on that audience", async () => {
     const secret = "waiter-only-delta"
     const audience = "c".repeat(22)
