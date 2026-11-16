@@ -39,6 +39,11 @@ const maxChars = 48_000
 /** The web app folds older tool lines past this many in one turn; the transcript does the same. */
 const maxLiveTools = 50
 
+/** Identifies a saved transcript so a periodic refresh can skip an unchanged page. */
+function signatureOf(lines: readonly { readonly id: string }[]) {
+  return lines.map((line) => line.id).join("|")
+}
+
 function remember(lines: readonly Line[]) {
   const capped = lines.slice(-maxLines)
   let chars = 0
@@ -109,6 +114,9 @@ export function RoomsView() {
   let autoFollows = 0
   let leaving = false
   let disposed = false
+  /** Last saved page this view drew, so the timer can tell whether the room actually changed. */
+  let savedSignature = ""
+  let pollTimer: ReturnType<typeof setInterval> | undefined
   let scroll: ScrollBoxRenderable | undefined
   let textarea: TextareaRenderable | undefined
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
@@ -133,6 +141,8 @@ export function RoomsView() {
 
   onCleanup(() => {
     disposed = true
+    if (pollTimer) clearInterval(pollTimer)
+    pollTimer = undefined
     if (reconnectTimer) clearTimeout(reconnectTimer)
     const token = streamToken
     streamToken = undefined
@@ -412,6 +422,7 @@ export function RoomsView() {
         role: message.role,
         text: RaiRooms.displayText(message.text),
       }))
+      if (!older) savedSignature = signatureOf(incoming)
       batch(() => {
         setLines((current) => remember(older ? [...incoming, ...current] : incoming))
         setHasMore(page.hasMore)
@@ -439,6 +450,51 @@ export function RoomsView() {
     } finally {
       if (!disposed) setBusy(false)
     }
+  }
+
+  /**
+   * Pulls the saved transcript on a timer, so a room left open picks up what the web app (or a session bound to
+   * the room) wrote without waiting for the next send or turn end. It stays quiet while this view is drawing a
+   * turn itself; a page that reports a running turn hands over to the stream so the middle of a reply shows too.
+   */
+  async function poll() {
+    if (disposed || leaving || following || sending || busy()) return
+    const id = roomID()
+    if (id === "" || id === "0") return
+    let page: RaiRooms.Page
+    try {
+      page = await call<RaiRooms.Page>("messages", { roomID: id, limit: 40, before: null })
+    } catch {
+      return
+    }
+    if (disposed || following || sending || page.error) return
+    const incoming = page.messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      text: RaiRooms.displayText(message.text),
+    }))
+    const signature = signatureOf(incoming)
+    if (signature !== savedSignature) {
+      savedSignature = signature
+      batch(() => {
+        setLines((current) => remember(incoming))
+        setHasMore(page.hasMore)
+        setOldestID(page.oldestID)
+        setFoldedTools(0)
+        if (page.access) setAccess(accessOf(page.access))
+        if (page.room) {
+          setTitle(page.room.title)
+          if (page.room.provider && RaiRooms.isProvider(page.room.provider)) setProvider(page.room.provider)
+          if (page.room.model) setModel(page.room.model)
+        }
+      })
+      stick()
+      publish()
+    }
+    if (page.room?.running && !following && !sending && autoFollows < 20) {
+      autoFollows++
+      void follow(id)
+    } else if (!page.room?.running) autoFollows = 0
   }
 
   /**
@@ -609,6 +665,17 @@ export function RoomsView() {
       if (!disposed && route.running) await follow(route.roomID)
     })()
   })
+
+  // The web app and a session bound to this room (spec 3.7) write to the room while it is open here, so the
+  // saved transcript is pulled on a timer instead of only when this view sends or a turn ends.
+  createEffect(
+    on(roomID, (id) => {
+      if (pollTimer) clearInterval(pollTimer)
+      pollTimer = undefined
+      if (disposed || id === "" || id === "0") return
+      pollTimer = setInterval(() => void poll(), 5_000)
+    }),
+  )
 
   Keymap.createLayer(() => ({
     enabled: dialog.stack.length === 0,

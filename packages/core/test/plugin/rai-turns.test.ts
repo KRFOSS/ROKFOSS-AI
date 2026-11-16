@@ -9,6 +9,7 @@ import {
   parseTurnDone,
   parseTurnEvents,
   parseTurnStart,
+  relayable,
   settleText,
   toolMark,
   turnDoneBody,
@@ -19,6 +20,24 @@ import {
 
 const endpoint = "https://project.krfoss.org/api/rai/v1"
 const turnID = "9f3a6c1e2b7d48a0b5e1c4d7f20a8e63"
+
+describe("중계 대상", () => {
+  // The gateway cannot call a free OpenCode model, so the local answer has to be recorded through this window.
+  test("무료 오픈코드 모델을 포함한 로컬 응답은 중계한다", () => {
+    expect(relayable("opencode")).toBe(true)
+    expect(relayable("opencode-go")).toBe(true)
+    expect(relayable("anthropic")).toBe(true)
+    expect(relayable(undefined)).toBe(true)
+    expect(relayable("opencode")).toBe(true)
+  })
+
+  // A RAI model is answered by the gateway, which records the reply itself; relaying it would duplicate it.
+  test("RAI 응답은 중계하지 않는다", () => {
+    expect(relayable("rai")).toBe(false)
+    expect(relayable("RAI")).toBe(false)
+    expect(relayable(" rai ")).toBe(false)
+  })
+})
 
 describe("외부 응답 회차 본문", () => {
   test("메시지·모델·공급자만 보낸다", () => {

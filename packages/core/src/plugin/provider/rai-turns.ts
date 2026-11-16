@@ -35,6 +35,16 @@ export type Binding = {
 
 export type StartBody = { readonly ok: true; readonly body: Readonly<Record<string, unknown>> } | { readonly ok: false; readonly error: string }
 
+/**
+ * Whether a turn is recorded into the room through this window. A `rai` model is answered by the gateway, which
+ * already records it (spec 3.3), so relaying it would duplicate the reply. Every other provider — including the
+ * free `opencode` models the gateway cannot call — is answered on this machine and therefore has to be relayed
+ * (spec 3.7).
+ */
+export function relayable(provider: string | undefined): boolean {
+  return (provider ?? "").trim().toLowerCase() !== "rai"
+}
+
 /** `POST /rooms/{id}/turns`. Only the three fields the contract names are copied. */
 export function turnStartBody(input: { readonly message: string; readonly model: string; readonly provider?: string }): StartBody {
   if (typeof input.message !== "string" || input.message.trim() === "") return { ok: false, error: "메시지를 입력하세요" }
@@ -493,8 +503,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
         const info = yield* ctx.session.get({ sessionID: sessionID as never }).pipe(Effect.orElseSucceed(() => undefined))
         const provider = (info?.model?.providerID as string | undefined) ?? "opencode"
         const model = (info?.model?.id as string | undefined) ?? ""
-        // A RAI model is served by the gateway itself and recorded there; only a locally answered turn is relayed.
-        if (provider === "rai") return
+        // A RAI model is served by the gateway itself and recorded there; every locally answered turn — a free
+        // OpenCode model included — is relayed, because the server cannot call those models itself (spec 3.7).
+        if (!relayable(provider)) return
         const body = turnStartBody({ message: request.text, model, provider })
         if (!body.ok) return
         const auth = yield* authorize(ctx).pipe(Effect.orElseSucceed(() => undefined))
