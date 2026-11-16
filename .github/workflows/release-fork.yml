@@ -70,7 +70,12 @@ jobs:
   build:
     needs: plan
     name: build ${{ matrix.group }}
-    runs-on: ubuntu-24.04
+    # The heavy cross-compile runs on this project's own machine (`r3`, Linux x64): it is the only thing sent there,
+    # the workflow is manual-only so no fork pull request can reach it, and it keeps a release off hosted minutes.
+    # The three platform groups queue on that one runner instead of running in parallel, so a release takes longer;
+    # `publish` stays hosted because it needs `zip`, `gh` and `sha256sum`, and `r3` has no passwordless `sudo` to
+    # install anything missing.
+    runs-on: [self-hosted, linux, x64]
     timeout-minutes: 90
     strategy:
       fail-fast: false

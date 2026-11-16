@@ -138,8 +138,9 @@ label in an edited file has to be translated again, and a newly added workflow n
 
 #### Runners
 
-Every job runs on a GitHub-hosted runner. This project's own `r3` machine (`self-hosted`, `linux`,
-`x64`) was tried for the `unit` Linux leg and then dropped:
+The only job sent to this project's own `r3` machine (`self-hosted`, `linux`, `x64`) is `release-fork`'s
+`build`. It is a manual workflow, so no fork pull request can reach the machine, and the cross-compile
+is the one thing worth keeping off hosted runners. The `unit` Linux leg was tried there and dropped:
 
 - **One machine runs one job.** `r3` is a single runner, so every job sent to it queues behind the
   others, and a dev push never cancels the run before it (each run gets its own concurrency group, so
@@ -166,6 +167,10 @@ The reasons below still apply to any job moved there:
   exactly this reason.
 
 A self-hosted label appears once per job, so dropping it is a one-line change per job.
+
+`release-fork`'s `publish` stays hosted: it runs `zip`, `sha256sum` and `gh`, and `r3` has no
+passwordless `sudo` to install anything it lacks. Its three `build` groups also queue on that one
+machine instead of running in parallel, so a release takes longer than it did on hosted runners.
 
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
