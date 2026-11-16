@@ -25,42 +25,75 @@
 
 ### Installation
 
-```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
+Install this repository's CLI from [GitHub Releases](https://github.com/KRFOSS/opencode/releases).
 
-# Package managers
-npm i -g @opencode/cli@latest      # or bun/pnpm/yarn
-brew install anomalyco/tap/opencode-v2 # macOS and Linux (recommended, always up to date)
-brew install opencode              # macOS and Linux (official brew formula, updated less)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # Any OS
-nix run github:anomalyco/opencode  # Nix
+```bash
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 ```
 
-> [!TIP]
-> Remove versions older than 0.1.x before installing.
+The installer selects the binary for your platform and installs it to `$HOME/.opencode/bin` by default. On Windows, run it in Git Bash or MSYS2, or download and extract a ZIP from the release assets.
+
+| Platform | Download |
+| --- | --- |
+| Linux x64 (glibc) | `opencode-linux-x64.tar.gz` |
+| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz` |
+| Linux ARM64 (glibc) | `opencode-linux-arm64.tar.gz` |
+| Linux x64 (musl) | `opencode-linux-x64-musl.tar.gz` |
+| Linux x64 (musl, baseline) | `opencode-linux-x64-baseline-musl.tar.gz` |
+| Linux ARM64 (musl) | `opencode-linux-arm64-musl.tar.gz` |
+| Windows x64 | `opencode-windows-x64.zip` |
+| Windows x64 (baseline) | `opencode-windows-x64-baseline.zip` |
+| Windows ARM64 | `opencode-windows-arm64.zip` |
+
+Use `baseline` for x64 CPUs without AVX2, and `musl` for musl-based systems such as Alpine Linux. The fork release workflow currently publishes Linux and Windows CLI builds.
+
+```bash
+# Run with Nix
+nix run github:KRFOSS/opencode/dev#opencode
+
+# Install into your Nix profile
+nix profile install github:KRFOSS/opencode/dev#opencode
+```
+
+The Nix flake targets Linux x64, Linux ARM64, and macOS Apple Silicon.
+
+### Run from source
+
+To run this repository's version, clone it and install its workspace dependencies with Bun. Use the Bun version specified in the `packageManager` field of [package.json](./package.json) or newer. The upstream install script and published packages install the upstream version.
+
+```bash
+git clone --branch dev https://github.com/KRFOSS/opencode.git
+cd opencode
+bun install
+bun run dev .
+```
+
+Run commands from the repository root. Pass a project directory instead of `.` to open another project. To connect the development TUI to an installed OpenCode background server and its live sessions, use `bun run dev:live .`.
+
+```bash
+# Lint and type-check the repository
+bun run check
+
+# Run tests from the affected package directory
+cd packages/core
+bun run test
+```
 
 ### Desktop App (BETA)
 
-OpenCode is also available as a desktop application. Download it from [opencode.ai/download](https://opencode.ai/download).
-
-| Platform              | Download                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, or `.AppImage`     |
+Run this repository's desktop application from the repository root after installing dependencies:
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+bun run dev:desktop
 ```
 
-#### Installation Directory
+You can also run the desktop app with Nix:
 
-The install script installs OpenCode to `$HOME/.opencode/bin`.
+```bash
+nix run github:KRFOSS/opencode/dev#opencode-desktop
+```
+
+The upstream desktop releases are available at [opencode.ai/download](https://opencode.ai/download).
 
 ### Agents
 

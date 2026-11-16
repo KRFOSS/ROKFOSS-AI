@@ -25,42 +25,75 @@
 
 ### 설치
 
-```bash
-# YOLO
-curl -fsSL https://opencode.ai/v2/install | bash
+이 저장소의 CLI는 [GitHub Releases](https://github.com/KRFOSS/opencode/releases)에서 설치할 수 있습니다.
 
-# 패키지 매니저
-npm i -g @opencode/cli@latest      # bun/pnpm/yarn 도 가능
-brew install anomalyco/tap/opencode-v2 # macOS 및 Linux (권장, 항상 최신)
-brew install opencode              # macOS 및 Linux (공식 brew formula, 업데이트 빈도 낮음)
-sudo pacman -S opencode            # Arch Linux (Stable)
-paru -S opencode-beta              # Arch Linux (Latest from AUR)
-mise use -g opencode               # 어떤 OS든
-nix run github:anomalyco/opencode  # Nix
+```bash
+curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
 ```
 
-> [!TIP]
-> 설치 전에 0.1.x 보다 오래된 버전을 제거하세요.
+설치 스크립트는 플랫폼에 맞는 바이너리를 선택하고 기본적으로 `$HOME/.opencode/bin`에 설치합니다. Windows에서는 Git Bash 또는 MSYS2에서 실행하거나 릴리즈의 ZIP 파일을 직접 다운로드하여 압축을 푸세요.
+
+| 플랫폼 | 다운로드 |
+| --- | --- |
+| Linux x64 (glibc) | `opencode-linux-x64.tar.gz` |
+| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz` |
+| Linux ARM64 (glibc) | `opencode-linux-arm64.tar.gz` |
+| Linux x64 (musl) | `opencode-linux-x64-musl.tar.gz` |
+| Linux x64 (musl, baseline) | `opencode-linux-x64-baseline-musl.tar.gz` |
+| Linux ARM64 (musl) | `opencode-linux-arm64-musl.tar.gz` |
+| Windows x64 | `opencode-windows-x64.zip` |
+| Windows x64 (baseline) | `opencode-windows-x64-baseline.zip` |
+| Windows ARM64 | `opencode-windows-arm64.zip` |
+
+`baseline`은 AVX2를 지원하지 않는 x64 CPU용이며, `musl`은 Alpine Linux 등 musl 기반 환경용입니다. 현재 포크 릴리즈 워크플로는 Linux와 Windows CLI를 배포합니다.
+
+```bash
+# Nix로 실행
+nix run github:KRFOSS/opencode/dev#opencode
+
+# Nix 프로필에 설치
+nix profile install github:KRFOSS/opencode/dev#opencode
+```
+
+Nix flake는 Linux x64·ARM64와 macOS Apple Silicon을 대상으로 합니다.
+
+### 소스에서 실행
+
+이 저장소의 버전을 실행하려면 저장소를 복제한 뒤 Bun으로 워크스페이스 의존성을 설치하세요. [package.json](./package.json)의 `packageManager`에 지정된 Bun 버전 이상이 필요합니다. 원본 프로젝트의 설치 스크립트와 배포 패키지는 원본 버전을 설치합니다.
+
+```bash
+git clone --branch dev https://github.com/KRFOSS/opencode.git
+cd opencode
+bun install
+bun run dev .
+```
+
+명령어는 저장소 루트에서 실행하세요. 다른 프로젝트를 열려면 `.` 대신 프로젝트 경로를 전달하세요. 개발 TUI를 설치된 OpenCode 백그라운드 서버와 실행 중인 세션에 연결하려면 `bun run dev:live .`을 사용하세요.
+
+```bash
+# 저장소 린트 및 타입 검사
+bun run check
+
+# 테스트는 대상 패키지 디렉터리에서 실행
+cd packages/core
+bun run test
+```
 
 ### 데스크톱 앱 (BETA)
 
-OpenCode 는 데스크톱 앱으로도 제공됩니다. [opencode.ai/download](https://opencode.ai/download) 에서 다운로드하세요.
-
-| 플랫폼                | 다운로드                           |
-| --------------------- | ---------------------------------- |
-| macOS (Apple Silicon) | `opencode-desktop-mac-arm64.dmg`   |
-| macOS (Intel)         | `opencode-desktop-mac-x64.dmg`     |
-| Windows               | `opencode-desktop-win-x64.exe`     |
-| Linux                 | `.deb`, `.rpm`, 또는 AppImage      |
+의존성을 설치한 뒤 저장소 루트에서 이 저장소의 데스크톱 앱을 실행하세요.
 
 ```bash
-# macOS (Homebrew)
-brew install --cask opencode-desktop
+bun run dev:desktop
 ```
 
-#### 설치 디렉터리
+Nix로 데스크톱 앱을 실행할 수도 있습니다.
 
-설치 스크립트는 OpenCode를 `$HOME/.opencode/bin`에 설치합니다.
+```bash
+nix run github:KRFOSS/opencode/dev#opencode-desktop
+```
+
+원본 프로젝트의 데스크톱 배포판은 [opencode.ai/download](https://opencode.ai/download)에서 받을 수 있습니다.
 
 ### Agents
 
