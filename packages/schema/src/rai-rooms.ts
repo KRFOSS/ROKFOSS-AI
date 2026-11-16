@@ -128,10 +128,28 @@ export interface WatchResult extends Schema.Schema.Type<typeof WatchResult> {}
 
 export const Chunk = Schema.Struct({
   roomID: Schema.String,
-  kind: Schema.Literals(["delta", "thinking", "tool", "tool_done", "notice", "error", "done"]),
+  kind: Schema.Literals([
+    "delta",
+    "thinking",
+    "tool",
+    "tool_done",
+    "notice",
+    "error",
+    "done",
+    "approval",
+    "approval_done",
+  ]),
   text: Schema.NullOr(Schema.String),
   label: Schema.NullOr(Schema.String),
   ok: Schema.NullOr(Schema.Boolean),
+  /** Tool name, so a `tool_done` can close the matching line instead of the newest one. */
+  name: Schema.NullOr(Schema.String),
+  /** Approval id, so `approval_done` finds the line the server opened. */
+  approvalID: Schema.NullOr(Schema.String),
+  title: Schema.NullOr(Schema.String),
+  purpose: Schema.NullOr(Schema.String),
+  /** Raw approval decision (`allow`, `allow-room`, `deny`, …). The screen maps it, it never interprets it. */
+  decision: Schema.NullOr(Schema.String),
 }).annotate({ identifier: "RaiRooms.Chunk" })
 export interface Chunk extends Schema.Schema.Type<typeof Chunk> {}
 

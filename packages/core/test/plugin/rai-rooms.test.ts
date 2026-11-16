@@ -152,6 +152,37 @@ describe("RAI rooms protocol", () => {
     expect(RaiRooms.canSend("write")).toBe(true)
   })
 
+  test("carries approvals and keeps each tool result with its own line", () => {
+    const fixture = [
+      'data: {"tool":"read","label":"README.md 읽기"}',
+      "",
+      'data: {"approval":{"id":"a1","kind":"shell","title":"명령 실행","purpose":"README 확인"}}',
+      "",
+      'data: {"approval_done":"a1","decision":"allow-room"}',
+      "",
+      'data: {"tool_done":"read","ok":true,"label":"README.md 읽기"}',
+      "",
+      "",
+    ].join("\n")
+    const pulled = pushSse("", fixture)
+    // Arrival order is what the room draws, so frames must not be reordered or merged.
+    expect(pulled.frames.map((frame) => frame.kind)).toEqual(["tool", "approval", "approval_done", "tool_done"])
+    expect(pulled.frames.find((frame) => frame.kind === "tool")).toMatchObject({
+      label: "README.md 읽기",
+      name: "read",
+    })
+    expect(pulled.frames.find((frame) => frame.kind === "approval")).toMatchObject({
+      approvalID: "a1",
+      title: "명령 실행",
+      purpose: "README 확인",
+    })
+    expect(pulled.frames.find((frame) => frame.kind === "approval_done")).toMatchObject({
+      approvalID: "a1",
+      decision: "allow-room",
+    })
+    expect(pulled.frames.find((frame) => frame.kind === "tool_done")).toMatchObject({ name: "read", ok: true })
+  })
+
   test("explains a missing room scope without retrying a shared limit", () => {
     const message = roomsMessage("scope_missing", "권한이 없습니다", "rooms_write")
     expect(message).toContain(describeFailure("scope_missing", "권한이 없습니다"))

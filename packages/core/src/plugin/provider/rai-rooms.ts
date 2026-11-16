@@ -25,6 +25,8 @@ const defaultIdleMs = 120_000
 const maxRooms = 200
 const maxText = 32_000
 const maxTools = 20
+/** Frames a caller mailbox holds before the oldest are dropped. One turn can record 1000 tool lines. */
+const maxQueuedFrames = 2_048
 /** Attempts after a dropped stream. 401, 403, and share_limited are never in this set. */
 const streamRetries = 2
 
@@ -185,10 +187,24 @@ export function chatBody(input: {
 
 export type Frame = {
   readonly roomID?: string
-  readonly kind: "delta" | "thinking" | "tool" | "tool_done" | "notice" | "error" | "done"
+  readonly kind:
+    | "delta"
+    | "thinking"
+    | "tool"
+    | "tool_done"
+    | "notice"
+    | "error"
+    | "done"
+    | "approval"
+    | "approval_done"
   readonly text?: string
   readonly label?: string
   readonly ok?: boolean
+  readonly name?: string
+  readonly approvalID?: string
+  readonly title?: string
+  readonly purpose?: string
+  readonly decision?: string
 }
 
 function cap(value: string, max = 4_000) {
@@ -233,19 +249,66 @@ function errorText(value: unknown) {
   return undefined
 }
 
+function toolName(value: unknown) {
+  if (typeof value === "string") {
+    const trimmed = value.trim()
+    return trimmed === "" || trimmed.length > 128 || /[\r\n]/.test(trimmed) ? undefined : trimmed
+  }
+  if (value && typeof value === "object") {
+    const name = stringField((value as Record<string, unknown>).name)
+    if (name && name.length <= 128 && !/[\r\n]/.test(name)) return name
+  }
+  return undefined
+}
+
+/**
+ * The web app opens an approval card while a server turn waits for a decision. The key can only show it; the
+ * decision itself is made in the browser, so this carries the id and the wording and nothing else.
+ */
+function approvalFrame(value: Record<string, unknown>, roomID: string | undefined): Frame | undefined {
+  const id = stringField(value.id)
+  if (!id) return undefined
+  const title = stringField(value.title)
+  const purpose = stringField(value.purpose)
+  const decision = stringField(value.decision)
+  return {
+    kind: "approval",
+    approvalID: cap(id, 128),
+    ...(title ? { title: cap(title, 200) } : {}),
+    ...(purpose ? { purpose: cap(purpose, 200) } : {}),
+    ...(decision ? { decision: cap(decision, 32) } : {}),
+    roomID,
+  }
+}
+
 function framesFromObject(value: Record<string, unknown>): Frame[] {
   const roomID = stringField(value.room_id)
   const frames: Frame[] = []
   if (typeof value.delta === "string" && value.delta !== "") frames.push({ kind: "delta", text: cap(value.delta), roomID })
   // Thinking text is intentionally dropped. The dialog may show that thinking happened, not what it said.
   if (value.thinking !== undefined && value.thinking !== null && value.thinking !== "") frames.push({ kind: "thinking", roomID })
-  if (value.tool !== undefined || typeof value.label === "string") {
+  // A `tool_done` may carry the closing line's label; that must not open a second tool line.
+  const closesTool = value.tool_done !== undefined
+  if (!closesTool && (value.tool !== undefined || typeof value.label === "string")) {
     const label = typeof value.label === "string" && value.label.trim() !== "" ? cap(value.label.trim(), 80) : toolLabel(value.tool)
-    if (label) frames.push({ kind: "tool", label, roomID })
+    const name = toolName(value.tool)
+    if (label) frames.push({ kind: "tool", label, ...(name ? { name } : {}), roomID })
   }
   if (value.tool_done !== undefined) {
     const ok = value.ok === true ? true : value.ok === false ? false : undefined
-    frames.push({ kind: "tool_done", ok, roomID })
+    const name = toolName(value.tool_done)
+    const label = stringField(value.label)
+    frames.push({ kind: "tool_done", ok, ...(name ? { name } : {}), ...(label ? { label: cap(label, 80) } : {}), roomID })
+  }
+  const approval = value.approval
+  if (approval && typeof approval === "object" && !Array.isArray(approval)) {
+    const frame = approvalFrame(approval as Record<string, unknown>, roomID)
+    if (frame) frames.push(frame)
+  }
+  if (value.approval_done !== undefined) {
+    const id = stringField(value.approval_done)
+    const decision = stringField(value.decision)
+    if (id) frames.push({ kind: "approval_done", approvalID: cap(id, 128), ...(decision ? { decision: cap(decision, 32) } : {}), roomID })
   }
   if (typeof value.notice === "string" && value.notice.trim() !== "") frames.push({ kind: "notice", text: cap(value.notice, 500), roomID })
   const error = errorText(value.error)
@@ -680,9 +743,15 @@ function toChunk(frame: Frame, roomID: string): RaiRooms.Chunk {
   return {
     roomID: frame.roomID && frame.roomID !== "0" ? frame.roomID : roomID,
     kind: frame.kind,
-    text: frame.kind === "delta" || frame.kind === "notice" || frame.kind === "error" ? frame.text ?? null : null,
-    label: frame.kind === "tool" ? frame.label ?? null : null,
-    ok: frame.kind === "tool_done" ? frame.ok ?? null : null,
+    text:
+      frame.kind === "delta" || frame.kind === "notice" || frame.kind === "error" ? (frame.text ?? null) : null,
+    label: frame.kind === "tool" || frame.kind === "tool_done" ? (frame.label ?? null) : null,
+    ok: frame.kind === "tool_done" ? (frame.ok ?? null) : null,
+    name: frame.kind === "tool" || frame.kind === "tool_done" ? (frame.name ?? null) : null,
+    approvalID: frame.kind === "approval" || frame.kind === "approval_done" ? (frame.approvalID ?? null) : null,
+    title: frame.kind === "approval" ? (frame.title ?? null) : null,
+    purpose: frame.kind === "approval" ? (frame.purpose ?? null) : null,
+    decision: frame.kind === "approval" || frame.kind === "approval_done" ? (frame.decision ?? null) : null,
   }
 }
 
@@ -742,12 +811,10 @@ function enqueueChunk(box: RoomBox, chunk: RaiRooms.Chunk) {
     }
   }
   box.frames.push(chunk)
-  if (box.frames.length <= 64) return
-  const deltas = box.frames.filter((frame) => frame.kind === "delta" && frame.text)
-  const rest = box.frames.filter((frame) => frame.kind !== "delta")
-  const text = deltas.map((frame) => frame.text ?? "").join("").slice(0, maxText)
-  const merged = deltas[0] ? [{ ...deltas[0], text }] : []
-  box.frames = [...merged, ...rest].slice(-64)
+  // Only adjacent deltas are merged. A delta folded into the front of the queue would move ahead of the tool or
+  // approval lines that arrived between them, and the room renders its lines in arrival order.
+  if (box.frames.length <= maxQueuedFrames) return
+  box.frames.splice(0, box.frames.length - maxQueuedFrames)
 }
 
 function reserveBox(token: string) {

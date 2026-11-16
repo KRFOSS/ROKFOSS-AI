@@ -21,11 +21,22 @@ import { PromptMetadataRow } from "./prompt/metadata"
 import { accessOf, roomsReturn } from "./rooms-nav"
 import { roomSlashCommands, roomSlashDirect, type SlashShape } from "./rooms-slash"
 
-type Line = { readonly id: string; readonly role: string; readonly text: string }
+type Line = {
+  readonly id: string
+  readonly role: string
+  readonly text: string
+  /** Tool name, so a `tool_done` closes the line the server opened rather than the newest one. */
+  readonly name?: string
+  readonly state?: "pending" | "ok" | "fail"
+  readonly decision?: "pending" | "allow" | "deny" | "none"
+  readonly purpose?: string
+}
 
 const rpcID = "opencode.rai.rooms"
-const maxLines = 180
+const maxLines = 260
 const maxChars = 48_000
+/** The web app folds older tool lines past this many in one turn; the transcript does the same. */
+const maxLiveTools = 50
 
 function remember(lines: readonly Line[]) {
   const capped = lines.slice(-maxLines)
@@ -84,6 +95,7 @@ export function RoomsView() {
   )
   const [model, setModel] = createSignal(route.model)
   const [lines, setLines] = createSignal<Line[]>([])
+  const [foldedTools, setFoldedTools] = createSignal(0)
   const [hasMore, setHasMore] = createSignal(false)
   const [oldestID, setOldestID] = createSignal<string | null>(null)
   const [busy, setBusy] = createSignal(false)
@@ -97,6 +109,7 @@ export function RoomsView() {
   const [slashDismissed, setSlashDismissed] = createSignal(false)
   let streamed = false
   let liveText = ""
+  let liveSeq = 0
   let streamToken: string | undefined
   let sending = false
   let leaving = false
@@ -188,14 +201,129 @@ export function RoomsView() {
     liveText += clean
     setLines((current) => {
       const last = current.at(-1)
-      if (last?.role === "assistant" && last.id.startsWith("live-")) {
+      if (last?.role === "assistant" && last.id.startsWith("live-text-")) {
         const next = current.slice(0, -1)
         next.push({ ...last, text: RaiRooms.displayText(last.text + clean, 8_000) })
         return remember(next)
       }
-      return remember([...current, { id: `live-${Date.now()}`, role: "assistant", text: clean }])
+      return remember([...current, { id: `live-text-${++liveSeq}`, role: "assistant", text: clean }])
     })
     stick()
+  }
+
+  /**
+   * One line per tool, in the order the server reports them. Text that arrives between two tools starts a new
+   * block, so the transcript reads text → tool → text like the web app instead of one merged answer.
+   */
+  function pushTool(name: string | undefined, label: string) {
+    const clean = RaiRooms.displayText(label, 80)
+    if (!clean) return
+    let folded = false
+    setLines((current) => {
+      const live = current.filter((line) => line.role === "tool" && line.id.startsWith("live-tool-"))
+      const next = [...current]
+      if (live.length >= maxLiveTools) {
+        const oldest = live[0]
+        const index = oldest ? next.findIndex((line) => line.id === oldest.id) : -1
+        if (index >= 0) {
+          next.splice(index, 1)
+          folded = true
+        }
+      }
+      next.push({
+        id: `live-tool-${++liveSeq}`,
+        role: "tool",
+        text: clean,
+        state: "pending",
+        ...(name ? { name } : {}),
+      })
+      return remember(next)
+    })
+    if (folded) setFoldedTools((value) => value + 1)
+    stick()
+  }
+
+  /** Closes the most recent unfinished line with the same tool name, the way the web app matches them. */
+  function finishTool(name: string | undefined, ok: boolean | undefined, label: string | undefined) {
+    setLines((current) => {
+      const next = [...current]
+      let index = -1
+      for (let cursor = next.length - 1; cursor >= 0; cursor--) {
+        const line = next[cursor]
+        if (!line || line.role !== "tool" || !line.id.startsWith("live-tool-")) continue
+        if (line.state !== "pending") continue
+        if (name && line.name && line.name !== name) continue
+        index = cursor
+        break
+      }
+      if (index < 0) return current
+      const line = next[index]
+      if (!line) return current
+      next[index] = {
+        ...line,
+        state: ok === false ? "fail" : "ok",
+        ...(label ? { text: RaiRooms.displayText(label, 80) } : {}),
+      }
+      return next
+    })
+  }
+
+  function decisionOf(value: string | null | undefined): Line["decision"] {
+    if (!value) return "pending"
+    if (value === "allow" || value === "allow-room") return "allow"
+    return "deny"
+  }
+
+  function startApproval(
+    id: string,
+    title: string | null | undefined,
+    purpose: string | null | undefined,
+    decision: string | null | undefined,
+  ) {
+    const key = `live-approval-${id}`
+    const line: Line = {
+      id: key,
+      role: "approval",
+      text: RaiRooms.displayText(title || t("Approval needed"), 200),
+      decision: decisionOf(decision),
+      ...(purpose ? { purpose: RaiRooms.displayText(purpose, 200) } : {}),
+    }
+    setLines((current) => {
+      const index = current.findIndex((entry) => entry.id === key)
+      if (index < 0) return remember([...current, line])
+      const next = [...current]
+      next[index] = line
+      return next
+    })
+    stick()
+  }
+
+  function finishApproval(id: string, decision: string | null | undefined) {
+    const key = `live-approval-${id}`
+    setLines((current) => {
+      const index = current.findIndex((line) => line.id === key)
+      const line = index >= 0 ? current[index] : undefined
+      if (index < 0 || !line) return current
+      const next = [...current]
+      next[index] = { ...line, decision: decisionOf(decision) }
+      return next
+    })
+  }
+
+  /** An approval still open when the turn ended never got a decision. */
+  function settleApprovals() {
+    setLines((current) =>
+      current.map((line) =>
+        line.role === "approval" && line.decision === "pending" ? { ...line, decision: "none" } : line,
+      ),
+    )
+  }
+
+  /** Drops everything the live turn drew, so a replayed stream redraws it from the start without duplicates. */
+  function clearLive() {
+    streamed = false
+    setFoldedTools(0)
+    setLines((current) => current.filter((line) => !line.id.startsWith("live-")))
   }
 
   function finishLive(text: string | null | undefined) {
@@ -223,8 +351,17 @@ export function RoomsView() {
       setPhase("")
       appendDelta(chunk.text)
     } else if (chunk.kind === "thinking") setPhase(t("thinking…"))
-    else if (chunk.kind === "tool" && chunk.label) setPhase(`${t("Tool")}: ${RaiRooms.displayText(chunk.label, 80)}`)
-    else if (chunk.kind === "tool_done") setPhase("")
+    else if (chunk.kind === "tool") {
+      const label = chunk.label ?? chunk.name ?? t("Tool")
+      setPhase(`${t("Tool")}: ${RaiRooms.displayText(label, 80)}`)
+      pushTool(chunk.name ?? undefined, label)
+    } else if (chunk.kind === "tool_done") {
+      setPhase("")
+      finishTool(chunk.name ?? undefined, chunk.ok ?? undefined, chunk.label ?? undefined)
+    } else if (chunk.kind === "approval" && chunk.approvalID)
+      startApproval(chunk.approvalID, chunk.title, chunk.purpose, chunk.decision)
+    else if (chunk.kind === "approval_done" && chunk.approvalID)
+      finishApproval(chunk.approvalID, chunk.decision)
     else if (chunk.kind === "notice" && chunk.text)
       pushLine({ id: `notice-${Date.now()}`, role: "notice", text: RaiRooms.displayText(chunk.text, 500) })
     else if (chunk.kind === "error" && chunk.text) setError(RaiRooms.displayText(chunk.text, 500))
@@ -284,6 +421,7 @@ export function RoomsView() {
         setLines((current) => remember(older ? [...incoming, ...current] : incoming))
         setHasMore(page.hasMore)
         setOldestID(page.oldestID)
+        setFoldedTools(0)
         if (page.access) setAccess(accessOf(page.access))
         if (page.room) {
           setTitle(page.room.title)
@@ -300,8 +438,24 @@ export function RoomsView() {
     }
   }
 
+  /**
+   * Replaces the live turn with the saved transcript once it ends. The server writes the reply as `done` arrives,
+   * so a page that still ends on the user's line raced that write and is fetched again.
+   */
+  async function reloadSaved(id: string, attempt = 0) {
+    if (disposed || id === "" || id === "0") return
+    await loadMessages(id, null, false)
+    if (disposed) return
+    const last = lines().at(-1)
+    if (last?.role === "user" && attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)))
+      return reloadSaved(id, attempt + 1)
+    }
+  }
+
   async function follow(id: string) {
-    streamed = false
+    // A turn's stream replays from its start, so anything already drawn for it is dropped and drawn again.
+    clearLive()
     liveText = ""
     const stream = await openStream()
     try {
@@ -315,9 +469,12 @@ export function RoomsView() {
         if (watched?.error) setError(watched.error)
         return
       }
-      finishLive(watched.text)
+      if (!streamed) finishLive(watched.text)
       if (watched.thought) setPhase(t("thinking…"))
-      if (watched.reconnect && live()) {
+      if (watched.done || watched.error) {
+        settleApprovals()
+        void reloadSaved(id)
+      } else if (watched.reconnect && live()) {
         reconnectTimer = setTimeout(() => {
           if (!disposed && live()) void follow(roomID())
         }, 1_000)
@@ -340,7 +497,7 @@ export function RoomsView() {
       return
     }
     sending = true
-    streamed = false
+    clearLive()
     liveText = ""
     setBusy(true)
     setError("")
@@ -368,18 +525,19 @@ export function RoomsView() {
         // mounted and the transcript already on screen survives.
         if (route.openToken) navigate({ ...route, roomID: result.roomID })
       }
-      if (!streamed && result.notice)
-        pushLine({ id: `notice-${Date.now()}`, role: "notice", text: RaiRooms.displayText(result.notice, 500) })
       if (!streamed) {
+        if (result.notice)
+          pushLine({ id: `notice-${Date.now()}`, role: "notice", text: RaiRooms.displayText(result.notice, 500) })
         for (const tool of result.tools) {
           pushLine({
             id: `tool-${tool.label}`,
             role: "tool",
             text: `${t("Tool")}: ${RaiRooms.displayText(tool.label, 80)}`,
+            state: tool.done ? (tool.ok === false ? "fail" : "ok") : "pending",
           })
         }
+        finishLive(result.text)
       }
-      finishLive(result.text)
       if (result.thought) setPhase(t("thinking…"))
       if (result.error) setError(result.error)
       else setPhase("")
@@ -390,6 +548,8 @@ export function RoomsView() {
       await stream?.done()
       sending = false
       if (!disposed) setBusy(false)
+      settleApprovals()
+      void reloadSaved(roomID())
     }
   }
 
@@ -431,8 +591,11 @@ export function RoomsView() {
   onMount(() => {
     const timer = setTimeout(() => textarea?.focus(), 30)
     onCleanup(() => clearTimeout(timer))
-    if (route.roomID !== "0") void loadMessages(route.roomID, null, false)
-    if (route.running) void follow(route.roomID)
+    // Saved messages are drawn first, then a running turn is attached below them as its own live block.
+    void (async () => {
+      if (route.roomID !== "0") await loadMessages(route.roomID, null, false)
+      if (!disposed && route.running) await follow(route.roomID)
+    })()
   })
 
   Keymap.createLayer(() => ({
@@ -498,6 +661,33 @@ export function RoomsView() {
     void send()
   }
 
+  /** While the server waits on a browser decision the turn is frozen, so the reason has to stay on screen. */
+  const waitingApproval = createMemo(() =>
+    lines().some((line) => line.role === "approval" && line.decision === "pending"),
+  )
+
+  const toolIcon = (line: Line) => (line.state === "fail" ? "✗" : line.state === "pending" ? "⋯" : "✓")
+
+  const toolColor = (line: Line) => (line.state === "fail" ? theme.text.feedback.error.base : theme.text.muted)
+
+  const approvalLabel = (line: Line) => {
+    const title = line.text
+    if (line.decision === "allow") return t("Allowed: {{title}}", { title })
+    if (line.decision === "deny") return t("Denied: {{title}}", { title })
+    if (line.decision === "none") return t("Not decided: {{title}}", { title })
+    return t("Approval needed: {{title}} — allow or deny it in the web AI app", { title })
+  }
+
+  const approvalColor = (line: Line) => {
+    if (line.decision === "allow") return theme.text.feedback.success.base
+    if (line.decision === "deny") return theme.text.feedback.error.base
+    if (line.decision === "none") return theme.text.muted
+    return theme.text.feedback.warning.base
+  }
+
+  const statusText = () =>
+    error() || (waitingApproval() ? t("Waiting for approval in the web app") : phase())
+
   const placeholder = () => {
     if (!writable()) return t("Read only")
     if (busy()) return t("Writing…")
@@ -553,6 +743,11 @@ export function RoomsView() {
           <Show when={lines().length === 0 && !busy()}>
             <text fg={theme.text.muted}>{t("No messages")}</text>
           </Show>
+          <Show when={foldedTools() > 0}>
+            <text fg={theme.text.muted} wrapMode="word">
+              {t("More tools: {{count}}", { count: foldedTools() })}
+            </text>
+          </Show>
           <For each={lines()}>
             {(line) => (
               <box marginTop={1} flexShrink={0}>
@@ -560,24 +755,49 @@ export function RoomsView() {
                   when={line.role === "user"}
                   fallback={
                     <Show
-                      when={line.role !== "tool" && line.role !== "notice"}
+                      when={line.role === "tool"}
                       fallback={
-                        <text fg={theme.text.muted} wrapMode="word">
-                          {line.text}
-                        </text>
+                        <Show
+                          when={line.role === "approval"}
+                          fallback={
+                            <Show
+                              when={line.role === "notice"}
+                              fallback={
+                                <box paddingLeft={1} paddingRight={1}>
+                                  <markdown
+                                    syntaxStyle={syntax()}
+                                    renderNode={plugins.markdown()}
+                                    streaming={line.id.startsWith("live-text-")}
+                                    content={line.text}
+                                    conceal={markdownMode() === "rendered"}
+                                    fg={theme.markdown.text}
+                                    bg={theme.background.base}
+                                  />
+                                </box>
+                              }
+                            >
+                              <text fg={theme.text.muted} wrapMode="word">
+                                {line.text}
+                              </text>
+                            </Show>
+                          }
+                        >
+                          <box flexDirection="column">
+                            <text fg={approvalColor(line)} wrapMode="word">
+                              {approvalLabel(line)}
+                            </text>
+                            <Show when={line.purpose}>
+                              <text fg={theme.text.muted} wrapMode="word">
+                                {line.purpose}
+                              </text>
+                            </Show>
+                          </box>
+                        </Show>
                       }
                     >
-                      <box paddingLeft={1} paddingRight={1}>
-                        <markdown
-                          syntaxStyle={syntax()}
-                          renderNode={plugins.markdown()}
-                          streaming={line.id.startsWith("live-")}
-                          content={line.text}
-                          conceal={markdownMode() === "rendered"}
-                          fg={theme.markdown.text}
-                          bg={theme.background.base}
-                        />
-                      </box>
+                      <text fg={toolColor(line)} wrapMode="word">
+                        {toolIcon(line)} {line.text}
+                      </text>
                     </Show>
                   }
                 >
@@ -623,9 +843,18 @@ export function RoomsView() {
             </For>
           </box>
         </Show>
-        <Show when={error() || phase()}>
-          <text fg={error() ? theme.text.feedback.error.base : theme.text.muted} wrapMode="word">
-            {error() || phase()}
+        <Show when={statusText() !== ""}>
+          <text
+            fg={
+              error()
+                ? theme.text.feedback.error.base
+                : waitingApproval()
+                  ? theme.text.feedback.warning.base
+                  : theme.text.muted
+            }
+            wrapMode="word"
+          >
+            {statusText()}
           </text>
         </Show>
         <Show when={!model().trim() && canPickModel()}>
