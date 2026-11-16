@@ -160,6 +160,10 @@ Everything else stays on GitHub-hosted runners. Three reasons matter when extend
   guard.
 - **The browser suites stay hosted.** They install Playwright's system packages with `sudo` and split
   into four parallel shards, which one machine would run one after another.
+- **Nothing that needs root or KVM runs there.** The runner has no passwordless `sudo` (so
+  `nix-quick-install-action` fails with `sudo: a password is required`) and no `/dev/kvm`. Any job
+  that installs system packages stays on a hosted runner; `nix-eval` was tried there and failed for
+  exactly this reason.
 
 An offline self-hosted runner leaves its jobs **queued** rather than failing, which is the same trap
 the Blacksmith labels caused. If the machine is going away, replace the label with `ubuntu-24.04`
