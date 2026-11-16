@@ -3,9 +3,23 @@ name: check
 on:
   push:
     branches: [dev]
+    paths-ignore:
+      - "nix/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/nix-hashes/**"
+      - ".github/workflows/check-nix.yml"
+      - ".github/workflows/bot-nix-hashes.yml"
   pull_request:
     branches: [dev, beta]
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "nix/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/nix-hashes/**"
+      - ".github/workflows/check-nix.yml"
+      - ".github/workflows/bot-nix-hashes.yml"
   workflow_dispatch:
 
 concurrency:

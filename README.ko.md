@@ -19,7 +19,7 @@
   <a href="README.ko.md">한국어</a>
 </p>
 
-[![OpenCode Terminal UI](services/site/public/v1/docs/assets/lander/screenshot.png)](https://opencode.ai)
+[![OpenCode Terminal UI](.github/assets/screenshot.png)](https://opencode.ai)
 
 ---
 
@@ -33,17 +33,17 @@ curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.s
 
 설치 스크립트는 플랫폼에 맞는 바이너리를 선택하고 기본적으로 `$HOME/.opencode/bin`에 설치합니다. Windows에서는 Git Bash 또는 MSYS2에서 실행하거나 릴리즈의 ZIP 파일을 직접 다운로드하여 압축을 푸세요.
 
-| 플랫폼 | 다운로드 |
-| --- | --- |
-| Linux x64 (glibc) | `opencode-linux-x64.tar.gz` |
-| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz` |
-| Linux ARM64 (glibc) | `opencode-linux-arm64.tar.gz` |
-| Linux x64 (musl) | `opencode-linux-x64-musl.tar.gz` |
-| Linux x64 (musl, baseline) | `opencode-linux-x64-baseline-musl.tar.gz` |
-| Linux ARM64 (musl) | `opencode-linux-arm64-musl.tar.gz` |
-| Windows x64 | `opencode-windows-x64.zip` |
-| Windows x64 (baseline) | `opencode-windows-x64-baseline.zip` |
-| Windows ARM64 | `opencode-windows-arm64.zip` |
+| 플랫폼                      | 다운로드                                  |
+| --------------------------- | ----------------------------------------- |
+| Linux x64 (glibc)           | `opencode-linux-x64.tar.gz`               |
+| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz`      |
+| Linux ARM64 (glibc)         | `opencode-linux-arm64.tar.gz`             |
+| Linux x64 (musl)            | `opencode-linux-x64-musl.tar.gz`          |
+| Linux x64 (musl, baseline)  | `opencode-linux-x64-baseline-musl.tar.gz` |
+| Linux ARM64 (musl)          | `opencode-linux-arm64-musl.tar.gz`        |
+| Windows x64                 | `opencode-windows-x64.zip`                |
+| Windows x64 (baseline)      | `opencode-windows-x64-baseline.zip`       |
+| Windows ARM64               | `opencode-windows-arm64.zip`              |
 
 `baseline`은 AVX2를 지원하지 않는 x64 CPU용이며, `musl`은 Alpine Linux 등 musl 기반 환경용입니다. 현재 포크 릴리즈 워크플로는 Linux와 Windows CLI를 배포합니다.
 

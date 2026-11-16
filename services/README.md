@@ -5,7 +5,6 @@ and clients live in `packages/`.
 
 | Service                | Purpose                                  | Deployment                   |
 | ---------------------- | ---------------------------------------- | ---------------------------- |
-| [`site`](./site)       | The opencode.ai website and V2 docs      | `deploy-site.yml`, `cf`      |
 | [`legacy`](./legacy)   | Deprecated: opncd.ai and api.opencode.ai | `deploy.yml`, `cf`           |
 | [`data`](./data)       | The /data site, its OG images and sync   | `deploy.yml`, `cf`           |
 | [`updates`](./updates) | Release metadata and update selection    | `release.yml`, Wrangler      |

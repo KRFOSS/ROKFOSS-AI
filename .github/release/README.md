@@ -1,6 +1,6 @@
 # Deploy boundary
 
-The deploy workflows (`deploy.yml`, `deploy-site.yml`, `deploy-files.yml`,
+The deploy workflows (`deploy.yml`, `deploy-files.yml`,
 `deploy-update.yml`) split every service in two:
 
 - **build** runs repository code (`bun install`, `cf build`, `bun script/build.ts`,
@@ -49,7 +49,7 @@ scripts, but production holds an account-wide token and a bad deploy is live.
 Before promoting:
 
 1. Confirm every dev deploy job is green on the commit being promoted
-   (`deploy`, `deploy-site`, `deploy-files`; `deploy-update` runs on production
+   (`deploy`, `deploy-files`; `deploy-update` runs on production
    only).
 2. Diff `.github/release/targets/` against `origin/production`. Any change here
    is a change to what production may deploy.

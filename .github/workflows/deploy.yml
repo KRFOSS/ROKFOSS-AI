@@ -20,6 +20,13 @@ on:
     branches:
       - dev
       - production
+    paths-ignore:
+      - "nix/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/nix-hashes/**"
+      - ".github/workflows/check-nix.yml"
+      - ".github/workflows/bot-nix-hashes.yml"
   workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}

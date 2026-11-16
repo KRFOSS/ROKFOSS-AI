@@ -7,7 +7,7 @@
 //   bun script/check-greys.ts --json    every neutral literal with its outcome, for the colour audit
 import path from "node:path"
 
-const ROOTS = ["services/site/src", "packages/nav-menus/src", "packages/data/app/src"]
+const ROOTS = ["packages/nav-menus/src", "packages/data/app/src"]
 
 // The shared neutral scale. A step is a role, and the same step does the same job in light and dark.
 const SCALE = {

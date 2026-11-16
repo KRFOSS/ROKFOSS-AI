@@ -30,11 +30,11 @@ curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | ba
 curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --dir ~/bin --no-modify-path
 ```
 
-| Target | Asset |
-| :--- | :--- |
-| Linux x64 / arm64 | `opencode-linux-<arch>.tar.gz` (`-musl`, `-baseline` variants included) |
-| macOS x64 / arm64 | `opencode-darwin-<arch>.zip` |
-| Windows x64 / arm64 | `opencode-windows-<arch>.zip` |
+| Target              | Asset                                                                   |
+| :------------------ | :---------------------------------------------------------------------- |
+| Linux x64 / arm64   | `opencode-linux-<arch>.tar.gz` (`-musl`, `-baseline` variants included) |
+| macOS x64 / arm64   | `opencode-darwin-<arch>.zip`                                            |
+| Windows x64 / arm64 | `opencode-windows-<arch>.zip`                                           |
 
 <yellow>macOS and Windows builds are not signed or notarized.</yellow> The installer gives the macOS
 binary an ad-hoc signature (`codesign --force --sign -`) and clears the quarantine flag; Windows may
@@ -101,14 +101,14 @@ its own file so an upstream release change never collides with it.
 
 The fork keeps its changes in as few places as possible:
 
-| Area | Where |
-| :--- | :--- |
-| Korean strings | `packages/tui/src/i18n/` (new directory) |
-| Translated call sites | one `t("…")` per string plus one import per file |
-| Language setting | one entry in `packages/tui/src/component/dialog-config.tsx` |
-| Provider | `packages/ai/src/providers/rai.ts`, `packages/core/src/plugin/provider/rai.ts`, `packages/schema/src/rai.ts`, `packages/tui/src/component/dialog-rai.tsx` |
-| Web search | `packages/core/src/plugin/websearch/rai.ts` (registered in `websearch/index.ts`, not via `WebSearchProvider.register`) |
-| CI runners | `runs-on` labels in `check.yml`, `check-test.yml`, `check-nix.yml`, `check-docs.yml`, `bot-nix-hashes.yml`, `check-process-daemon.yml`, `release-process-daemon.yml` — `blacksmith-*` replaced with GitHub-hosted labels (see below) |
+| Area                  | Where                                                                                                                                                                                                              |
+| :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Korean strings        | `packages/tui/src/i18n/` (new directory)                                                                                                                                                                           |
+| Translated call sites | one `t("…")` per string plus one import per file                                                                                                                                                                   |
+| Language setting      | one entry in `packages/tui/src/component/dialog-config.tsx`                                                                                                                                                        |
+| Provider              | `packages/ai/src/providers/rai.ts`, `packages/core/src/plugin/provider/rai.ts`, `packages/schema/src/rai.ts`, `packages/tui/src/component/dialog-rai.tsx`                                                          |
+| Web search            | `packages/core/src/plugin/websearch/rai.ts` (registered in `websearch/index.ts`, not via `WebSearchProvider.register`)                                                                                             |
+| CI runners            | `runs-on` labels in `check.yml`, `check-test.yml`, `check-nix.yml`, `bot-nix-hashes.yml`, `check-process-daemon.yml`, `release-process-daemon.yml` — `blacksmith-*` replaced with GitHub-hosted labels (see below) |
 
 ### CI runners
 
@@ -117,18 +117,22 @@ fork has no Blacksmith installation, and GitHub does not fail such a job: it sta
 which made every push to `dev` leave a growing pile of `check`/`check-test`/`check-nix` runs that
 never start. The workflows above therefore use GitHub-hosted labels:
 
-| Upstream label | Fork label |
-| :--- | :--- |
-| `blacksmith-4vcpu-ubuntu-2404` | `ubuntu-24.04` |
+| Upstream label                     | Fork label         |
+| :--------------------------------- | :----------------- |
+| `blacksmith-4vcpu-ubuntu-2404`     | `ubuntu-24.04`     |
 | `blacksmith-4vcpu-ubuntu-2404-arm` | `ubuntu-24.04-arm` |
-| `blacksmith-4vcpu-windows-2025` | `windows-2025` |
-| `blacksmith-6vcpu-macos-15` | `macos-15` |
-| `blacksmith-6vcpu-macos-26` | `macos-26` |
-| `blacksmith-6vcpu-macos-latest` | `macos-latest` |
+| `blacksmith-4vcpu-windows-2025`    | `windows-2025`     |
+| `blacksmith-6vcpu-macos-15`        | `macos-15`         |
+| `blacksmith-6vcpu-macos-26`        | `macos-26`         |
+| `blacksmith-6vcpu-macos-latest`    | `macos-latest`     |
 
-`deploy.yml`, `deploy-files.yml`, `deploy-site.yml`, `deploy-update.yml` and `release.yml` are left
-alone: every job in them is guarded by `if: github.repository == 'anomalyco/opencode'`, so in this
-fork they are *skipped* rather than queued, and they need credentials and signing identities the
+The upstream website source, `deploy-site.yml`, and `check-docs.yml` are removed. The README screenshot
+and shared navigation logos live in `.github/assets` and `packages/nav-menus/assets/brand` instead.
+Nix-only changes skip the general checks, tests, and automatic deploy workflows through path filters.
+
+`deploy.yml`, `deploy-files.yml`, `deploy-update.yml` and `release.yml` retain their upstream repository
+guards (`if: github.repository == 'anomalyco/opencode'`), so in this
+fork they are _skipped_ rather than queued, and they need credentials and signing identities the
 fork does not have anyway. Keep the table above in mind when merging upstream: a new `blacksmith-*`
 label in an edited file has to be translated again, and a newly added workflow needs the same pass.
 

@@ -19,7 +19,7 @@
   <a href="README.ko.md">한국어</a>
 </p>
 
-[![OpenCode Terminal UI](services/site/public/v1/docs/assets/lander/screenshot.png)](https://opencode.ai)
+[![OpenCode Terminal UI](.github/assets/screenshot.png)](https://opencode.ai)
 
 ---
 
@@ -33,17 +33,17 @@ curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.s
 
 The installer selects the binary for your platform and installs it to `$HOME/.opencode/bin` by default. On Windows, run it in Git Bash or MSYS2, or download and extract a ZIP from the release assets.
 
-| Platform | Download |
-| --- | --- |
-| Linux x64 (glibc) | `opencode-linux-x64.tar.gz` |
-| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz` |
-| Linux ARM64 (glibc) | `opencode-linux-arm64.tar.gz` |
-| Linux x64 (musl) | `opencode-linux-x64-musl.tar.gz` |
-| Linux x64 (musl, baseline) | `opencode-linux-x64-baseline-musl.tar.gz` |
-| Linux ARM64 (musl) | `opencode-linux-arm64-musl.tar.gz` |
-| Windows x64 | `opencode-windows-x64.zip` |
-| Windows x64 (baseline) | `opencode-windows-x64-baseline.zip` |
-| Windows ARM64 | `opencode-windows-arm64.zip` |
+| Platform                    | Download                                  |
+| --------------------------- | ----------------------------------------- |
+| Linux x64 (glibc)           | `opencode-linux-x64.tar.gz`               |
+| Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz`      |
+| Linux ARM64 (glibc)         | `opencode-linux-arm64.tar.gz`             |
+| Linux x64 (musl)            | `opencode-linux-x64-musl.tar.gz`          |
+| Linux x64 (musl, baseline)  | `opencode-linux-x64-baseline-musl.tar.gz` |
+| Linux ARM64 (musl)          | `opencode-linux-arm64-musl.tar.gz`        |
+| Windows x64                 | `opencode-windows-x64.zip`                |
+| Windows x64 (baseline)      | `opencode-windows-x64-baseline.zip`       |
+| Windows ARM64               | `opencode-windows-arm64.zip`              |
 
 Use `baseline` for x64 CPUs without AVX2, and `musl` for musl-based systems such as Alpine Linux. The fork release workflow currently publishes Linux and Windows CLI builds.
 
