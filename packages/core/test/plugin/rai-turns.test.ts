@@ -9,6 +9,7 @@ import {
   parseTurnDone,
   parseTurnEvents,
   parseTurnStart,
+  promptStartsTurn,
   relayable,
   settleText,
   startRefusal,
@@ -37,6 +38,21 @@ describe("중계 대상", () => {
     expect(relayable("rai")).toBe(false)
     expect(relayable("RAI")).toBe(false)
     expect(relayable(" rai ")).toBe(false)
+  })
+})
+
+describe("입력이 새 회차인지", () => {
+  // 모든 입력의 기본 전달 방식이 steer 라서, steer 를 끼어들기로 보면 어떤 회차도 기록되지 않는다
+  test("회차가 없을 때의 입력은 전달 방식과 상관없이 새 회차다", () => {
+    expect(promptStartsTurn("steer", false)).toBe(true)
+    expect(promptStartsTurn(undefined, false)).toBe(true)
+    expect(promptStartsTurn("queue", false)).toBe(true)
+  })
+
+  test("기록 중인 회차가 있으면 끼어들기는 그 회차에 속하고 대기열 입력만 다음 회차다", () => {
+    expect(promptStartsTurn("steer", true)).toBe(false)
+    expect(promptStartsTurn(undefined, true)).toBe(false)
+    expect(promptStartsTurn("queue", true)).toBe(true)
   })
 })
 

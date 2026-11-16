@@ -396,6 +396,10 @@ export const dict: Dictionary = {
   "This computer": "내 컴퓨터",
   "ROKFOSS server": "ROKFOSS 서버",
   "Opening a session for this room…": "이 대화방에 묶을 세션을 여는 중…",
+  "Answering on this computer…": "내 컴퓨터의 모델이 답하는 중…",
+  "This computer is waiting for your permission. Press ctrl+g to open the session.":
+    "내 컴퓨터에서 허가가 필요합니다. ctrl+g 로 세션을 열어 확인해 주세요.",
+  "Open the session": "세션 열기",
   "A new room starts with a ROKFOSS AI model. A model on this computer continues a room that already exists.":
     "새 대화방은 ROKFOSS AI 모델로 시작해야 합니다. 내 컴퓨터의 모델은 이미 있는 대화방을 이어 갈 때 쓸 수 있습니다.",
   "Failed to send prompt": "글을 보내지 못했습니다",

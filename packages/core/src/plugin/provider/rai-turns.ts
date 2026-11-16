@@ -48,6 +48,16 @@ export function relayable(provider: string | undefined): boolean {
   return (provider ?? "").trim().toLowerCase() !== "rai"
 }
 
+/**
+ * Whether a prompt is the start of a new recorded turn. `steer` is the default delivery of every prompt, so it says
+ * nothing on its own: input that arrives while this session's turn is being recorded belongs to that turn (a web steer
+ * comes back this way too), and only a queued prompt waits for the next turn.
+ */
+export function promptStartsTurn(delivery: string | undefined, turnActive: boolean): boolean {
+  if (!turnActive) return true
+  return delivery === "queue"
+}
+
 /** `POST /rooms/{id}/turns`. Only the three fields the contract names are copied. */
 export function turnStartBody(input: { readonly message: string; readonly model: string; readonly provider?: string }): StartBody {
   if (typeof input.message !== "string" || input.message.trim() === "") return { ok: false, error: "메시지를 입력하세요" }
@@ -615,11 +625,14 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
 
     yield* ctx.session.hook("prompt", (event) =>
       Effect.gen(function* () {
-        // An interjection belongs to the turn already running; it must not start another one.
-        if (event.delivery === "steer") return
+        // `steer` is the default delivery of every prompt, so it cannot tell an interjection from a new turn. Input that
+        // arrives while this session's turn is being recorded belongs to that turn (a web steer comes back this way too);
+        // only a queued prompt waits for the next turn and is remembered for it.
+        const sessionID = event.sessionID as unknown as string
+        if (!promptStartsTurn(event.delivery, (yield* Ref.get(turns)).has(sessionID))) return
         const text = event.prompt.text
         if (typeof text !== "string" || text.trim() === "") return
-        yield* Ref.update(pending, (map) => new Map(map).set(event.sessionID as unknown as string, { text, at: Date.now() }))
+        yield* Ref.update(pending, (map) => new Map(map).set(sessionID, { text, at: Date.now() }))
       }).pipe(Effect.ignore),
     )
 
