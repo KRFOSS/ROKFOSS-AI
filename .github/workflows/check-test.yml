@@ -242,7 +242,7 @@ jobs:
           bun run script/service-smoke.ts --node
 
   e2e-suite:
-    name: e2e (${{ matrix.settings.name }}, ${{ matrix.suite.id }}${{ matrix.quarantine && ', quarantine' || '' }})
+    name: browser tests
     needs: affected
     if: needs.affected.outputs.e2e == 'true'
     # Quarantined tests are known red; their legs report without failing the e2e checks.
