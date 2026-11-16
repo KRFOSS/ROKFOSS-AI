@@ -765,7 +765,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
             Effect.catch((error) => Effect.fail(error)),
           )
           if (page.access === "read") return { roomID: null, title: null, error: "읽기 전용 방에는 기록할 수 없습니다" }
-          if (page.room?.running === true) return { roomID: null, title: null, error: "이 방은 지금 다른 답이 도는 중입니다" }
+          // Opening a room as a session (`after` given) may land on a running answer; it is caught up once it ends.
+          if (page.room?.running === true && input.after === undefined)
+            return { roomID: null, title: null, error: "이 방은 지금 다른 답이 도는 중입니다" }
           const newest = page.messages.at(-1)?.id ?? null
           const after = input.after !== undefined && /^\d+$/.test(input.after) ? input.after : newest
           const binding: Binding = { roomID: input.roomID, title: input.title.slice(0, 200), lastMessageID: after }
