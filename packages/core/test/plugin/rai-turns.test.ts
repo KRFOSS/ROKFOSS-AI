@@ -52,6 +52,10 @@ describe("외부 응답 회차 본문", () => {
     const long = "m".repeat(201)
     expect(turnStartBody({ message: "안녕", model: long }).ok).toBe(false)
     expect(turnStartBody({ message: "안녕", model: "a\nb" }).ok).toBe(false)
+    // Spec 3.7: no whitespace and ASCII only.
+    expect(turnStartBody({ message: "안녕", model: "kimi k2" }).ok).toBe(false)
+    expect(turnStartBody({ message: "안녕", model: "키미-k2" }).ok).toBe(false)
+    expect(turnStartBody({ message: "안녕", model: "opencode/opencode-go/glm-5" }).ok).toBe(true)
   })
 
   test("공급자는 소문자로 맞추고 형식이 틀리면 거절한다", () => {

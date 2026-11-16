@@ -26,7 +26,8 @@ const maxQueue = 4_000
 const maxRetries = 3
 
 export const turnIDPattern = /^[0-9a-f]{32}$/
-const modelPattern = /^[^\r\n]{1,200}$/
+/** Spec 3.7: a model name is 1–200 characters of ASCII without whitespace. */
+const modelPattern = /^[\x21-\x7e]{1,200}$/
 const providerPattern = /^[a-z0-9._-]{1,64}$/
 
 export type Binding = {
