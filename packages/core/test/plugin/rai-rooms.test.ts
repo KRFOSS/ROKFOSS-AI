@@ -456,6 +456,19 @@ describe("RAI rooms protocol", () => {
     expect(idle?.room?.running).toBe(false)
   })
 
+  test("keeps a saved answer's reasoning and the model that wrote it", () => {
+    const page = parsePage({
+      messages: [
+        { id: 1, role: "user", content: "질문" },
+        { id: 2, role: "assistant", content: "답", thinking: "먼저 따져 보면", provider: "codex", model: "gpt-5.5" },
+        { id: 3, role: "assistant", content: "답2", thinking: "   " },
+      ],
+    })
+    expect(page?.messages[0]?.thinking).toBeUndefined()
+    expect(page?.messages[1]).toMatchObject({ thinking: "먼저 따져 보면", provider: "codex", model: "gpt-5.5" })
+    expect(page?.messages[2]?.thinking).toBeUndefined()
+  })
+
   test("collapses a run of thinking chunks and drains the mailbox in one take", async () => {
     const audience = "c".repeat(22)
     const thinking = Array.from({ length: 3_000 }, (_, i) => `data: {"thinking":"t${i}"}\n\n`).join("")

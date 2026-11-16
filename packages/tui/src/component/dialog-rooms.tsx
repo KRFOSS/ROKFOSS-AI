@@ -2,6 +2,7 @@ import { TextAttributes, type ScrollBoxRenderable } from "@opentui/core"
 import { useTerminalDimensions } from "@opentui/solid"
 import { RaiRooms } from "@opencode/schema/rai-rooms"
 import { RaiTurns } from "@opencode/schema/rai-turns"
+import { SessionID } from "@opencode/schema/session-id"
 import { batch, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { useClient } from "../context/client"
 import { useData } from "../context/data"
@@ -16,13 +17,18 @@ import { useToast } from "../ui/toast"
 import type { JsonValue } from "@opencode/client"
 import { accessOf, nextRoomToken, rememberRoomSession, rememberRoomsReturn, roomsReturn, setBoundRoom } from "./rooms-nav"
 import { roomSeed } from "./rooms-seed"
+import { newestRoomMessage, roomImport } from "./rooms-import"
 
 const rpcID = "opencode.rai.rooms"
 const turnsID = "opencode.rai.turns"
 
+/** Pages of saved messages a room brings into its session when it is opened here the first time. */
+const historyPages = 3
+
 /**
- * `/rooms` — project and room list. Opening a room leaves this dialog and continues in the
- * full-screen session view. Transcripts are not kept here.
+ * `/rooms` — project and room list. Opening a room continues it as an ordinary OpenCode session: the room's saved
+ * conversation becomes the session's history, every answer the session makes is recorded into the room, and what
+ * the web writes there is added while the session is open.
  */
 export function DialogRooms() {
   const client = useClient()
@@ -129,9 +135,105 @@ export function DialogRooms() {
     }
   }
 
-  async function choose(room: RaiRooms.Room) {
-    const bound = await bind(room)
-    if (!bound) openRoom(room)
+  /** The room's saved conversation, oldest first, up to `historyPages` pages. */
+  async function history(roomID: string) {
+    const pages: RaiRooms.Message[][] = []
+    let before: string | null = null
+    for (let page = 0; page < historyPages; page++) {
+      const result: RaiRooms.Page & { error?: string | null } = await call("messages", { roomID, limit: 100, before })
+      if (result.error) throw new Error(result.error)
+      pages.unshift([...result.messages])
+      if (!result.hasMore || !result.oldestID) break
+      before = result.oldestID
+    }
+    return pages.flat()
+  }
+
+  /**
+   * Opens the room as a session. A room opened here before goes back to its session; otherwise a new session is made
+   * from the room's conversation and bound to it. A read-only room cannot be recorded into, so it opens the room view.
+   */
+  async function openRoomSession(room: RaiRooms.Room) {
+    if (saving()) return
+    if (room.perm === "read") return openRoom(room)
+    setSaving(true)
+    setError("")
+    try {
+      const known = await callTurns<RaiTurns.SessionOf>("sessionOf", { roomID: room.id })
+      if (disposed) return
+      if (known.sessionID) {
+        await callTurns<RaiTurns.Synced>("sync", { sessionID: known.sessionID }).catch(() => undefined)
+        dialog.clear()
+        route.navigate({ type: "session", sessionID: known.sessionID })
+        return
+      }
+      const messages = await history(room.id)
+      if (disposed) return
+      const sessionID = SessionID.create()
+      const bound = await callTurns<RaiTurns.Bound>("bind", {
+        sessionID,
+        roomID: room.id,
+        title: room.title,
+        after: newestRoomMessage(messages),
+      })
+      if (!bound.roomID) {
+        setError(bound.error ?? t("Could not bind this room"))
+        return
+      }
+      const agent = local.agent.current()?.id ?? "build"
+      const current = local.model.current()
+      const variant = local.model.variant.current()
+      try {
+        await client.api.experimental.session.import(
+          roomImport({
+            sessionID,
+            roomID: room.id,
+            title: bound.title ?? room.title,
+            messages,
+            agent,
+            ...(current ? { model: { id: current.modelID, providerID: current.providerID, ...(variant ? { variant } : {}) } } : {}),
+            projectID: data.location.info(location.ref)?.project.id ?? "",
+            directory,
+            now: Date.now(),
+          }) as never,
+          { signal: calls.signal },
+        )
+      } catch (cause) {
+        await callTurns("unbind", { sessionID }).catch(() => undefined)
+        throw cause
+      }
+      if (disposed) return
+      setBoundRoom(sessionID, bound.title ?? room.title)
+      rememberRoomSession(bound.roomID, sessionID)
+      dialog.clear()
+      route.navigate({ type: "session", sessionID })
+    } catch (cause) {
+      if (!disposed) showError(cause)
+    } finally {
+      if (!disposed) setSaving(false)
+    }
+  }
+
+  /** `n`: a new empty room on the server, opened as a session like any other room. */
+  async function newRoomSession() {
+    if (saving()) return
+    setSaving(true)
+    setError("")
+    let made: RaiRooms.CreateResult
+    try {
+      made = await call<RaiRooms.CreateResult>("create", { title: t("New room"), projectID: selectedProject() ?? null })
+    } catch (cause) {
+      if (!disposed) showError(cause)
+      return
+    } finally {
+      if (!disposed) setSaving(false)
+    }
+    if (disposed) return
+    if (!made.room) {
+      setError(made.error ?? t("Could not create the room"))
+      return
+    }
+    await openRoomSession(made.room)
   }
 
   function showError(cause: unknown) {
@@ -200,20 +302,6 @@ export function DialogRooms() {
     })
   }
 
-  function openNew() {
-    const seeded = seededModel()
-    const projectID = selectedProject()
-    enter({
-      type: "rooms",
-      roomID: "0",
-      title: t("New room"),
-      provider: seeded.provider,
-      model: seeded.model,
-      access: "write",
-      ...(projectID ? { projectID } : {}),
-    })
-  }
-
   onMount(() => {
     void refresh()
   })
@@ -252,7 +340,16 @@ export function DialogRooms() {
         group: "Dialog",
         run: () => {
           const room = visibleRooms()[index()]
-          if (room) void choose(room)
+          if (room) void openRoomSession(room)
+        },
+      },
+      {
+        bind: "b",
+        title: t("Record this session into the room"),
+        group: "Dialog",
+        run: () => {
+          const room = visibleRooms()[index()]
+          if (room) void bind(room)
         },
       },
       {
@@ -264,7 +361,7 @@ export function DialogRooms() {
           if (room) openRoom(room)
         },
       },
-      { bind: "n", title: t("New room"), group: "Dialog", run: openNew },
+      { bind: "n", title: t("New room"), group: "Dialog", run: () => void newRoomSession() },
       { bind: "r", title: t("Refresh"), group: "Dialog", run: () => void refresh() },
     ],
   }))
@@ -282,7 +379,15 @@ export function DialogRooms() {
               key: "enter",
               onTrigger: () => {
                 const room = visibleRooms()[index()]
-                if (room) void choose(room)
+                if (room) void openRoomSession(room)
+              },
+            },
+            {
+              title: "Record this session into the room",
+              key: "b",
+              onTrigger: () => {
+                const room = visibleRooms()[index()]
+                if (room) void bind(room)
               },
             },
             {
@@ -293,7 +398,7 @@ export function DialogRooms() {
                 if (room) openRoom(room)
               },
             },
-            { title: "New room", key: "n", onTrigger: openNew },
+            { title: "New room", key: "n", onTrigger: () => void newRoomSession() },
             { title: "Refresh", key: "r", onTrigger: () => void refresh() },
           ],
           primary: [],
@@ -314,7 +419,7 @@ export function DialogRooms() {
                 fg={roomIndex() === index() ? theme.text.base : theme.text.muted}
                 attributes={roomIndex() === index() ? TextAttributes.BOLD : undefined}
                 wrapMode="word"
-                onMouseUp={() => openRoom(room)}
+                onMouseUp={() => void openRoomSession(room)}
               >
                 {(roomIndex() === index() ? "> " : "  ") +
                   RaiRooms.displayText(room.title, 60) +

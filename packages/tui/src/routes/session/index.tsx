@@ -137,6 +137,7 @@ import { rowsAfter, rowsBefore, rowWeight } from "./mount-budget"
 export { InlineToolRow } from "./message-parts"
 export { toolDisplay } from "./message-parts"
 import { t } from "../../i18n"
+import { useRoomSync } from "../../component/rooms-session"
 
 addDefaultParsers(parsers.parsers)
 
@@ -178,6 +179,8 @@ export function Session(props: {
   const theme = useTheme()
   const promptRef = usePromptRef()
   const session = createMemo(() => data.session.get(route.sessionID))
+  // A session opened from a ROKFOSS AI room picks up what the web writes into that room.
+  useRoomSync(() => route.sessionID)
   const messages = () => data.session.message.list(route.sessionID)
   const messageIndexes = createMemo(() => new Map(messages().map((message, index) => [message.id, index])))
   const legacy = createMemo(() => SessionTurn.legacy(messages()))

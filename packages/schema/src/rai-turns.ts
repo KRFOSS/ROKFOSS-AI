@@ -19,6 +19,8 @@ export const BindInput = Schema.Struct({
   sessionID: Schema.String,
   roomID: Schema.String,
   title: Schema.String,
+  /** The newest room message the session already holds. Catching up starts after it; absent means the newest now. */
+  after: Schema.optional(Schema.String),
 }).annotate({ identifier: "RaiTurns.BindInput" })
 export interface BindInput extends Schema.Schema.Type<typeof BindInput> {}
 
@@ -26,6 +28,22 @@ export const SessionInput = Schema.Struct({ sessionID: Schema.String }).annotate
   identifier: "RaiTurns.SessionInput",
 })
 export interface SessionInput extends Schema.Schema.Type<typeof SessionInput> {}
+
+/** `sessionOf`: the session a room was opened in on this machine, while it is still bound to that room. */
+export const RoomInput = Schema.Struct({ roomID: Schema.String }).annotate({ identifier: "RaiTurns.RoomInput" })
+export interface RoomInput extends Schema.Schema.Type<typeof RoomInput> {}
+
+export const SessionOf = Schema.Struct({ sessionID: Schema.NullOr(Schema.String) }).annotate({
+  identifier: "RaiTurns.SessionOf",
+})
+export interface SessionOf extends Schema.Schema.Type<typeof SessionOf> {}
+
+/** `sync`: room messages written elsewhere (the web) since this session last caught up, added to the session. */
+export const Synced = Schema.Struct({
+  added: Schema.Int,
+  error: Schema.NullOr(Schema.String),
+}).annotate({ identifier: "RaiTurns.Synced" })
+export interface Synced extends Schema.Schema.Type<typeof Synced> {}
 
 const standard = Schema.toStandardSchemaV1
 
@@ -35,6 +53,8 @@ export const Definition = Rpc.define({
     bind: { input: standard(BindInput), output: standard(Bound) },
     unbind: { input: standard(SessionInput), output: standard(Bound) },
     bound: { input: standard(SessionInput), output: standard(Bound) },
+    sessionOf: { input: standard(RoomInput), output: standard(SessionOf) },
+    sync: { input: standard(SessionInput), output: standard(Synced) },
   },
   events: {},
 })

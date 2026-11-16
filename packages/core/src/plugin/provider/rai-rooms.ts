@@ -24,6 +24,8 @@ const listTimeout = Duration.seconds(15)
 const defaultIdleMs = 120_000
 const maxRooms = 200
 const maxText = 32_000
+/** Reasoning kept for one saved answer. The server keeps all of it; a session gets this much. */
+const maxThinking = 32_000
 const maxTools = 20
 /** Frames a caller mailbox holds before the oldest are dropped. One turn can record 1000 tool lines. */
 const maxQueuedFrames = 2_048
@@ -422,7 +424,7 @@ export function parseRooms(body: unknown) {
 }
 
 function messageText(value: unknown) {
-  if (typeof value === "string") return RaiRooms.displayText(value)
+  if (typeof value === "string") return RaiRooms.displayText(value, maxText)
   if (Array.isArray(value)) {
     const parts = value.flatMap((part) => {
       if (typeof part === "string") return [part]
@@ -432,7 +434,7 @@ function messageText(value: unknown) {
       const text = stringField(obj.text) ?? stringField(obj.content)
       return text ? [text] : []
     })
-    return RaiRooms.displayText(parts.join(""))
+    return RaiRooms.displayText(parts.join(""), maxText)
   }
   const obj = record(value)
   if (!obj) return ""
@@ -444,10 +446,16 @@ function parseMessage(value: unknown, index: number): RaiRooms.Message | undefin
   if (!obj) return undefined
   const id = stringField(obj.id) ?? stringField(obj.message_id) ?? `m${index}`
   if (id.includes("..") || id.includes("/") || id.includes("\\")) return undefined
+  const thinking = typeof obj.thinking === "string" ? RaiRooms.displayText(obj.thinking, maxThinking) : ""
+  const provider = stringField(obj.provider)
+  const model = stringField(obj.model)
   return {
     id: id.slice(0, 128),
     role: stringField(obj.role) ?? stringField(obj.author) ?? "assistant",
     text: messageText(obj.text ?? obj.content ?? obj.message ?? obj.body),
+    ...(thinking.trim() !== "" ? { thinking } : {}),
+    ...(provider && provider.length <= 64 ? { provider } : {}),
+    ...(model && model.length <= 200 ? { model } : {}),
     createdAt: stringField(obj.created_at) ?? stringField(obj.createdAt) ?? null,
   }
 }

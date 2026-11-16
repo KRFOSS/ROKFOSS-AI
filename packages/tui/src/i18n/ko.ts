@@ -401,6 +401,7 @@ export const dict: Dictionary = {
     "내 컴퓨터에서 허가가 필요합니다. ctrl+g 로 세션을 열어 확인해 주세요.",
   "Open the session": "세션 열기",
   "Creating the room…": "대화방을 만드는 중…",
+  "Record this session into the room": "지금 세션을 이 방에 기록",
   "Could not create the room": "대화방을 만들지 못했습니다",
   "Failed to send prompt": "글을 보내지 못했습니다",
   "Recording this session into room {{room}}": "이 세션을 대화방 {{room}}에 기록합니다",

@@ -53,6 +53,11 @@ export const Message = Schema.Struct({
   id: Schema.String,
   role: Schema.String,
   text: Schema.String,
+  /** The reasoning an answer was made with, as the web app keeps it. Absent when there was none. */
+  thinking: Schema.optional(Schema.String),
+  /** The provider and model that wrote an answer, as the server recorded them. */
+  provider: Schema.optional(Schema.String),
+  model: Schema.optional(Schema.String),
   createdAt: Schema.NullOr(Schema.String),
 }).annotate({ identifier: "RaiRooms.Message" })
 export interface Message extends Schema.Schema.Type<typeof Message> {}
