@@ -15,19 +15,10 @@ import { DialogHeader, DialogLayout, useDialog } from "../ui/dialog"
 import { useToast } from "../ui/toast"
 import type { JsonValue } from "@opencode/client"
 import { accessOf, nextRoomToken, rememberRoomsReturn, roomsReturn, setBoundRoom } from "./rooms-nav"
+import { roomSeed } from "./rooms-seed"
 
 const rpcID = "opencode.rai.rooms"
 const turnsID = "opencode.rai.turns"
-
-function splitModel(modelID: string | undefined) {
-  if (!modelID) return undefined
-  const slash = modelID.indexOf("/")
-  if (slash <= 0) return undefined
-  const provider = modelID.slice(0, slash)
-  const model = modelID.slice(slash + 1)
-  if (!RaiRooms.isProvider(provider) || model.trim() === "") return undefined
-  return { provider, model }
-}
 
 /**
  * `/rooms` — project and room list. Opening a room leaves this dialog and continues in the
@@ -173,9 +164,17 @@ export function DialogRooms() {
     }
   }
 
+  /**
+   * The room model starts from the model picked for ordinary chat. A local provider is mapped to the
+   * gateway's entry for the same upstream model, so choosing an OpenCode free model no longer leaves a
+   * new room on an unrelated gateway default.
+   */
   function seededModel() {
-    const current = local.model.current()
-    return current?.providerID === "rai" ? splitModel(current.modelID) : undefined
+    const gateway = (data.location.model.list(location.ref) ?? []).map((item) => ({
+      providerID: item.providerID,
+      modelID: item.id,
+    }))
+    return roomSeed(local.model.current() ?? undefined, gateway)
   }
 
   function enter(next: RoomsRoute) {
@@ -186,12 +185,14 @@ export function DialogRooms() {
 
   function openRoom(room: RaiRooms.Room) {
     const seeded = seededModel()
+    const savedProvider = room.provider ?? ""
     enter({
       type: "rooms",
       roomID: room.id,
       title: room.title,
-      provider: room.provider ?? seeded?.provider ?? "xai",
-      model: room.model ?? "",
+      // A saved room keeps the model it was created with; the seed only fills a room that has none.
+      provider: RaiRooms.isProvider(savedProvider) ? savedProvider : seeded.provider,
+      model: room.model || seeded.model,
       access: accessOf(room.perm),
       ...(room.projectID ? { projectID: room.projectID } : {}),
       running: room.running,
@@ -205,8 +206,8 @@ export function DialogRooms() {
       type: "rooms",
       roomID: "0",
       title: t("New room"),
-      provider: seeded?.provider ?? "xai",
-      model: seeded?.model ?? "",
+      provider: seeded.provider,
+      model: seeded.model,
       access: "write",
       ...(projectID ? { projectID } : {}),
     })

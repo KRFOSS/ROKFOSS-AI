@@ -19,6 +19,7 @@ import { useDialog } from "../ui/dialog"
 import { DialogRooms } from "./dialog-rooms"
 import { PromptMetadataRow } from "./prompt/metadata"
 import { accessOf, roomsReturn } from "./rooms-nav"
+import { roomSeed } from "./rooms-seed"
 import { roomSlashCommands, roomSlashDirect, type SlashShape } from "./rooms-slash"
 
 type Line = {
@@ -50,16 +51,6 @@ function remember(lines: readonly Line[]) {
     kept.push(line)
   }
   return kept.reverse()
-}
-
-function splitModel(modelID: string | undefined) {
-  if (!modelID) return undefined
-  const slash = modelID.indexOf("/")
-  if (slash <= 0) return undefined
-  const provider = modelID.slice(0, slash)
-  const model = modelID.slice(slash + 1)
-  if (!RaiRooms.isProvider(provider) || model.trim() === "") return undefined
-  return { provider, model }
 }
 
 /**
@@ -102,7 +93,7 @@ export function RoomsView() {
   const [error, setError] = createSignal("")
   const [phase, setPhase] = createSignal("")
   const [search, setSearch] = createSignal(false)
-  const [live, setLive] = createSignal(false)
+  const [live, setLive] = createSignal(true)
   const [draft, setDraft] = createSignal("")
   const [slashIndex, setSlashIndex] = createSignal(0)
   // Escape hides the list without discarding what was typed; the next keystroke brings it back.
@@ -112,6 +103,10 @@ export function RoomsView() {
   let liveSeq = 0
   let streamToken: string | undefined
   let sending = false
+  // A transcript page that reports a running turn is followed immediately, so a room opened while the web
+  // is answering keeps updating instead of showing a frozen transcript.
+  let following = false
+  let autoFollows = 0
   let leaving = false
   let disposed = false
   let scroll: ScrollBoxRenderable | undefined
@@ -431,6 +426,14 @@ export function RoomsView() {
       })
       if (!older) stick()
       publish()
+      // No polling: a follow is started only when a fetched page says the room is answering right now.
+      if (!older && page.room?.running && !following && !sending && autoFollows < 20) {
+        autoFollows++
+        if (reconnectTimer) clearTimeout(reconnectTimer)
+        reconnectTimer = setTimeout(() => {
+          if (!disposed && !following && !sending) void follow(id)
+        }, 300)
+      } else if (!page.room?.running) autoFollows = 0
     } catch (cause) {
       if (!disposed) showError(cause)
     } finally {
@@ -455,6 +458,7 @@ export function RoomsView() {
 
   async function follow(id: string) {
     // A turn's stream replays from its start, so anything already drawn for it is dropped and drawn again.
+    following = true
     clearLive()
     liveText = ""
     const stream = await openStream()
@@ -474,13 +478,16 @@ export function RoomsView() {
       if (watched.done || watched.error) {
         settleApprovals()
         void reloadSaved(id)
-      } else if (watched.reconnect && live()) {
+      } else if (watched.reconnect) {
+        // The turn is still running, so the stream is attached again whether or not the live badge is on:
+        // reconnecting is what keeps the transcript in sync with the web while a reply is streaming.
         reconnectTimer = setTimeout(() => {
-          if (!disposed && live()) void follow(roomID())
+          if (!disposed) void follow(roomID())
         }, 1_000)
       }
     } finally {
       await stream?.done()
+      following = false
     }
   }
 
@@ -575,15 +582,20 @@ export function RoomsView() {
   }
 
   // A new room follows the model the user already picked for ordinary chat, instead of a second form.
+  // The picked model may belong to a local provider, which the room maps to the gateway's entry for the
+  // same upstream model (see `roomSeed`).
   createEffect(
     on(
       () => local.model.current(),
       (current) => {
         if (!fresh()) return
-        const split = current?.providerID === "rai" ? splitModel(current.modelID) : undefined
-        if (!split) return
-        setProvider(split.provider)
-        setModel(split.model)
+        const gateway = (data.location.model.list(location.ref) ?? []).map((item) => ({
+          providerID: item.providerID,
+          modelID: item.id,
+        }))
+        const seed = roomSeed(current ?? undefined, gateway)
+        setProvider(seed.provider)
+        setModel(seed.model)
       },
     ),
   )
