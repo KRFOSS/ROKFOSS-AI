@@ -246,6 +246,22 @@ jobs:
               $extra "$@"
           }
 
+          # `--target <sha>` 는 릴리스에 워크플로 파일 변경이 포함되면 `workflows: write` 를 요구하고,
+          # GITHUB_TOKEN 은 그 스코프를 선언할 수 없어 "HTTP 403: Resource not accessible by
+          # integration" 으로 거절된다(cli/cli#9514, GitHub changelog 2023-11-02). 이 워크플로는
+          # 워크플로 파일을 자주 고치므로 그 조건에 자주 걸린다. 태그를 직접 만들어 두고
+          # `--verify-tag` 로 릴리스하면 같은 커밋을 가리키면서 `workflows: write` 가 필요 없다.
+          publish_via_tag() {
+            local extra="$1"; shift
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${TAG}" -f sha="${GITHUB_SHA}" >/dev/null 2>&1 || true
+            gh release create "$TAG" \
+              --verify-tag \
+              --title "ROKFOSS OpenCode $TAG" \
+              --generate-notes \
+              $extra "$@"
+          }
+
           cleanup() {
             gh release delete "$TAG" --yes >/dev/null 2>&1 || true
             gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" >/dev/null 2>&1 || true
@@ -258,11 +274,14 @@ jobs:
             fi
           elif out=$(publish "" "${assets[@]}" 2>&1); then
             echo "published $TAG"
+          elif out_tag=$(publish_via_tag "" "${assets[@]}" 2>&1); then
+            # --target 이 workflows: write 를 요구해 거절된 경우의 정상 경로다.
+            echo "published $TAG (태그를 직접 만들고 --verify-tag 로 릴리스)"
           else
-            echo "::warning::정식 생성이 실패해 초안 경로로 다시 시도합니다: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-400)"
+            echo "::warning::정식 생성이 실패해 초안 경로로 다시 시도합니다. --target: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-300) / 태그: $(printf '%s' "$out_tag" | tr '\n' ' ' | cut -c1-300)"
             cleanup
-            if ! out2=$(publish --draft "${assets[@]}" 2>&1); then
-              echo "::error::정식·초안 두 경로 모두 실패. 정식: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-300) / 초안: $(printf '%s' "$out2" | tr '\n' ' ' | cut -c1-300)"
+            if ! out2=$(publish_via_tag --draft "${assets[@]}" 2>&1); then
+              echo "::error::정식·초안 두 경로 모두 실패. 정식: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-300) / 태그: $(printf '%s' "$out_tag" | tr '\n' ' ' | cut -c1-300) / 초안: $(printf '%s' "$out2" | tr '\n' ' ' | cut -c1-300)"
               cleanup
               exit 1
             fi
