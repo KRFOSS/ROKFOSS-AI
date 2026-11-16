@@ -230,17 +230,49 @@ jobs:
           TAG: ${{ needs.plan.outputs.tag }}
           INPUT_DRAFT: ${{ inputs.draft }}
         run: |
-          set -euo pipefail
-          flags=()
-          if [ "$INPUT_DRAFT" = "true" ]; then flags+=("--draft"); fi
+          set -uo pipefail
+          assets=(dist/archives/*)
+          echo "publishing $TAG (assets: ${#assets[@]}, $(du -sh dist/archives | cut -f1))"
 
-          echo "publishing $TAG"
-          gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
-            --title "ROKFOSS OpenCode $TAG" \
-            --generate-notes \
-            "${flags[@]}" \
-            dist/archives/*
+          # gh 는 실패 사유를 표준 오류에만 남기고 잡 로그는 로그인해야 보인다. 그래서 사유를
+          # 주석(::error::)으로도 남기고, 정식 생성이 실패하면 초안으로 올린 뒤 정식으로 바꾸는
+          # 우회 경로를 한 번 더 시도한다.
+          publish() {
+            local extra="$1"; shift
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --title "ROKFOSS OpenCode $TAG" \
+              --generate-notes \
+              $extra "$@"
+          }
+
+          cleanup() {
+            gh release delete "$TAG" --yes >/dev/null 2>&1 || true
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" >/dev/null 2>&1 || true
+          }
+
+          if [ "$INPUT_DRAFT" = "true" ]; then
+            if ! out=$(publish --draft "${assets[@]}" 2>&1); then
+              echo "::error::초안 릴리스 생성 실패: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-600)"
+              exit 1
+            fi
+          elif out=$(publish "" "${assets[@]}" 2>&1); then
+            echo "published $TAG"
+          else
+            echo "::warning::정식 생성이 실패해 초안 경로로 다시 시도합니다: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-400)"
+            cleanup
+            if ! out2=$(publish --draft "${assets[@]}" 2>&1); then
+              echo "::error::정식·초안 두 경로 모두 실패. 정식: $(printf '%s' "$out" | tr '\n' ' ' | cut -c1-300) / 초안: $(printf '%s' "$out2" | tr '\n' ' ' | cut -c1-300)"
+              cleanup
+              exit 1
+            fi
+            if ! out3=$(gh release edit "$TAG" --draft=false 2>&1); then
+              echo "::error::초안은 만들어졌지만 정식 전환에 실패: $(printf '%s' "$out3" | tr '\n' ' ' | cut -c1-600)"
+              cleanup
+              exit 1
+            fi
+            echo "published $TAG (draft 경로)"
+          fi
 
           echo "### Released $TAG" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
