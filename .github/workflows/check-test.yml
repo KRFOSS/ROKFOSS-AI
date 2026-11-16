@@ -101,9 +101,11 @@ jobs:
       matrix:
         # Pull requests run Linux only; Windows runs the same tests on pushes, nightly runs and the release gate.
         settings: ${{ fromJSON(github.event_name == 'pull_request' && '[{"name":"linux","host":"ubuntu-24.04"}]' || '[{"name":"linux","host":"ubuntu-24.04"},{"name":"windows","host":"windows-2025"}]') }}
-    # The unit suite is the longest job on every push, so its Linux leg runs on the self-hosted machine. A fork
-    # pull request stays on a GitHub-hosted runner: its code would otherwise execute on our hardware.
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.settings.name == 'linux' && fromJSON('["self-hosted","linux","x64"]') || matrix.settings.host }}
+    # Both legs run on GitHub-hosted runners. The self-hosted `r3` machine was tried for the Linux leg and dropped:
+    # it is one runner, so each dev push queues `unit (linux)` behind the previous commit's run (three consecutive
+    # pushes left three jobs waiting), and a measured `build (linux)` took 8m45s there against 8m05s hosted. This
+    # repository is public, so hosted minutes are free and the two legs run in parallel.
+    runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         shell: bash

@@ -136,28 +136,28 @@ fork they are _skipped_ rather than queued, and they need credentials and signin
 fork does not have anyway. Keep the table above in mind when merging upstream: a new `blacksmith-*`
 label in an edited file has to be translated again, and a newly added workflow needs the same pass.
 
-#### The self-hosted runner
+#### Runners
 
-The CPU-heavy jobs run on this project's own runner (`r3`: `self-hosted`, `linux`, `x64`) instead of a
-GitHub-hosted one:
-
-| Workflow | Job | Runner |
-| :--- | :--- | :--- |
-| `check-test.yml` | `unit` — Linux leg | self-hosted |
-
-Everything else stays on GitHub-hosted runners. Four reasons matter when extending this:
+Every job runs on a GitHub-hosted runner. This project's own `r3` machine (`self-hosted`, `linux`,
+`x64`) was tried for the `unit` Linux leg and then dropped:
 
 - **One machine runs one job.** `r3` is a single runner, so every job sent to it queues behind the
   others, and a dev push never cancels the run before it (each run gets its own concurrency group, so
-  every commit gets a verdict). Only the one job whose wall time dominates a run belongs there. Adding
-  `build`, `nix-eval`, `typecheck` or `affected` was tried and made feedback *slower*: a measured
-  `build (linux)` took 8m45s on `r3` against 8m05s on a hosted runner, so nothing was gained but the
-  queue. If a second runner is ever added, `typecheck` is the next one to move.
-- **A pull request from a fork must never reach the self-hosted machine.** The runner is ours, so
-  untrusted code would execute on our hardware. Each `runs-on` above therefore evaluates
-  `github.event.pull_request.head.repo.full_name == github.repository` and falls back to
-  `ubuntu-24.04` for a fork pull request. `affected` never runs on a pull request, so it needs no
-  guard.
+  every commit gets a verdict). Three consecutive pushes left three `unit (linux)` jobs waiting.
+- **An offline runner queues instead of failing.** While `r3` is down its jobs stay `queued`, so the
+  checks never turn red or green — the same trap the Blacksmith labels caused. It does not retry and it
+  does not fail over to a hosted runner.
+- **It was not faster.** A measured `build (linux)` took 8m45s on `r3` against 8m05s on a hosted
+  runner, so the queue bought nothing.
+
+If a self-hosted machine is used again, give it only the one job whose wall time dominates a run, and
+remember that a pull request from a fork must never reach it (its code would execute on our hardware).
+The reasons below still apply to any job moved there:
+
+- **A pull request from a fork must never reach it.** The runner is ours, so untrusted code would
+  execute on our hardware. A `runs-on` that sends a job there has to compare
+  `github.event.pull_request.head.repo.full_name == github.repository` and fall back to
+  `ubuntu-24.04` for a fork pull request.
 - **The browser suites stay hosted.** They install Playwright's system packages with `sudo` and split
   into four parallel shards, which one machine would run one after another.
 - **Nothing that needs root or KVM runs there.** The runner has no passwordless `sudo` (so
@@ -165,9 +165,7 @@ Everything else stays on GitHub-hosted runners. Four reasons matter when extendi
   that installs system packages stays on a hosted runner; `nix-eval` was tried there and failed for
   exactly this reason.
 
-An offline self-hosted runner leaves its jobs **queued** rather than failing, which is the same trap
-the Blacksmith labels caused. If the machine is going away, replace the label with `ubuntu-24.04`
-(the label appears once per job, so this is a one-line change per job).
+A self-hosted label appears once per job, so dropping it is a one-line change per job.
 
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
