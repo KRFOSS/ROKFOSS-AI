@@ -158,6 +158,13 @@ export const BindResult = Schema.Struct({
 }).annotate({ identifier: "RaiRooms.BindResult" })
 export interface BindResult extends Schema.Schema.Type<typeof BindResult> {}
 
+/** `create`: an empty room made up front, so a model on this computer can record into it (spec 3.7). */
+export const CreateResult = Schema.Struct({
+  room: Schema.NullOr(Room),
+  error: Schema.NullOr(Schema.String),
+}).annotate({ identifier: "RaiRooms.CreateResult" })
+export interface CreateResult extends Schema.Schema.Type<typeof CreateResult> {}
+
 export const TakeResult = Schema.Struct({
   chunk: Schema.NullOr(Chunk),
   open: Schema.Boolean,
@@ -198,6 +205,10 @@ export const Definition = Rpc.define({
     send: {
       input: standard(SendInput),
       output: standard(SendResult),
+    },
+    create: {
+      input: standard(Schema.Struct({ title: Schema.String, projectID: Schema.NullOr(Schema.String) })),
+      output: standard(CreateResult),
     },
     watch: {
       input: standard(Schema.Struct({ roomID: Schema.String, audience: Schema.NullOr(Schema.String) })),

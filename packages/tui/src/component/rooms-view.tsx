@@ -734,18 +734,29 @@ export function RoomsView() {
       setError(t("Model is required"))
       return
     }
-    if (fresh()) {
-      setError(t("A new room starts with a ROKFOSS AI model. A model on this computer continues a room that already exists."))
-      return
-    }
-    const id = roomID()
     const variant = local.model.variant.current()
     const selection = { providerID: pick.providerID, id: pick.modelID, ...(variant ? { variant } : {}) }
     sending = true
     setBusy(true)
     setError("")
-    setPhase(t("Opening a session for this room…"))
     try {
+      // The relay records into rooms that exist, so a new room is made empty first and this view moves onto it.
+      if (fresh()) {
+        setPhase(t("Creating the room…"))
+        const made = await call<RaiRooms.CreateResult>("create", { title: message, projectID: route.projectID ?? null })
+        if (disposed) return
+        if (!made.room) {
+          setPhase("")
+          setError(made.error ?? t("Could not create the room"))
+          return
+        }
+        setRoomID(made.room.id)
+        setTitle(made.room.title)
+        setAccess(accessOf(made.room.perm))
+        if (route.openToken) navigate({ ...route, roomID: made.room.id, title: made.room.title })
+      }
+      const id = roomID()
+      setPhase(t("Opening a session for this room…"))
       let sessionID = roomSessionOf(id)
       if (sessionID) {
         const bound = await callTurns<RaiTurns.Bound>("bound", { sessionID })

@@ -5,6 +5,8 @@ import { RaiRooms } from "@opencode/schema/rai-rooms"
 import {
   chatBody,
   connectFirst,
+  createBody,
+  createRoom,
   defaultBaseURL,
   keyOf,
   listProjects,
@@ -274,6 +276,36 @@ describe("RAI rooms protocol", () => {
     expect(page?.oldestID).toBe("m1")
     expect(page?.access).toBe("read")
     expect(RaiRooms.canSend(page?.access)).toBe(false)
+  })
+
+  test("creates an empty room with the first line as its title", async () => {
+    const { http, calls } = httpOf(() =>
+      Response.json({ object: "rai.room", id: 124, title: "README 요약", project_id: 7, perm: "owner" }),
+    )
+    const room = await run(createRoom(http, auth, { title: "README 요약\n둘째 줄", projectID: "7" }))
+    expect(room.id).toBe("124")
+    expect(room.title).toBe("README 요약")
+    expect(room.projectID).toBe("7")
+    expect(room.perm).toBe("owner")
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.url).toBe(`${defaultBaseURL}/rooms`)
+    expect(calls[0]?.headers.get("authorization")).toBe(`Bearer ${key}`)
+    expect(JSON.parse(calls[0]?.body ?? "{}")).toEqual({ title: "README 요약", project_id: 7 })
+  })
+
+  test("refuses a bad project id before sending and maps a refused create", async () => {
+    expect(createBody({ title: "x", projectID: null })).toEqual({ ok: true, body: { title: "x" } })
+    expect(createBody({ title: "x", projectID: "../1" }).ok).toBe(false)
+    expect(createBody({ title: "x", projectID: "-3" }).ok).toBe(false)
+    const { http, calls } = httpOf(() =>
+      Response.json({ error: { code: "project_read_only", message: "읽기 전용으로 공유된 프로젝트입니다" } }, { status: 403 }),
+    )
+    const bad = await run(createRoom(http, auth, { title: "x", projectID: "abc" }).pipe(Effect.flip))
+    expect(String(bad)).toContain("프로젝트 번호")
+    expect(calls).toHaveLength(0)
+    const refused = await run(createRoom(http, auth, { title: "x", projectID: "9" }).pipe(Effect.flip))
+    expect(String(refused)).toContain("읽기 전용")
+    expect((refused as { retry?: boolean }).retry).toBe(false)
   })
 
   test("does not retry a missing scope or follow it with /responses", async () => {

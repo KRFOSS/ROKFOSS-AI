@@ -691,6 +691,44 @@ export const postChat = (
     return transcript
   })
 
+/** `POST /rooms` body. The title keeps its first line only; the server trims it again. */
+export function createBody(input: { readonly title: string; readonly projectID: string | null }) {
+  const title = (input.title.split("\n")[0] ?? "").trim().slice(0, 200)
+  const body: Record<string, unknown> = { title }
+  if (input.projectID === null || input.projectID.trim() === "") return { ok: true as const, body }
+  const project = Number(input.projectID.trim())
+  if (!Number.isSafeInteger(project) || project <= 0) return { ok: false as const, error: "프로젝트 번호가 올바르지 않습니다" }
+  body.project_id = project
+  return { ok: true as const, body }
+}
+
+export const createRoom = (http: HttpClient.HttpClient, auth: Auth, input: { readonly title: string; readonly projectID: string | null }) =>
+  Effect.gen(function* () {
+    const built = createBody(input)
+    if (!built.ok) return yield* Effect.fail(new RoomsRequestError(built.error))
+    const url = requestURL(auth.endpoint, "/rooms")
+    if (!url) return yield* Effect.fail(new RoomsRequestError("게이트웨이 주소가 올바르지 않습니다"))
+    const request = yield* HttpClientRequest.post(url).pipe(
+      (self) => authed(self, auth.key, "json"),
+      HttpClientRequest.bodyJson(built.body),
+    )
+    const response = yield* http.execute(request).pipe(
+      Effect.timeout(listTimeout),
+      Effect.mapError(() => new RoomsRequestError("ROKFOSS AI 대화방에 연결하지 못했습니다", { retry: true })),
+    )
+    const text = yield* response.text.pipe(Effect.orElseSucceed(() => ""))
+    if (response.status < 200 || response.status >= 300) return yield* Effect.fail(failureFrom(response.status, text, "rooms_write"))
+    let body: unknown
+    try {
+      body = JSON.parse(text)
+    } catch {
+      return yield* Effect.fail(new RoomsRequestError("대화방 응답을 읽지 못했습니다", { status: response.status }))
+    }
+    const room = parseRoom(body)
+    if (!room) return yield* Effect.fail(new RoomsRequestError("대화방 응답을 읽지 못했습니다", { status: response.status }))
+    return room
+  })
+
 export const watchRoom = (http: HttpClient.HttpClient, auth: Auth, roomID: string, options: SseOptions = {}) =>
   Effect.gen(function* () {
     const segment = roomSegment(roomID)
@@ -951,6 +989,13 @@ export function registerRooms(ctx: Context, http: HttpClient.HttpClient) {
           Effect.ensuring(closeAudience(token)),
         )
       },
+      create: (input) =>
+        authorize(ctx).pipe(
+          Effect.flatMap((auth) => createRoom(http, auth, input)),
+          Effect.map((room) => ({ room, error: null })),
+          Effect.catch((error) => Effect.succeed({ room: null, error: publicMessage(error) })),
+          Effect.catchDefect(() => Effect.succeed({ room: null, error: "ROKFOSS AI 대화방 요청이 실패했습니다" })),
+        ),
       watch: (input) => {
         const token = audienceOf(input.audience)
         if (token) reserveBox(token)

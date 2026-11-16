@@ -400,8 +400,8 @@ export const dict: Dictionary = {
   "This computer is waiting for your permission. Press ctrl+g to open the session.":
     "내 컴퓨터에서 허가가 필요합니다. ctrl+g 로 세션을 열어 확인해 주세요.",
   "Open the session": "세션 열기",
-  "A new room starts with a ROKFOSS AI model. A model on this computer continues a room that already exists.":
-    "새 대화방은 ROKFOSS AI 모델로 시작해야 합니다. 내 컴퓨터의 모델은 이미 있는 대화방을 이어 갈 때 쓸 수 있습니다.",
+  "Creating the room…": "대화방을 만드는 중…",
+  "Could not create the room": "대화방을 만들지 못했습니다",
   "Failed to send prompt": "글을 보내지 못했습니다",
   "Recording this session into room {{room}}": "이 세션을 대화방 {{room}}에 기록합니다",
   "Room {{room}} · recording": "대화방 {{room}} · 기록 중",
