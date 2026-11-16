@@ -136,6 +136,33 @@ fork they are _skipped_ rather than queued, and they need credentials and signin
 fork does not have anyway. Keep the table above in mind when merging upstream: a new `blacksmith-*`
 label in an edited file has to be translated again, and a newly added workflow needs the same pass.
 
+#### The self-hosted runner
+
+The CPU-heavy jobs run on this project's own runner (`r3`: `self-hosted`, `linux`, `x64`) instead of a
+GitHub-hosted one:
+
+| Workflow | Job | Runner |
+| :--- | :--- | :--- |
+| `check.yml` | `typecheck` (whole-workspace `tsc`) | self-hosted |
+| `check-test.yml` | `affected` | self-hosted |
+| `check-test.yml` | `unit` — Linux leg | self-hosted |
+| `check-test.yml` | `build` — Linux leg | self-hosted |
+| `check-nix.yml` | `nix-eval` | self-hosted |
+
+Everything else stays on GitHub-hosted runners. Two reasons matter when extending this:
+
+- **A pull request from a fork must never reach the self-hosted machine.** The runner is ours, so
+  untrusted code would execute on our hardware. Each `runs-on` above therefore evaluates
+  `github.event.pull_request.head.repo.full_name == github.repository` and falls back to
+  `ubuntu-24.04` for a fork pull request. Jobs that never run on a pull request (`affected`,
+  `build`) need no guard.
+- **The browser suites stay hosted.** They install Playwright's system packages with `sudo` and split
+  into four parallel shards, which one machine would run one after another.
+
+An offline self-hosted runner leaves its jobs **queued** rather than failing, which is the same trap
+the Blacksmith labels caused. If the machine is going away, replace the label with `ubuntu-24.04`
+(the label appears once per job, so this is a one-line change per job).
+
 `bun packages/tui/script/i18n-coverage.ts` reports strings that use `t()` without a translation and
 unwrapped English candidates, which is the worklist after an upstream merge.
 

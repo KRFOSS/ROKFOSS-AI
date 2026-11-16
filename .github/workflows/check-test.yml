@@ -65,7 +65,8 @@ jobs:
   affected:
     name: affected packages
     if: ${{ !github.event.pull_request.draft && github.event_name != 'pull_request' }}
-    runs-on: ubuntu-24.04
+    # Never runs on a pull request, so a fork's code cannot reach the self-hosted machine here.
+    runs-on: [self-hosted, linux, x64]
     outputs:
       e2e: ${{ steps.packages.outputs.app }}
     steps:
@@ -99,7 +100,9 @@ jobs:
       matrix:
         # Pull requests run Linux only; Windows runs the same tests on pushes, nightly runs and the release gate.
         settings: ${{ fromJSON(github.event_name == 'pull_request' && '[{"name":"linux","host":"ubuntu-24.04"}]' || '[{"name":"linux","host":"ubuntu-24.04"},{"name":"windows","host":"windows-2025"}]') }}
-    runs-on: ${{ matrix.settings.host }}
+    # The unit suite is the longest job on every push, so its Linux leg runs on the self-hosted machine. A fork
+    # pull request stays on a GitHub-hosted runner: its code would otherwise execute on our hardware.
+    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && matrix.settings.name == 'linux' && fromJSON('["self-hosted","linux","x64"]') || matrix.settings.host }}
     defaults:
       run:
         shell: bash
@@ -181,7 +184,8 @@ jobs:
             host: ubuntu-24.04
           - name: windows
             host: windows-2025
-    runs-on: ${{ matrix.settings.host }}
+    # This job never runs on a pull request, so the self-hosted machine is safe for its Linux leg.
+    runs-on: ${{ matrix.settings.name == 'linux' && fromJSON('["self-hosted","linux","x64"]') || matrix.settings.host }}
     defaults:
       run:
         shell: bash
