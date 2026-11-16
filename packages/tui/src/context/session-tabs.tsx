@@ -17,7 +17,7 @@ import { createSessionRetention } from "@opencode/client/solid"
 import { createProgramStatus, type PendingSession } from "./program-status"
 import { anchorKey, type AnchorTarget } from "../routes/session/anchors"
 import { t } from "../i18n"
-import { isRoomTab, nextRoomToken, roomIDOfTab, roomTabID } from "../component/rooms-nav"
+import { isRoomTab, nextRoomToken, roomIDOfTab, roomTabID, roomTabRunning } from "../component/rooms-nav"
 import {
   closeSessionTab,
   cycleSessionTab,
@@ -166,15 +166,11 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
       if (isRoomTab(sessionID)) {
         // A room has no session status; only the room currently on screen can be busy, and the
         // transcript itself never reaches the session store.
-        const running =
-          route.data.type === "rooms" &&
-          roomIDOfTab(sessionID) === route.data.roomID &&
-          route.data.running === true
         return {
           unread: undefined,
           promptPulse: 0,
           attention: false as const,
-          busy: running,
+          busy: roomTabRunning(route.data, sessionID),
           renaming: false,
         }
       }

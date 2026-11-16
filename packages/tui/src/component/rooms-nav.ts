@@ -20,6 +20,18 @@ export function roomIDOfTab(tabID: string): string | undefined {
   return tabID.slice(ROOM_TAB_PREFIX.length)
 }
 
+/**
+ * Whether the room shown in a room tab is answering right now. Only the route on screen carries that, and the
+ * view reports it from the turn it is actually drawing — the live badge toggle says nothing about a running
+ * reply, so reading it here left a finished room sweeping forever.
+ */
+export function roomTabRunning(route: Route, tabID: string): boolean {
+  if (route.type !== "rooms") return false
+  const roomID = roomIDOfTab(tabID)
+  if (roomID === undefined || roomID !== route.roomID) return false
+  return route.running === true
+}
+
 /** Where `/rooms` was opened from, so leaving a room restores that screen and the list dialog. */
 let back: Route = { type: "home" }
 

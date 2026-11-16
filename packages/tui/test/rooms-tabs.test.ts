@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { isRoomTab, roomIDOfTab, roomTabID } from "../src/component/rooms-nav"
+import { isRoomTab, roomIDOfTab, roomTabID, roomTabRunning } from "../src/component/rooms-nav"
 import {
   closeSessionTab,
   moveSessionTab,
@@ -19,6 +19,23 @@ const roomTab: SessionTab = {
   title: "미러 점검",
   room: { provider: "xai", model: "grok-4.7", access: "write", projectID: "7" },
 }
+
+describe("room tab running", () => {
+  // The room tab's running sweep comes from this, so a finished reply has to stop it. Reading the live badge
+  // toggle here instead kept a done room "replying" for as long as the badge stayed on.
+  test("a finished turn stops the room tab", () => {
+    expect(roomTabRunning({ type: "rooms", roomID: "42", running: false } as never, roomTabID("42"))).toBe(false)
+  })
+
+  test("only the room on screen can be running", () => {
+    expect(roomTabRunning({ type: "rooms", roomID: "42", running: true } as never, roomTabID("42"))).toBe(true)
+    // A reply in another room must not make this tab sweep.
+    expect(roomTabRunning({ type: "rooms", roomID: "42", running: true } as never, roomTabID("43"))).toBe(false)
+    // Room tabs are not sessions, so a session route never marks one running.
+    expect(roomTabRunning({ type: "session", sessionID: "ses_a" } as never, roomTabID("42"))).toBe(false)
+    expect(roomTabRunning({ type: "home" } as never, roomTabID("42"))).toBe(false)
+  })
+})
 
 describe("room tab ids", () => {
   test("round trip a room id and stay apart from session ids", () => {

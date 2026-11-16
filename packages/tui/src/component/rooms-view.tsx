@@ -99,6 +99,10 @@ export function RoomsView() {
   const [phase, setPhase] = createSignal("")
   const [search, setSearch] = createSignal(false)
   const [live, setLive] = createSignal(true)
+  // Whether this view is actually drawing a turn right now (sending one, or following a running one).
+  // The room tab paints its running sweep from the route, so this — not the live badge toggle — has to
+  // reach `publish`; passing the toggle made a finished room stay "replying" for as long as the badge was on.
+  const [active, setActive] = createSignal(false)
   const [draft, setDraft] = createSignal("")
   const [slashIndex, setSlashIndex] = createSignal(0)
   // Escape hides the list without discarding what was typed; the next keystroke brings it back.
@@ -120,6 +124,9 @@ export function RoomsView() {
   let scroll: ScrollBoxRenderable | undefined
   let textarea: TextareaRenderable | undefined
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+  // Set while a follow waits to attach again to the same running turn, so the tab keeps sweeping through
+  // the gap instead of blinking off for a second between two attempts.
+  let reconnecting = false
   const calls = new AbortController()
 
   const writable = () => RaiRooms.canSend(access())
@@ -187,7 +194,7 @@ export function RoomsView() {
       access: access(),
       ...(route.projectID ? { projectID: route.projectID } : {}),
       ...(route.openToken ? { openToken: route.openToken } : {}),
-      running: live(),
+      running: active(),
     })
   }
 
@@ -515,6 +522,9 @@ export function RoomsView() {
   async function follow(id: string) {
     // A turn's stream replays from its start, so anything already drawn for it is dropped and drawn again.
     following = true
+    reconnecting = false
+    setActive(true)
+    publish()
     clearLive()
     liveText = ""
     const stream = await openStream()
@@ -537,6 +547,7 @@ export function RoomsView() {
       } else if (watched.reconnect) {
         // The turn is still running, so the stream is attached again whether or not the live badge is on:
         // reconnecting is what keeps the transcript in sync with the web while a reply is streaming.
+        reconnecting = true
         reconnectTimer = setTimeout(() => {
           if (!disposed) void follow(roomID())
         }, 1_000)
@@ -544,6 +555,10 @@ export function RoomsView() {
     } finally {
       await stream?.done()
       following = false
+      if (!disposed) {
+        setActive(reconnecting)
+        publish()
+      }
     }
   }
 
@@ -560,6 +575,8 @@ export function RoomsView() {
       return
     }
     sending = true
+    setActive(true)
+    publish()
     clearLive()
     liveText = ""
     setBusy(true)
@@ -610,7 +627,13 @@ export function RoomsView() {
     } finally {
       await stream?.done()
       sending = false
-      if (!disposed) setBusy(false)
+      if (!disposed) {
+        setBusy(false)
+        // The reply is over, so the tab stops sweeping here even though `reloadSaved` below draws the
+        // saved transcript afterwards.
+        setActive(false)
+        publish()
+      }
       settleApprovals()
       void reloadSaved(roomID())
     }
