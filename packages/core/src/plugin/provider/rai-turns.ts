@@ -65,6 +65,27 @@ export function relayable(_provider: string | undefined): boolean {
   return true
 }
 
+/** The provider name the server records for an answer an OpenCode external turn wrote (spec 3.7). */
+export const externalTurnProvider = "opencode_local"
+
+/**
+ * Whether a room message is one this session recorded itself: a message number it got back from the server, or an
+ * external-turn answer that follows one of its own user messages (the answer's number may be lost when the turn's
+ * end answer never arrived). Such messages are never shown again as if they came from the web.
+ */
+export function ownRoomMessage(
+  message: { readonly id: string; readonly role: string; readonly provider?: string },
+  page: ReadonlyArray<{ readonly id: string; readonly role: string }>,
+  own: ReadonlySet<string>,
+) {
+  if (own.has(message.id)) return true
+  if (message.role !== "assistant" || message.provider !== externalTurnProvider) return false
+  const before = page
+    .filter((other) => /^\d+$/.test(other.id) && Number(other.id) < Number(message.id) && other.role === "user")
+    .sort((a, b) => Number(b.id) - Number(a.id))[0]
+  return before !== undefined && own.has(before.id)
+}
+
 /** Room messages written elsewhere after `last`, oldest first. Ids are the server's message numbers. */
 export function messagesAfter<T extends { readonly id: string }>(messages: ReadonlyArray<T>, last: string | null): T[] {
   const floor = last !== null && /^\d+$/.test(last) ? Number(last) : 0
@@ -534,6 +555,15 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
     const turns = yield* Ref.make(new Map<string, Turn>())
     // Sessions whose finished turn is still being saved: the answer is in the room before its id is remembered.
     const settling = yield* Ref.make(new Set<string>())
+    // Room message numbers this session recorded (its user messages and answers), so catching up never shows them again.
+    const ownMessages = new Map<string, Set<string>>()
+    const rememberOwn = (sessionID: string, messageID: string | number | undefined) => {
+      if (messageID === undefined) return
+      const set = ownMessages.get(sessionID) ?? new Set<string>()
+      set.add(String(messageID))
+      if (set.size > 200) set.delete(set.values().next().value!)
+      ownMessages.set(sessionID, set)
+    }
     const scope = yield* Scope.Scope
     // Sessions catching up with the room right now. One catch-up per session, so a web line is never shown twice.
     const mirroring = yield* Ref.make(new Set<string>())
@@ -627,6 +657,7 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           Effect.tap((done) =>
             Effect.gen(function* () {
               if (done?.assistantMessageID === undefined) return
+              rememberOwn(sessionID, done.assistantMessageID)
               const binding = yield* bindingOf(sessionID)
               if (binding && binding.roomID === turn.roomID)
                 yield* persist(sessionID, { ...binding, lastMessageID: String(done.assistantMessageID) })
@@ -800,6 +831,7 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           provider,
         })
         yield* Ref.update(turns, (map) => new Map(map).set(sessionID, turn))
+        rememberOwn(sessionID, started.value.userMessageID)
         if (started.value.userMessageID !== undefined) {
           yield* persist(sessionID, { ...binding, lastMessageID: String(started.value.userMessageID) })
         }
@@ -883,6 +915,12 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           const mark = name ? toolMark(name, "end") : undefined
           if (mark) markTool(turn, mark)
         }
+        // Compaction inside a recorded turn shows in the room like a tool line, so the web sees why the answer paused.
+        if (event.type === "session.compaction.started")
+          markTool(turn, { name: "compaction", state: "start", title: "대화 압축" })
+        if (event.type === "session.compaction.ended") markTool(turn, { name: "compaction", state: "end", title: "대화 압축 끝" })
+        if (event.type === "session.compaction.failed")
+          markTool(turn, { name: "compaction", state: "end", title: "대화 압축 실패" })
         if (event.type === "session.execution.succeeded") yield* finish(sessionID, {})
         if (event.type === "session.execution.interrupted") yield* finish(sessionID, { stopped: true })
         if (event.type === "session.execution.failed") yield* finish(sessionID, { error: "생성이 실패했습니다" })
@@ -900,6 +938,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           "session.reasoning.delta",
           "session.tool.input.started",
           "session.tool.called",
+          "session.compaction.started",
+          "session.compaction.ended",
+          "session.compaction.failed",
           "session.tool.success",
           "session.tool.failed",
         ],
@@ -1113,8 +1154,15 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           return yield* Effect.gen(function* () {
             const auth = yield* authorize(ctx)
             const page = yield* readMessages(http, auth, { roomID: binding.roomID, limit: 40 })
-            const fresh = messagesAfter(page.messages, binding.lastMessageID)
+            const after = messagesAfter(page.messages, binding.lastMessageID)
+            const own = ownMessages.get(sessionID) ?? new Set<string>()
+            const fresh = after.filter((message) => !ownRoomMessage(message, page.messages, own))
             const follow = page.room?.running === true
+            // Only this session's own lines are new: move past them without showing anything.
+            if (fresh.length === 0 && after.length > 0 && !follow) {
+              yield* advance(sessionID, binding, after.at(-1)!.id)
+              return { added: 0, error: null }
+            }
             if (fresh.length === 0 && !follow) return { added: 0, error: null }
             // Checked again: a turn may have started while the page was read.
             if (yield* ownTurn(sessionID)) return { added: 0, error: null }

@@ -11,6 +11,7 @@ import {
   finalContent,
   markTool,
   messagesAfter,
+  ownRoomMessage,
   mirrorModel,
   parseTurnDone,
   parseTurnEvents,
@@ -531,5 +532,26 @@ describe("웹과 같게 보이도록 중계", () => {
     expect(drain(t)).toEqual({ delta: "뒷 글" })
     expect(turnEventBody({ steer: "그래 잘하고 있어" })).toEqual({ steer: "그래 잘하고 있어" })
     expect(turnEventBody({ steer: "   " })).toEqual({})
+  })
+})
+
+describe("내 회차 글은 웹 글로 되돌리지 않는다", () => {
+  test("받은 번호이거나, 내 사용자 글 바로 뒤의 외부 회차 답이면 내 글로 본다", () => {
+    const page = [
+      { id: "10", role: "user" },
+      { id: "11", role: "assistant", provider: "opencode_local" },
+      { id: "12", role: "user" },
+      { id: "13", role: "assistant", provider: "opencode_local" },
+      { id: "14", role: "assistant", provider: "codex" },
+    ]
+    const own = new Set(["10"])
+    expect(ownRoomMessage(page[0]!, page, own)).toBe(true)
+    // 끝 응답을 못 받아 번호를 모르는 내 회차의 답(오류 답 포함)
+    expect(ownRoomMessage(page[1]!, page, own)).toBe(true)
+    // 웹에서 쓴 글과 그 뒤의 답은 웹 글
+    expect(ownRoomMessage(page[2]!, page, own)).toBe(false)
+    expect(ownRoomMessage(page[3]!, page, own)).toBe(false)
+    expect(ownRoomMessage(page[4]!, page, new Set(["12"]))).toBe(false)
+    expect(ownRoomMessage(page[4]!, page, new Set(["14"]))).toBe(true)
   })
 })
