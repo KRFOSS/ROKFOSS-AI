@@ -504,11 +504,16 @@ describe("웹과 같게 보이도록 중계", () => {
   })
 
   test("도구 표시에 무엇을 했는지 한 줄을 붙인다", () => {
-    expect(toolTitle("shell", { command: "git cherry-pick abc\ngit log" })).toBe("$ git cherry-pick abc\ngit log")
-    expect(toolMark("shell", "start", toolTitle("shell", { command: "git cherry-pick abc\ngit log" }))).toEqual({
+    // 명령 인자·환경 값은 비밀일 수 있어 보내지 않는다 — 프로그램과 하위 명령만
+    expect(toolTitle("shell", { command: "cd /project/opencode && git cherry-pick ca8a517814 2>&1 | tail -3 && git log --oneline -4" })).toBe(
+      "$ git cherry-pick · tail · git log",
+    )
+    expect(toolTitle("shell", { command: 'TOKEN=abc curl -H "Authorization: Bearer x" https://a/b' })).toBe("$ curl")
+    expect(toolTitle("webfetch", { url: "https://a.example/p?token=secret#x" })).toBe("webfetch https://a.example/p")
+    expect(toolMark("shell", "start", toolTitle("shell", { command: "git status" }))).toEqual({
       name: "shell",
       state: "start",
-      title: "$ git cherry-pick abc",
+      title: "$ git status",
     })
     expect(toolTitle("read", { filePath: "/project/FORK.md" })).toBe("read /project/FORK.md")
     expect(toolTitle("rai_shell_read_file", { path: "/work/a" })).toBe("shell_read_file /work/a")

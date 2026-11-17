@@ -144,8 +144,26 @@ export function toolMark(name: string, state: "start" | "end", title?: string): 
 }
 
 /**
- * The line the web shows for a tool call, like the session view does: the command for a shell, the path for a file
- * tool, the pattern for a search. Only the first line of one argument is sent, never the whole input.
+ * The programs a shell command runs, without their arguments (spec 3.7: a title never carries arguments, environment
+ * values or file contents, which may be secrets): `cd x && git cherry-pick abc | tail -3` → `git cherry-pick · tail`.
+ */
+export function commandTitle(command: string): string | undefined {
+  const programs = command
+    .split(/\r?\n|&&|\|\||[;|]/)
+    .flatMap((segment) => {
+      const words = segment.trim().split(/\s+/).filter((word) => word !== "" && !word.includes("="))
+      const program = words[0]?.split("/").pop()
+      if (!program || program === "cd" || !/^[\w.+-]{1,40}$/.test(program)) return []
+      const sub = words[1]
+      return [sub && /^[a-z][a-z0-9-]{0,30}$/.test(sub) ? `${program} ${sub}` : program]
+    })
+    .slice(0, 4)
+  return programs.length > 0 ? `$ ${programs.join(" · ")}` : undefined
+}
+
+/**
+ * The line the web shows for a tool call: the programs of a shell command, the path of a file tool, the pattern of a
+ * search, an address without its query. Never an argument that may hold a secret.
  */
 export function toolTitle(name: string, input: unknown): string | undefined {
   const args = input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {}
@@ -158,8 +176,10 @@ export function toolTitle(name: string, input: unknown): string | undefined {
   }
   const base = name.replace(/^rai_/, "")
   const command = pick("command", "cmd")
-  if (command) return `$ ${command}`
-  const target = pick("filePath", "file_path", "path", "file", "pattern", "url", "query", "description")
+  if (command) return commandTitle(command)
+  const url = pick("url")
+  if (url) return `${base} ${url.split(/[?#]/)[0]}`
+  const target = pick("filePath", "file_path", "path", "file", "pattern", "description")
   return target ? `${base} ${target}` : undefined
 }
 
