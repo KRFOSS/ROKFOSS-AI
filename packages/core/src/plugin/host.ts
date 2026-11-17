@@ -601,6 +601,7 @@ export const make = Effect.fn("PluginHost.make")(function* (plugin: Pick<Interfa
       }),
       move: sessions.move,
       synthetic: sessions.synthetic,
+      mirror: sessions.mirror,
       interrupt: (input) =>
         sessions
           .interrupt(input.sessionID, { resume: input.resume })

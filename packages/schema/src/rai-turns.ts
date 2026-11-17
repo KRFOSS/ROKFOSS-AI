@@ -38,7 +38,10 @@ export const SessionOf = Schema.Struct({ sessionID: Schema.NullOr(Schema.String)
 })
 export interface SessionOf extends Schema.Schema.Type<typeof SessionOf> {}
 
-/** `sync`: room messages written elsewhere (the web) since this session last caught up, added to the session. */
+/**
+ * `sync`: room messages written elsewhere (the web) since this session last caught up. The call returns once they are
+ * found; they, and an answer the room is still making, are shown in the session in the background.
+ */
 export const Synced = Schema.Struct({
   added: Schema.Int,
   error: Schema.NullOr(Schema.String),

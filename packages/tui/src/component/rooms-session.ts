@@ -6,11 +6,13 @@ import { useData } from "../context/data"
 
 const turnsID = "opencode.rai.turns"
 /** How often an open session bound to a room catches up with what the web wrote there. */
-const syncEveryMs = 5_000
+const syncEveryMs = 2_000
 
 /**
- * While a session bound to a room is open, the room's new messages from the web are added to it every few seconds.
- * The relay keeps out this session's own turns, so nothing it recorded comes back.
+ * While a session bound to a room is open, the room's new messages from the web show up in it as user and assistant
+ * messages, and an answer the room is making streams in live. Each call returns at once: following a running answer
+ * happens in the plugin. The relay keeps out this session's own turns, so nothing it recorded comes back, and an
+ * unbound session's call does nothing.
  */
 export function useRoomSync(sessionID: () => string | undefined) {
   const client = useClient()
@@ -33,8 +35,7 @@ export function useRoomSync(sessionID: () => string | undefined) {
       const tick = async () => {
         if (stopped) return
         try {
-          const bound = await call<RaiTurns.Bound>("bound")
-          if (!stopped && bound.roomID) await call<RaiTurns.Synced>("sync")
+          await call<RaiTurns.Synced>("sync")
         } catch {
           // Catching up is best effort; the next tick tries again.
         }

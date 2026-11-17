@@ -58,6 +58,10 @@ export const Message = Schema.Struct({
   /** The provider and model that wrote an answer, as the server recorded them. */
   provider: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
+  /** Who wrote a user line, as the server names them. Absent when the server does not say. */
+  author: Schema.optional(Schema.String),
+  /** Whether the key's own account wrote the line. Absent when the server does not say. */
+  mine: Schema.optional(Schema.Boolean),
   createdAt: Schema.NullOr(Schema.String),
 }).annotate({ identifier: "RaiRooms.Message" })
 export interface Message extends Schema.Schema.Type<typeof Message> {}

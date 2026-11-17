@@ -90,6 +90,7 @@ import { deduplicateVisibleImages } from "../../prompt/attachment"
 import { useEpilogue } from "../../context/epilogue"
 import { normalizePath } from "../../util/path"
 import { PermissionPrompt } from "./permission"
+import { localToolsDisabled, toggleLocalTools } from "../../util/local-tools"
 import { FormPrompt } from "./form"
 import { DialogExportOptions } from "../../ui/dialog-export-options"
 import { DialogExportResult } from "../../ui/dialog-export-result"
@@ -1413,6 +1414,31 @@ export function Session(props: {
       run: () => {
         void client.api.session.background({ sessionID: route.sessionID })
         dialog.clear()
+      },
+    },
+    {
+      title: localToolsDisabled(session()?.permissions) ? t("Turn local tools on") : t("Turn local tools off"),
+      id: "session.local_tools.toggle",
+      group: "Session",
+      enabled: !!session(),
+      run: () => {
+        dialog.clear()
+        // The update replaces the whole rule list, so never build it from a session that is not loaded yet.
+        const info = session()
+        if (!info) return
+        const sessionID = info.id
+        const next = toggleLocalTools(info.permissions)
+        client.api.session.update({ sessionID, permissions: next.permissions }).then(
+          () =>
+            toast.show({
+              message: next.disabled
+                ? t("Local tools are off for this session")
+                : t("Local tools are on for this session"),
+              variant: next.disabled ? "warning" : "info",
+              duration: 3000,
+            }),
+          (error) => toast.show({ message: errorMessage(error), variant: "error", duration: 5000 }),
+        )
       },
     },
     {

@@ -1344,4 +1344,17 @@ export const dict: Dictionary = {
   "best streak": "최장 연속 활동",
   "active days": "활동 일수",
   "sessions": "세션",
+
+  // --- RAI room tools (approval prompt) ---------------------------------------------------------
+  "RAI room: {{title}}": "RAI 대화방: {{title}}",
+  "Preview:": "미리보기:",
+  "Purpose given by the model:": "모델이 밝힌 목적(서버가 확인한 내용 아님):",
+
+  // --- local tools toggle (session) -------------------------------------------------------------
+  "Turn local tools off": "로컬 도구 끄기",
+  "Turn local tools on": "로컬 도구 켜기",
+  "Local tools off": "로컬 도구 꺼짐",
+  "Local tools are off for this session": "이 세션의 로컬 도구를 껐습니다",
+  "Local tools are on for this session": "이 세션의 로컬 도구를 켰습니다",
+  "Turn this session's local tools off or on": "이 세션의 로컬 도구 끄기·켜기",
 }

@@ -47,6 +47,7 @@ import { Node } from "@opencode/util/effect/app-node"
 import { LayerNode } from "@opencode/util/effect/layer-node"
 import { SessionEvent } from "./session/event.js"
 import { SessionInbox } from "./session/inbox.js"
+import { SessionMirror } from "./session/mirror.js"
 import { InstructionState } from "./session/instruction-state.js"
 import { SessionGenerate } from "./session/generate.js"
 import { SessionCommand } from "./session/command.js"
@@ -243,6 +244,8 @@ export interface Interface {
   readonly background: (sessionID: SessionSchema.ID) => Effect.Effect<void, NotFoundError>
   readonly resume: (sessionID: SessionSchema.ID) => Effect.Effect<void, NotFoundError | SessionRunner.RunError>
   readonly interrupt: (sessionID: SessionSchema.ID, options?: { readonly resume?: boolean }) => Effect.Effect<boolean>
+  /** Shows a turn written by another client of the same conversation, without running a model. */
+  readonly mirror: SessionMirror.Interface
   readonly synthetic: (
     input: Parameters<Session.Handle["synthetic"]>[0] & { sessionID: SessionSchema.ID },
   ) => ReturnType<Session.Handle["synthetic"]>
@@ -542,6 +545,11 @@ const layer = Layer.effect(
       resume: (sessionID) => sessions.forSession(sessionID).resume(),
       synthetic: (input) => sessions.forSession(input.sessionID).synthetic(input),
       interrupt: (sessionID, options) => sessions.forSession(sessionID).interrupt(options),
+      mirror: SessionMirror.make({
+        bus,
+        get: (sessionID) => sessions.forSession(sessionID).get(),
+        isActive: execution.isActive,
+      }),
       revert: {
         stage: (input) => sessions.forSession(input.sessionID).revert.stage(input),
         clear: (sessionID) => sessions.forSession(sessionID).revert.clear(),

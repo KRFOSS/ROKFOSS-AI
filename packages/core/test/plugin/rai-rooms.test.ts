@@ -126,7 +126,7 @@ describe("RAI rooms protocol", () => {
     expect(Object.keys(RaiRooms.Definition.events)).toEqual([])
   })
 
-  test("ignores SSE comments and does not keep thinking text or tool arguments", () => {
+  test("ignores SSE comments, keeps thinking text in the frame only and never tool arguments", () => {
     const fixture = [
       ": ping",
       "",
@@ -146,8 +146,13 @@ describe("RAI rooms protocol", () => {
     ].join("\n")
     const pulled = pushSse("", fixture)
     expect(pulled.frames.map((frame) => frame.kind)).toEqual(["delta", "thinking", "tool", "tool_done", "error", "done"])
-    expect(pulled.frames.find((frame) => frame.kind === "thinking")).toEqual({ kind: "thinking", roomID: undefined })
-    expect(JSON.stringify(pulled.frames)).not.toContain("secret chain")
+    // A session mirroring the room shows the reasoning; `toChunk` drops it before the RPC event bus (tested below).
+    expect(pulled.frames.find((frame) => frame.kind === "thinking")).toEqual({
+      kind: "thinking",
+      text: "secret chain of thought",
+      roomID: undefined,
+    })
+    expect(JSON.stringify(pulled.frames)).not.toContain("rm -rf")
     expect(JSON.stringify(pulled.frames)).not.toContain("rm -rf")
     expect(pulled.frames.find((frame) => frame.kind === "tool")).toMatchObject({ label: "shell" })
     expect(RaiRooms.displayText("hello\u001B]8;;https://evil.example\u0007click\u001B]8;;\u0007")).toBe("helloclick")

@@ -191,6 +191,10 @@ export function host(overrides: Overrides = {}): Plugin.Context {
       update: overrides.session?.update ?? (() => Effect.die("unused session.update")),
       move: overrides.session?.move ?? (() => Effect.die("unused session.move")),
       synthetic: overrides.session?.synthetic ?? (() => Effect.die("unused session.synthetic")),
+      mirror: overrides.session?.mirror ?? {
+        user: () => Effect.die("unused session.mirror.user"),
+        answer: () => Effect.die("unused session.mirror.answer"),
+      },
       interrupt: overrides.session?.interrupt ?? (() => Effect.die("unused session.interrupt")),
       wait: overrides.session?.wait ?? (() => Effect.die("unused session.wait")),
       context: overrides.session?.context ?? (() => Effect.die("unused session.context")),

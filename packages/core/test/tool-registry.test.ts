@@ -769,6 +769,26 @@ describe("Tool", () => {
     }),
   )
 
+  it.effect("says a switched-off tool is turned off instead of missing", () =>
+    Effect.gen(function* () {
+      const service = yield* Tool.Service
+      yield* transform(service, { bash: make() }, { codemode: false })
+      yield* transform(service, { write: make() }, { codemode: false, permission: "edit" })
+      const snapshot = yield* service.snapshot([
+        { action: "bash", resource: "*", effect: "deny" },
+        { action: "edit", resource: "*", effect: "deny" },
+      ])
+      expect(snapshot.definitions.map((tool) => tool.name)).toEqual(["execute"])
+      for (const name of ["bash", "write"])
+        expect((yield* snapshot.execute(call(name)).pipe(Effect.flip)).message).toBe(
+          `Tool "${name}" is turned off for this session by its permission rules. Do not call it again; continue without it, or ask the user to turn it back on.`,
+        )
+      expect((yield* snapshot.execute(call("missing")).pipe(Effect.flip)).message).toBe(
+        'No tool named "missing" is currently available. Please use a tool from the available tool list.',
+      )
+    }),
+  )
+
   it.effect("keeps permission options isolated between registrations", () =>
     Effect.gen(function* () {
       const service = yield* Tool.Service

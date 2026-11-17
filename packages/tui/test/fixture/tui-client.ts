@@ -174,6 +174,10 @@ export function createFetch(override?: FetchHandler, events?: ReturnType<typeof 
     if (url.pathname === "/api/experimental/migration/v1") return json({ status: "completed" })
     // The prompt footer reads the routed session's goal from the goal plugin's RPC; no fixture sets one.
     if (url.pathname === "/api/rpc/opencode.goal/get") return json({ output: null })
+    // A session view asks whether its session is bound to a ROKFOSS AI room and catches up with it; no fixture binds one.
+    if (url.pathname === "/api/rpc/opencode.rai.turns/bound")
+      return json({ output: { roomID: null, title: null, error: null } })
+    if (url.pathname === "/api/rpc/opencode.rai.turns/sync") return json({ output: { added: 0, error: null } })
     throw new Error(`unexpected request: ${url.pathname}`)
   }
   fetch.preconnect = () => {}

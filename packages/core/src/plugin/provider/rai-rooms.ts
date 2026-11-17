@@ -287,8 +287,10 @@ function framesFromObject(value: Record<string, unknown>): Frame[] {
   const roomID = stringField(value.room_id)
   const frames: Frame[] = []
   if (typeof value.delta === "string" && value.delta !== "") frames.push({ kind: "delta", text: cap(value.delta), roomID })
-  // Thinking text is intentionally dropped. The dialog may show that thinking happened, not what it said.
-  if (value.thinking !== undefined && value.thinking !== null && value.thinking !== "") frames.push({ kind: "thinking", roomID })
+  // Thinking text stays in this process: a session mirroring the room shows it, but `toChunk` drops it, so the RPC
+  // event bus only ever learns that thinking happened, not what it said.
+  if (typeof value.thinking === "string" && value.thinking !== "") frames.push({ kind: "thinking", text: cap(value.thinking), roomID })
+  else if (value.thinking !== undefined && value.thinking !== null && value.thinking !== "") frames.push({ kind: "thinking", roomID })
   // A `tool_done` may carry the closing line's label; that must not open a second tool line.
   const closesTool = value.tool_done !== undefined
   if (!closesTool && (value.tool !== undefined || typeof value.label === "string")) {
@@ -449,6 +451,7 @@ function parseMessage(value: unknown, index: number): RaiRooms.Message | undefin
   const thinking = typeof obj.thinking === "string" ? RaiRooms.displayText(obj.thinking, maxThinking) : ""
   const provider = stringField(obj.provider)
   const model = stringField(obj.model)
+  const author = stringField(record(obj.author)?.name)
   return {
     id: id.slice(0, 128),
     role: stringField(obj.role) ?? stringField(obj.author) ?? "assistant",
@@ -456,6 +459,8 @@ function parseMessage(value: unknown, index: number): RaiRooms.Message | undefin
     ...(thinking.trim() !== "" ? { thinking } : {}),
     ...(provider && provider.length <= 64 ? { provider } : {}),
     ...(model && model.length <= 200 ? { model } : {}),
+    ...(author ? { author: RaiRooms.displayText(author, 100) } : {}),
+    ...(typeof obj.mine === "boolean" ? { mine: obj.mine } : {}),
     createdAt: stringField(obj.created_at) ?? stringField(obj.createdAt) ?? null,
   }
 }
@@ -612,7 +617,7 @@ export type SseOptions = {
   readonly onFrame?: (frame: Frame) => Effect.Effect<void>
 }
 
-/** Reads one SSE body. Ping resets the idle timer. Thinking text never leaves this function. */
+/** Reads one SSE body. Ping resets the idle timer. Thinking text reaches `onFrame` only; the transcript keeps none. */
 export const readSse = (
   response: HttpClientResponse.HttpClientResponse,
   transcript: Transcript,

@@ -318,6 +318,12 @@ const layer = Layer.effect(
                 return yield* executeTool(codeModeTool, name, event.input, context)
               const tool = direct.get(name)
               if (tool) return yield* executeTool(tool, name, event.input, context)
+              // A registered tool the rules switched off, e.g. local tools turned off for this session.
+              const disabled = data.tools.get(name)
+              if (disabled && whollyDisabled(disabled.options?.permission ?? name, rules))
+                return yield* new Tool.Error({
+                  message: `Tool "${name}" is turned off for this session by its permission rules. Do not call it again; continue without it, or ask the user to turn it back on.`,
+                })
               return yield* new Tool.Error({
                 message: `No tool named "${name}" is currently available. Please use a tool from the available tool list.`,
               })

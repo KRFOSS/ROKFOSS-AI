@@ -129,6 +129,8 @@ export function permissionPresentation(
     }
   }
 
+  if (action === "rai_tool") return raiToolPresentation(resources, metadata)
+
   if (action === "doom_loop") {
     return {
       icon: "⟳",
@@ -141,6 +143,31 @@ export function permissionPresentation(
     icon: "⚙",
     title: t("Call tool {{tool}}", { tool: source.action }),
     lines: [t("Tool: {{tool}}", { tool: source.action })],
+  }
+}
+
+/**
+ * A RAI room tool call the server wants approved (rai-tools.ts): the server's one-line title, what the server checked
+ * (details), a preview of what will be sent, and — labelled apart — the purpose the model wrote, so text the model
+ * wrote cannot pass for something the server confirmed.
+ */
+export function raiToolPresentation(resources: ReadonlyArray<string>, metadata: Dict): PermissionPresentation {
+  const tool = text(metadata.tool) || resources[0] || "rai_tool"
+  const title = text(metadata.title).trim()
+  const purpose = text(metadata.purpose).trim()
+  const details = Array.isArray(metadata.details)
+    ? metadata.details.flatMap((line) => (typeof line === "string" && line.trim() !== "" ? [line.trim()] : []))
+    : []
+  const preview = text(metadata.preview).trim()
+  return {
+    icon: "⚙",
+    title: title ? t("RAI room: {{title}}", { title }) : t("Call tool {{tool}}", { tool }),
+    lines: [
+      t("Tool: {{tool}}", { tool }),
+      ...details.slice(0, 20),
+      ...(preview ? [t("Preview:"), ...preview.split(/\r?\n/).slice(0, 30)] : []),
+      ...(purpose ? [t("Purpose given by the model:"), ...purpose.split(/\r?\n/).slice(0, 10)] : []),
+    ],
   }
 }
 

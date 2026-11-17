@@ -8,6 +8,7 @@ import { stringWidth } from "../../util/string-width"
 import { t } from "../../i18n"
 import { createGoal, GoalStatus } from "./goal"
 import { boundRoomTitle } from "../../component/rooms-nav"
+import { localToolsDisabled } from "../../util/local-tools"
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -49,6 +50,7 @@ export function PromptFooter(props: {
     const cost = props.context.data.session.cost(props.sessionID)
     return [
       room() ? t("Room {{room}} · recording", { room: room() ?? "" }) : undefined,
+      localToolsDisabled(session.permissions) ? t("Local tools off") : undefined,
       usage ? formatContextUsage(usage.tokens, usage.percent) : undefined,
       cost > 0 ? money.format(cost) : undefined,
     ].filter((item): item is string => Boolean(item))

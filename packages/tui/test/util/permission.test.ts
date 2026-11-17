@@ -21,3 +21,27 @@ test("preserves permission roots and self-contained metadata", () => {
     },
   )
 })
+
+test("shows the RAI room tool approval title and purpose", () => {
+  const shown = permissionPresentation({
+    action: "rai_tool",
+    resources: ["rai_fastly_purge"],
+    metadata: { tool: "rai_fastly_purge", title: "Purge the cache", purpose: "Purges every object\nfor example.com" },
+  })
+  expect(shown.title).toBe("RAI room: Purge the cache")
+  expect(shown.lines).toEqual(["Tool: rai_fastly_purge", "Purpose given by the model:", "Purges every object", "for example.com"])
+  const checked = permissionPresentation({
+    action: "rai_tool",
+    resources: ["rai_github_commit"],
+    metadata: { tool: "rai_github_commit", title: "Commit", details: ["repo: a/b", 3, ""], preview: "+ line", purpose: "fix" },
+  })
+  expect(checked.lines).toEqual([
+    "Tool: rai_github_commit",
+    "repo: a/b",
+    "Preview:",
+    "+ line",
+    "Purpose given by the model:",
+    "fix",
+  ])
+  expect(permissionPresentation({ action: "rai_tool", resources: ["rai_x"] }).title).toBe("Call tool rai_x")
+})

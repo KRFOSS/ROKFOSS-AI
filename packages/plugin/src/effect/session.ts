@@ -8,7 +8,7 @@ import type { SessionInbox } from "@opencode/schema/session-inbox"
 import type { SessionError } from "@opencode/schema/session-error"
 import type { SessionMessage } from "@opencode/schema/session-message"
 import type { TokenUsage } from "@opencode/schema/token-usage"
-import type { JsonSchema, Types } from "effect"
+import type { Effect, JsonSchema, Types } from "effect"
 import type { ModelHooks } from "./registration.js"
 
 export interface SessionPrompt {
@@ -216,6 +216,49 @@ export interface SessionHooks {
   readonly "experimental.idle": SessionIdle
 }
 
+export interface SessionMirrorUser {
+  readonly sessionID: Session.ID
+  readonly text: string
+  /** Who wrote the line, when it was not the person using this Session. Shown before the text. */
+  readonly author?: string
+  readonly metadata?: Record<string, unknown>
+}
+
+export interface SessionMirrorAnswerInput {
+  readonly sessionID: Session.ID
+  readonly model: Model.Ref
+  /** Defaults to the Session's selected agent. */
+  readonly agent?: Agent.ID
+  readonly metadata?: Record<string, unknown>
+}
+
+export interface SessionMirrorAnswerEnd {
+  /** The saved answer; replaces what the text deltas built. */
+  readonly text?: string
+  /** The saved reasoning; replaces what the reasoning deltas built. */
+  readonly reasoning?: string
+  /** Ends the message as a failed step with this message. */
+  readonly error?: string
+}
+
+export interface SessionMirrorAnswer {
+  readonly messageID: SessionMessage.ID
+  readonly text: (delta: string) => Effect.Effect<void>
+  readonly reasoning: (delta: string) => Effect.Effect<void>
+  /** Idempotent: only the first call ends the message. */
+  readonly end: (input?: SessionMirrorAnswerEnd) => Effect.Effect<void>
+}
+
+/**
+ * Shows a turn that happened in another client of the same conversation as this Session's own user and assistant
+ * messages, streamed like a local answer. It runs no model, starts no execution and runs no `prompt` hook. Fails
+ * with `Session.BusyError` while the Session runs its own turn or has a staged revert.
+ */
+export interface SessionMirror {
+  readonly user: (input: SessionMirrorUser) => Effect.Effect<SessionMessage.ID, Error>
+  readonly answer: (input: SessionMirrorAnswerInput) => Effect.Effect<SessionMirrorAnswer, Error>
+}
+
 export type SessionDomain = Pick<
   SessionApi<unknown>,
   | "list"
@@ -236,4 +279,5 @@ export type SessionDomain = Pick<
 > &
   Pick<ExperimentalSessionApi<unknown>, "wait" | "instructions"> & {
     readonly hook: ModelHooks<SessionHooks>
+    readonly mirror: SessionMirror
   }
