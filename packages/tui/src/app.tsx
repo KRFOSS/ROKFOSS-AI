@@ -691,14 +691,14 @@ function App() {
     if (!terminalTitleEnabled()) return
 
     if (route.data.type === "home") {
-      setTerminalTitle(renderer, "OpenCode")
+      setTerminalTitle(renderer, "ROKFOSS AI")
       return
     }
 
     if (route.data.type === "session") {
       const title = session?.title
       if (!title || isFallbackTitle(title)) {
-        setTerminalTitle(renderer, "OpenCode")
+        setTerminalTitle(renderer, "ROKFOSS AI")
         return
       }
 
@@ -711,7 +711,7 @@ function App() {
       // A room that has not reached the gateway yet has no title worth showing, and the room title is
       // translated, so the id decides instead of comparing the text.
       const fresh = route.data.roomID === "0"
-      setTerminalTitle(renderer, !fresh && title ? `OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}` : "OpenCode")
+      setTerminalTitle(renderer, !fresh && title ? `ROKFOSS AI | ${title.length > 40 ? title.slice(0, 37) + "…" : title}` : "ROKFOSS AI")
       return
     }
 
