@@ -288,8 +288,16 @@ export const fetchTools = (http: HttpClient.HttpClient, auth: Auth) =>
     if (response._tag === "None") return undefined
     const text = yield* response.value.text.pipe(Effect.orElseSucceed(() => ""))
     const status = response.value.status
-    if (status === 401 || status === 403 || status === 404) return []
-    if (status < 200 || status >= 300) return undefined
+    if (status === 401 || status === 403 || status === 404) {
+      // No tools for this key. Said once in the log, so "the model does not know the RAI tools" can be traced to the key.
+      const code = toolsFailure(status, text).code
+      yield* Effect.logWarning("RAI room tools are not available for this key", { status, code })
+      return []
+    }
+    if (status < 200 || status >= 300) {
+      yield* Effect.logWarning("RAI room tool list failed; keeping the last list", { status })
+      return undefined
+    }
     const listed = Option.match(decodeJson(text), { onNone: () => undefined, onSome: parseTools })
     if (!listed) return undefined
     if (listed.skipped.length > 0)
