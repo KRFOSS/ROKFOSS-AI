@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, setSystemTime, test } from "bun:test"
 import type { UsageLimitsBudget, UsageLimitsInfo } from "@opencode/client"
+import { currentLanguage, setLanguage } from "../../src/i18n"
 import {
   formatDollars,
   formatReset,
@@ -89,6 +90,19 @@ describe("util.usage-limits", () => {
     expect(formatReset(new Date(2026, 9, 24, 17).getTime())).toBe("5:00 PM today")
     expect(formatReset(new Date(2026, 10, 1).getTime())).toBe("Nov 1")
     expect(formatReset(new Date(2026, 9, 31, 19).getTime())).toBe("Oct 31, 7:00 PM")
+  })
+
+  test("writes reset times in the active interface language", () => {
+    const previous = currentLanguage()
+    try {
+      setSystemTime(new Date(2026, 9, 24, 9))
+      setLanguage("ko")
+      expect(formatReset(new Date(2026, 9, 24, 17).getTime())).toBe("오늘 오후 5:00")
+      expect(formatReset(new Date(2026, 10, 1).getTime())).toBe("11월 1일")
+      expect(formatReset(new Date(2026, 9, 31, 19).getTime())).toBe("10월 31일 오후 7:00")
+    } finally {
+      setLanguage(previous)
+    }
   })
 
   test("says who spends from a limit and which models it pools", () => {

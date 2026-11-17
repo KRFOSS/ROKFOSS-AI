@@ -43,6 +43,21 @@ test("keeps the English compact form for other languages", () => {
   }
 })
 
+test("formats times and dates in the active interface language", () => {
+  const previous = currentLanguage()
+  const at = new Date(2026, 10, 18, 9, 16).getTime()
+  try {
+    setLanguage("ko")
+    expect(Locale.time(at)).toBe("오전 9:16")
+    expect(Locale.datetime(at)).toBe("오전 9:16 · 2026. 11. 18.")
+    setLanguage("en")
+    expect(Locale.time(at)).toBe("9:16 AM")
+    expect(Locale.datetime(at)).toBe("9:16 AM · 11/18/2026")
+  } finally {
+    setLanguage(previous)
+  }
+})
+
 test("truncates text from the right by terminal width", () => {
   expect(Locale.truncateWidth("abcdefgh", 5)).toBe("abcd…")
   expect(Locale.truncateWidth("ab界cd", 5)).toBe("ab界…")

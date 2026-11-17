@@ -1,4 +1,6 @@
 import type { UsageLimitsBudget, UsageLimitsInfo } from "@opencode/client"
+import { t } from "../i18n"
+import { dateLocale } from "./locale"
 
 /** A model as the usage limits read it: its OpenCode IDs, its price and context window, and its provider. */
 export type LimitedModel = {
@@ -84,11 +86,12 @@ export function formatDollars(value: number) {
 /** When limits reset: the day, with the time unless it is midnight here, or just the time when that is today. */
 export function formatReset(at: number) {
   const date = new Date(at)
+  const locale = dateLocale()
   // ICU puts a narrow no-break space before AM/PM, which terminals may draw at the wrong width.
-  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\u202f/g, " ")
-  if (date.toDateString() === new Date().toDateString()) return `${time} today`
-  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-  return date.getHours() === 0 && date.getMinutes() === 0 ? day : `${day}, ${time}`
+  const time = date.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }).replace(/\u202f/g, " ")
+  if (date.toDateString() === new Date().toDateString()) return t("{{time}} today", { time })
+  const day = date.toLocaleDateString(locale, { month: "short", day: "numeric" })
+  return date.getHours() === 0 && date.getMinutes() === 0 ? day : t("{{day}}, {{time}}", { day, time })
 }
 
 /** When a refused request's limit resets: OpenCode Console names it `resetsAt` in every protocol's error envelope. */

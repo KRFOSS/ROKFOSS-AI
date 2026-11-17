@@ -1,19 +1,24 @@
 import { currentLanguage } from "../i18n"
 import { stringWidth } from "./string-width"
 
+/** The BCP 47 tag for the active interface language, used for dates and times shown beside translated text. */
+export function dateLocale() {
+  return currentLanguage() === "ko" ? "ko-KR" : "en-US"
+}
+
 export function titlecase(str: string) {
   return str.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export function time(input: number): string {
   const date = new Date(input)
-  return date.toLocaleTimeString(undefined, { timeStyle: "short" })
+  return date.toLocaleTimeString(dateLocale(), { timeStyle: "short" })
 }
 
 export function datetime(input: number): string {
   const date = new Date(input)
   const localTime = time(input)
-  const localDate = date.toLocaleDateString()
+  const localDate = date.toLocaleDateString(dateLocale())
   return `${localTime} · ${localDate}`
 }
 
