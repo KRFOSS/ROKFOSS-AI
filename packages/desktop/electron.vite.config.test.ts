@@ -69,17 +69,14 @@ test("bundles one Effect runtime and Drizzle while keeping native dependencies e
   }
 
   expect(Object.keys(pkg.optionalDependencies).filter((name) => name.startsWith("@lydell/node-pty-"))).toEqual([
-    "@lydell/node-pty-darwin-arm64",
     "@lydell/node-pty-darwin-x64",
-    "@lydell/node-pty-linux-arm64",
     "@lydell/node-pty-linux-x64",
-    "@lydell/node-pty-win32-arm64",
     "@lydell/node-pty-win32-x64",
   ])
 
   const previousTarget = process.env.OPENCODE_TARGET
-  // Build against the opposite architecture to prove cross-packaging resolves the target's native package, not the host's.
-  const crossTarget = process.arch === "arm64" ? "windows-x64" : "windows-arm64"
+  // Build for another OS to prove cross-packaging resolves the target's native package, not the host's.
+  const crossTarget = process.platform === "win32" ? "linux-x64" : "windows-x64"
   const crossNodePty = nodePtyPackage(crossTarget)
 
   try {
