@@ -125,7 +125,7 @@ export function DialogGoUpsell(props: {
         bg={selected() === action ? undefined : textBg()}
         attributes={selected() === action ? TextAttributes.BOLD : undefined}
       >
-        {action}
+        {t(action)}
       </text>
     </box>
   )
@@ -167,10 +167,11 @@ export function DialogGoUpsell(props: {
           fallback={
             <scrollbox maxHeight={bodyMaxHeight()} flexShrink={1}>
               <text fg={theme.text.muted} bg={textBg()} wrapMode="word">
-                You've used today's free messages.{props.reset ? ` Resets at ${props.reset}.` : ""}
+                {t("You've used today's free messages.")}
+                {props.reset ? ` ${t("Resets at {{time}}.", { time: props.reset })}` : ""}
               </text>
               <text fg={theme.text.muted} bg={textBg()} wrapMode="word">
-                OpenCode Go gives you reliable access to the best open-source models for $10/month.
+                {t("OpenCode Go gives you reliable access to the best open-source models for $10/month.")}
               </text>
               <Link href={GO_URL} fg={primary()} bg={textBg()} wrapMode="none" />
             </scrollbox>
@@ -178,10 +179,11 @@ export function DialogGoUpsell(props: {
         >
           <box>
             <text fg={theme.text.muted} bg={textBg()} wrapMode="word">
-              You've used today's free messages.{props.reset ? ` Resets at ${props.reset}.` : ""}
+              {t("You've used today's free messages.")}
+              {props.reset ? ` ${t("Resets at {{time}}.", { time: props.reset })}` : ""}
             </text>
             <text fg={theme.text.muted} bg={textBg()} wrapMode="word">
-              OpenCode Go gives you reliable access to the best open-source models for $10/month.
+              {t("OpenCode Go gives you reliable access to the best open-source models for $10/month.")}
             </text>
           </box>
           <box ref={setAnchor} height={7} paddingBottom={1} alignItems="center" justifyContent="flex-end">
@@ -302,7 +304,7 @@ function DialogGoUpsellConnect(props: { canContinue?: () => boolean; onSubscribe
           }
           toast.show({
             variant: "error",
-            message: status.status === "failed" ? status.message : "Authorization expired",
+            message: status.status === "failed" ? status.message : t("Authorization expired"),
           })
           dialog.clear()
         } catch (cause) {
