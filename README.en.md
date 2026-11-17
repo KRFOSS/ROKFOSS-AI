@@ -60,7 +60,7 @@ To run this repository's version, clone it and install its workspace dependencie
 
 ```bash
 git clone --branch dev https://github.com/KRFOSS/ROKFOSS-AI.git
-cd opencode
+cd ROKFOSS-AI
 bun install
 bun run dev .
 ```

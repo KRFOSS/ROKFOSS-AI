@@ -60,7 +60,7 @@ Nix flake는 Linux x86_64를 대상으로 합니다.
 
 ```bash
 git clone --branch dev https://github.com/KRFOSS/ROKFOSS-AI.git
-cd opencode
+cd ROKFOSS-AI
 bun install
 bun run dev .
 ```
