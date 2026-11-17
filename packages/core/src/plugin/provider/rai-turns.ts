@@ -555,6 +555,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
     const turns = yield* Ref.make(new Map<string, Turn>())
     // Sessions whose finished turn is still being saved: the answer is in the room before its id is remembered.
     const settling = yield* Ref.make(new Set<string>())
+    // Bound sessions running without a prompt of the user's — woken by a background result (a subagent report, for
+    // example). Such a run is stopped before it calls the model, so the session never goes on alone apart from the room.
+    const autoRuns = new Set<string>()
     // Room message numbers this session recorded (its user messages and answers), so catching up never shows them again.
     const ownMessages = new Map<string, Set<string>>()
     const rememberOwn = (sessionID: string, messageID: string | number | undefined) => {
@@ -885,8 +888,31 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           // A turn of this session's own owns the transcript from here; the web answer being mirrored stops.
           const follower = followers.get(sessionID)
           if (follower) yield* Fiber.interrupt(follower).pipe(Effect.forkIn(scope))
+          const prompted = (yield* Ref.get(pending)).has(sessionID)
+          if (!prompted && (yield* bindingOf(sessionID))) autoRuns.add(sessionID)
+          else autoRuns.delete(sessionID)
           return yield* begin(sessionID)
         }
+        if (event.type === "session.step.started" && autoRuns.has(sessionID)) {
+          autoRuns.delete(sessionID)
+          if (!(yield* Ref.get(turns)).has(sessionID)) {
+            // Not a turn the user asked for: stop it before the model answers. The background result stays in the
+            // session and is read with the user's next message.
+            yield* ctx.session.interrupt({ sessionID: sessionID as never }).pipe(Effect.ignore)
+            yield* notice(
+              ctx,
+              sessionID,
+              "뒤로 보낸 작업의 결과가 도착했습니다. 대화방과 어긋나지 않게 혼자 이어 가지 않았습니다. 이어서 하려면 글을 보내 주세요",
+            )
+            return
+          }
+        }
+        if (
+          event.type === "session.execution.succeeded" ||
+          event.type === "session.execution.failed" ||
+          event.type === "session.execution.interrupted"
+        )
+          autoRuns.delete(sessionID)
         const turn = (yield* Ref.get(turns)).get(sessionID)
         if (!turn) {
           if (event.type === "session.execution.succeeded" || event.type === "session.execution.failed" || event.type === "session.execution.interrupted")
@@ -933,6 +959,7 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           "session.execution.succeeded",
           "session.execution.failed",
           "session.execution.interrupted",
+          "session.step.started",
           "session.text.delta",
           "session.text.ended",
           "session.reasoning.delta",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { Effect, Stream } from "effect"
+import { Effect, Queue, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import {
   activeTurn,
@@ -553,5 +553,69 @@ describe("내 회차 글은 웹 글로 되돌리지 않는다", () => {
     expect(ownRoomMessage(page[3]!, page, own)).toBe(false)
     expect(ownRoomMessage(page[4]!, page, new Set(["12"]))).toBe(false)
     expect(ownRoomMessage(page[4]!, page, new Set(["14"]))).toBe(true)
+  })
+})
+
+describe("뒤 작업 결과로 스스로 깨어난 실행", () => {
+  test("방 세션이 사용자 글 없이 깨어나면 모델을 부르기 전에 멈추고 안내를 남긴다", async () => {
+    const sessionID = "ses_auto_run"
+    const host = mirrorHost(sessionID, "0")
+    const interrupted: string[] = []
+    const notices: string[] = []
+    const { http } = httpOf(() => Response.json({ messages: [] }))
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const queue = yield* Queue.unbounded<unknown>()
+          const ctx = {
+            ...host.ctx,
+            event: { subscribe: () => Stream.fromQueue(queue) },
+            session: {
+              ...host.ctx.session,
+              interrupt: (input: { sessionID: string }) => Effect.sync(() => void interrupted.push(input.sessionID)),
+              synthetic: (input: { text: string }) => Effect.sync(() => void notices.push(input.text)),
+              get: () => Effect.succeed({ model: { providerID: "opencode", id: "m" } }),
+            },
+          }
+          yield* startTurns(ctx as never, http)
+          yield* Queue.offer(queue, { type: "session.execution.started", data: { sessionID } })
+          yield* Queue.offer(queue, { type: "session.step.started", data: { sessionID, assistantMessageID: "msg_auto" } })
+          yield* until(() => interrupted.length === 1 && notices.length === 1)
+          expect(interrupted).toEqual([sessionID])
+          expect(notices[0]).toContain("혼자 이어 가지 않았습니다")
+          // 다음 실행에서 다시 단계가 시작돼도 한 번 멈춘 뒤에는 그 실행을 또 막지 않는다
+          yield* Queue.offer(queue, { type: "session.step.started", data: { sessionID, assistantMessageID: "msg_auto2" } })
+          yield* Effect.sleep("50 millis")
+          expect(interrupted).toHaveLength(1)
+        }),
+      ),
+    )
+  })
+
+  test("묶이지 않은 세션은 막지 않는다", async () => {
+    const host = mirrorHost("ses_other", "0")
+    const interrupted: string[] = []
+    const { http } = httpOf(() => Response.json({ messages: [] }))
+    await Effect.runPromise(
+      Effect.scoped(
+        Effect.gen(function* () {
+          const queue = yield* Queue.unbounded<unknown>()
+          const ctx = {
+            ...host.ctx,
+            event: { subscribe: () => Stream.fromQueue(queue) },
+            session: {
+              ...host.ctx.session,
+              interrupt: (input: { sessionID: string }) => Effect.sync(() => void interrupted.push(input.sessionID)),
+              synthetic: () => Effect.void,
+            },
+          }
+          yield* startTurns(ctx as never, http)
+          yield* Queue.offer(queue, { type: "session.execution.started", data: { sessionID: "ses_unbound" } })
+          yield* Queue.offer(queue, { type: "session.step.started", data: { sessionID: "ses_unbound", assistantMessageID: "m" } })
+          yield* Effect.sleep("100 millis")
+          expect(interrupted).toEqual([])
+        }),
+      ),
+    )
   })
 })
