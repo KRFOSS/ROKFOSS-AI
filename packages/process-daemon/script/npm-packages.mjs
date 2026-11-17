@@ -11,13 +11,9 @@ const dist = path.resolve(root, process.argv[2] ?? "dist")
 const output = path.join(dist, "npm")
 const manifest = JSON.parse(await readFile(path.join(root, "npm/package.json"), "utf8"))
 const targets = [
-  { target: "aarch64-apple-darwin", platform: "darwin", arch: "arm64" },
   { target: "x86_64-apple-darwin", platform: "darwin", arch: "x64" },
-  { target: "aarch64-unknown-linux-gnu", platform: "linux", arch: "arm64", libc: "glibc", suffix: "gnu" },
-  { target: "aarch64-unknown-linux-musl", platform: "linux", arch: "arm64", libc: "musl", suffix: "musl" },
   { target: "x86_64-unknown-linux-gnu", platform: "linux", arch: "x64", libc: "glibc", suffix: "gnu" },
   { target: "x86_64-unknown-linux-musl", platform: "linux", arch: "x64", libc: "musl", suffix: "musl" },
-  { target: "aarch64-pc-windows-msvc", platform: "win32", arch: "arm64" },
   { target: "x86_64-pc-windows-msvc", platform: "win32", arch: "x64" },
 ]
 

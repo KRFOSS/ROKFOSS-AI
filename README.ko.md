@@ -37,15 +37,12 @@ curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.s
 | --------------------------- | ----------------------------------------- |
 | Linux x64 (glibc)           | `opencode-linux-x64.tar.gz`               |
 | Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz`      |
-| Linux ARM64 (glibc)         | `opencode-linux-arm64.tar.gz`             |
 | Linux x64 (musl)            | `opencode-linux-x64-musl.tar.gz`          |
 | Linux x64 (musl, baseline)  | `opencode-linux-x64-baseline-musl.tar.gz` |
-| Linux ARM64 (musl)          | `opencode-linux-arm64-musl.tar.gz`        |
 | Windows x64                 | `opencode-windows-x64.zip`                |
 | Windows x64 (baseline)      | `opencode-windows-x64-baseline.zip`       |
-| Windows ARM64               | `opencode-windows-arm64.zip`              |
 
-`baseline`은 AVX2를 지원하지 않는 x64 CPU용이며, `musl`은 Alpine Linux 등 musl 기반 환경용입니다. 현재 포크 릴리즈 워크플로는 Linux와 Windows CLI를 배포합니다.
+`baseline`은 AVX2를 지원하지 않는 x64 CPU용이며, `musl`은 Alpine Linux 등 musl 기반 환경용입니다. 포크 릴리즈 워크플로는 Linux와 Windows x86_64 CLI를 배포합니다. ARM 빌드는 지원하지 않습니다.
 
 ```bash
 # Nix로 실행
@@ -55,7 +52,7 @@ nix run github:KRFOSS/opencode/dev#opencode
 nix profile install github:KRFOSS/opencode/dev#opencode
 ```
 
-Nix flake는 Linux x64·ARM64와 macOS Apple Silicon을 대상으로 합니다.
+Nix flake는 Linux x86_64를 대상으로 합니다.
 
 ### 소스에서 실행
 

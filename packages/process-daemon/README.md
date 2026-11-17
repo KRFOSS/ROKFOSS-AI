@@ -373,7 +373,7 @@ git push origin process-daemon-vX.Y.Z
 
 The tag creates an unsigned GitHub release titled `process-daemon vX.Y.Z`. It
 is never marked Latest, because the monorepo's Latest release drives
-OpenCode's own update paths. The release contains x86-64 and arm64 binaries
+OpenCode's own update paths. The release contains x86-64 binaries
 for Linux GNU, Linux musl, macOS, and Windows (MSVC, statically linked C
 runtime), plus `SHA256SUMS`, a machine-readable `release-manifest.json`, and
 GitHub build-provenance attestations. Release builds force Ghostty's Zig code

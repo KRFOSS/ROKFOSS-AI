@@ -35,13 +35,7 @@ const highlights = Script.preview ? undefined : embed(process.env.OPENCODE_RELEA
 const requestedArchive = process.env.OPENCODE_APP_ARCHIVE
 const archivePath = requestedArchive ? path.resolve(dir, requestedArchive) : undefined
 const requested = process.env.OPENCODE_TARGET
-const allTargets = [
-  nodeTarget("linux", "arm64"),
-  nodeTarget("linux", "x64"),
-  nodeTarget("darwin", "arm64"),
-  nodeTarget("win32", "arm64"),
-  nodeTarget("win32", "x64"),
-]
+const allTargets = [nodeTarget("linux", "x64"), nodeTarget("win32", "x64")]
 const targets = requested
   ? allTargets.filter((target) => targetName(target) === requested)
   : single || bundleOnly
@@ -64,7 +58,9 @@ if (!bundleOnly && targets.some((target) => target.platform === "darwin" && targ
   throw new Error("Node 26.4 SEA does not support macOS x64")
 }
 const modelsSnapshot = await bundledModelsSnapshot()
-const appArchive = archivePath ? await Bun.file(archivePath).bytes() : await buildAppArchive(Script.channel, Script.version)
+const appArchive = archivePath
+  ? await Bun.file(archivePath).bytes()
+  : await buildAppArchive(Script.channel, Script.version)
 if (!bundleOnly) await rm(outdir, { recursive: true, force: true })
 const builder =
   !bundleOnly || targets.some((target) => target.platform === process.platform && target.arch === process.arch)

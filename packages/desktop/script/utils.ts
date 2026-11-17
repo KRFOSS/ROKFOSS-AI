@@ -21,22 +21,10 @@ export function resolveChannel(): Channel {
 
 export const CLI_BINARIES: Array<{ target: string; package: string; os: string; cpu: string }> = [
   {
-    target: "darwin-arm64",
-    package: "@opencode/cli-darwin-arm64",
-    os: "darwin",
-    cpu: "arm64",
-  },
-  {
     target: "darwin-x64",
     package: "@opencode/cli-darwin-x64-baseline",
     os: "darwin",
     cpu: "x64",
-  },
-  {
-    target: "windows-arm64",
-    package: "@opencode/cli-windows-arm64",
-    os: "win32",
-    cpu: "arm64",
   },
   {
     target: "windows-x64",
@@ -50,23 +38,17 @@ export const CLI_BINARIES: Array<{ target: string; package: string; os: string; 
     os: "linux",
     cpu: "x64",
   },
-  {
-    target: "linux-arm64",
-    package: "@opencode/cli-linux-arm64",
-    os: "linux",
-    cpu: "arm64",
-  },
 ]
 
 function nativeTarget() {
-  const { platform, arch } = process
+  if (process.arch !== "x64") throw new Error(`Unsupported desktop architecture: ${process.arch}`)
 
-  if (platform === "darwin") return arch === "arm64" ? "darwin-arm64" : "darwin-x64"
+  if (process.platform === "darwin") return "darwin-x64"
 
-  if (platform === "win32") return arch === "arm64" ? "windows-arm64" : "windows-x64"
+  if (process.platform === "win32") return "windows-x64"
 
-  if (platform === "linux") return arch === "arm64" ? "linux-arm64" : "linux-x64"
-  throw new Error(`Unsupported platform: ${platform}/${arch}`)
+  if (process.platform === "linux") return "linux-x64"
+  throw new Error(`Unsupported platform: ${process.platform}/${process.arch}`)
 }
 
 export function getCurrentCli(target = process.env.OPENCODE_TARGET ?? nativeTarget()) {

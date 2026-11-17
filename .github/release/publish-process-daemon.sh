@@ -5,7 +5,7 @@ version=${GITHUB_REF_NAME#process-daemon-v}
 [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] || die 'Invalid daemon version'
 registry=https://registry.npmjs.org
 # Validate every package before the first write. Publish the dispatcher last.
-packages=(pty-darwin-{arm64,x64} pty-linux-{arm64,x64}-{gnu,musl} pty-win32-{arm64,x64} pty)
+packages=(pty-darwin-x64 pty-linux-x64-{gnu,musl} pty-win32-x64 pty)
 for package in "${packages[@]}"; do
   file="$1/opencode-$package-$version.tgz"
   tar -xOzf "$file" package/package.json | jq -es --arg name "@opencode/$package" --arg version "$version" '

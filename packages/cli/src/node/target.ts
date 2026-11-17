@@ -3,21 +3,20 @@ const platforms = ["darwin", "linux", "win32"] as const
 export type NodeTarget = ReturnType<typeof nodeTarget>
 
 export function nodeTarget(platform: string, arch: string) {
-  if (!platforms.includes(platform as (typeof platforms)[number]) || (arch !== "arm64" && arch !== "x64")) {
+  if (!platforms.includes(platform as (typeof platforms)[number]) || arch !== "x64") {
     throw new Error(`Unsupported Node executable target: ${platform}-${arch}`)
   }
 
   const targetPlatform = platform as (typeof platforms)[number]
-  const targetArch = arch as "arm64" | "x64"
-  const nodePtyPackage = `@lydell/node-pty-${targetPlatform}-${targetArch}`
-  const parcelWatcherPackage = `@parcel/watcher-${targetPlatform}-${targetArch}${targetPlatform === "linux" ? "-glibc" : ""}`
-  const fffPackage = `@ff-labs/fff-bin-${targetPlatform}-${targetArch}${targetPlatform === "linux" ? "-gnu" : ""}`
-  const fffFfiPackage = `@yuuang/ffi-rs-${targetPlatform}-${targetArch}${targetPlatform === "linux" ? "-gnu" : targetPlatform === "win32" ? "-msvc" : ""}`
+  const nodePtyPackage = `@lydell/node-pty-${targetPlatform}-${arch}`
+  const parcelWatcherPackage = `@parcel/watcher-${targetPlatform}-${arch}${targetPlatform === "linux" ? "-glibc" : ""}`
+  const fffPackage = `@ff-labs/fff-bin-${targetPlatform}-${arch}${targetPlatform === "linux" ? "-gnu" : ""}`
+  const fffFfiPackage = `@yuuang/ffi-rs-${targetPlatform}-${arch}${targetPlatform === "linux" ? "-gnu" : targetPlatform === "win32" ? "-msvc" : ""}`
   const opencodePtyAsset = targetPlatform === "win32" ? "opencode-pty/opencode-pty.exe" : "opencode-pty/opencode-pty"
 
   return {
     platform: targetPlatform,
-    arch: targetArch,
+    arch: "x64" as const,
     nodePtyPackage,
     nodePtyEntryAsset: `${nodePtyPackage}/lib/index.js`,
     parcelWatcherPackage,
@@ -25,7 +24,7 @@ export function nodeTarget(platform: string, arch: string) {
     fffPackage,
     fffAsset: `${fffPackage}/${targetPlatform === "darwin" ? "libfff_c.dylib" : targetPlatform === "win32" ? "fff_c.dll" : "libfff_c.so"}`,
     fffFfiPackage,
-    fffFfiAsset: `${fffFfiPackage}/ffi-rs.${targetPlatform}-${targetArch}${targetPlatform === "linux" ? "-gnu" : targetPlatform === "win32" ? "-msvc" : ""}.node`,
+    fffFfiAsset: `${fffFfiPackage}/ffi-rs.${targetPlatform}-${arch}${targetPlatform === "linux" ? "-gnu" : targetPlatform === "win32" ? "-msvc" : ""}.node`,
     opencodePtyAsset,
   }
 }

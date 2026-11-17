@@ -41,7 +41,7 @@ jobs:
           echo "=== Flake structure ==="
           nix flake show --all-systems
 
-          SYSTEMS="x86_64-linux aarch64-linux aarch64-darwin"
+          SYSTEMS="x86_64-linux"
           PACKAGES="opencode"
           # TODO: move 'opencode-desktop' to PACKAGES when #11755 is fixed
           OPTIONAL_PACKAGES="opencode-desktop"

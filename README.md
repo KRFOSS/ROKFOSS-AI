@@ -37,15 +37,12 @@ The installer selects the binary for your platform and installs it to `$HOME/.op
 | --------------------------- | ----------------------------------------- |
 | Linux x64 (glibc)           | `opencode-linux-x64.tar.gz`               |
 | Linux x64 (glibc, baseline) | `opencode-linux-x64-baseline.tar.gz`      |
-| Linux ARM64 (glibc)         | `opencode-linux-arm64.tar.gz`             |
 | Linux x64 (musl)            | `opencode-linux-x64-musl.tar.gz`          |
 | Linux x64 (musl, baseline)  | `opencode-linux-x64-baseline-musl.tar.gz` |
-| Linux ARM64 (musl)          | `opencode-linux-arm64-musl.tar.gz`        |
 | Windows x64                 | `opencode-windows-x64.zip`                |
 | Windows x64 (baseline)      | `opencode-windows-x64-baseline.zip`       |
-| Windows ARM64               | `opencode-windows-arm64.zip`              |
 
-Use `baseline` for x64 CPUs without AVX2, and `musl` for musl-based systems such as Alpine Linux. The fork release workflow currently publishes Linux and Windows CLI builds.
+Use `baseline` for x64 CPUs without AVX2, and `musl` for musl-based systems such as Alpine Linux. The fork release workflow publishes Linux and Windows x86_64 CLI builds. ARM builds are not supported.
 
 ```bash
 # Run with Nix
@@ -55,7 +52,7 @@ nix run github:KRFOSS/opencode/dev#opencode
 nix profile install github:KRFOSS/opencode/dev#opencode
 ```
 
-The Nix flake targets Linux x64, Linux ARM64, and macOS Apple Silicon.
+The Nix flake targets Linux x86_64.
 
 ### Run from source
 

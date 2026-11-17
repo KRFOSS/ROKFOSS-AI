@@ -3,6 +3,10 @@ import { fileURLToPath } from "node:url"
 import { collectNodeAssets } from "../script/node-assets"
 import { nodeTarget, photonWasmAsset } from "../src/node/target"
 
+test.each(["linux", "win32", "darwin"])("rejects ARM Node executable targets on %s", (platform) => {
+  expect(() => nodeTarget(platform, "arm64")).toThrow(`Unsupported Node executable target: ${platform}-arm64`)
+})
+
 test("collects each SEA asset key once", async () => {
   const assets = await collectNodeAssets(nodeTarget(process.platform, process.arch))
   const keys = assets.map((asset) => asset.key)

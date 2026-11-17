@@ -1,6 +1,6 @@
 name: bot-nix-hashes
 
-# Computes native Linux dependency hashes and uploads nix/hashes.json for manual review.
+# Computes the native Linux x64 dependency hash and uploads nix/hashes.json for manual review.
 # A mismatch fails after uploading the artifact. This workflow never commits, pushes, or opens or merges a PR.
 
 permissions:
@@ -38,8 +38,6 @@ jobs:
         include:
           - system: x86_64-linux
             runner: ubuntu-24.04
-          - system: aarch64-linux
-            runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
 
     steps:
@@ -120,8 +118,7 @@ jobs:
 
           [ -f "$HASH_FILE" ] || echo '{"nodeModules":{}}' > "$HASH_FILE"
 
-          # Preserve the existing Darwin hash while macOS builds are paused.
-          for SYSTEM in x86_64-linux aarch64-linux; do
+          for SYSTEM in x86_64-linux; do
             HASH="$(tr -d '[:space:]' < "$HASHES/hash-${SYSTEM}/hash.txt")"
             echo "${SYSTEM}: ${HASH}"
             jq --arg sys "$SYSTEM" --arg h "$HASH" '.nodeModules[$sys] = $h' "$HASH_FILE" > tmp.json

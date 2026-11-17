@@ -30,15 +30,13 @@ curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | ba
 curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --dir ~/bin --no-modify-path
 ```
 
-| Target              | Asset                                                                   |
-| :------------------ | :---------------------------------------------------------------------- |
-| Linux x64 / arm64   | `opencode-linux-<arch>.tar.gz` (`-musl`, `-baseline` variants included) |
-| macOS x64 / arm64   | `opencode-darwin-<arch>.zip`                                            |
-| Windows x64 / arm64 | `opencode-windows-<arch>.zip`                                           |
+| Target      | Asset                                                                |
+| :---------- | :------------------------------------------------------------------- |
+| Linux x64   | `opencode-linux-x64.tar.gz` (`-musl`, `-baseline` variants included) |
+| Windows x64 | `opencode-windows-x64.zip` (`-baseline` variant included)            |
 
-<yellow>macOS and Windows builds are not signed or notarized.</yellow> The installer gives the macOS
-binary an ad-hoc signature (`codesign --force --sign -`) and clears the quarantine flag; Windows may
-show a SmartScreen warning because there is no code-signing certificate behind this fork.
+ARM targets are not built or published. Windows builds are not signed and may show a SmartScreen
+warning because there is no code-signing certificate behind this fork.
 
 ## Korean interface
 
@@ -104,10 +102,9 @@ the dependency hash. On a native machine, `nix build .#node_modules_updater --no
 computed hash as `got:` in an expected hash-mismatch error. Update only that machine's entry in
 `nix/hashes.json`, then verify with `nix build .#opencode --no-link` and the resulting CLI's `--version`.
 
-`bot-nix-hashes.yml` computes both Linux hashes on native runners. If the recorded hashes differ,
+Nix supports Linux x86_64 only. `bot-nix-hashes.yml` computes its dependency hash on a native runner. If the recorded hash differs,
 the workflow uploads a `nix-hashes` artifact for manual review and fails the check. It has read-only
-repository permissions and never commits, pushes, creates PRs, or merges them. The macOS hash stays
-unchanged until it can be computed on a native Apple Silicon runner.
+repository permissions and never commits, pushes, creates PRs, or merges them.
 
 ## Merging upstream
 

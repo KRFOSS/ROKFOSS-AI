@@ -9,9 +9,7 @@
     { self, nixpkgs, ... }:
     let
       systems = [
-        "aarch64-linux"
         "x86_64-linux"
-        "aarch64-darwin"
       ];
       forEachSystem = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       rev = self.shortRev or self.dirtyShortRev or "dirty";

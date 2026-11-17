@@ -144,7 +144,7 @@ detect_target() {
 
     combo="$os-$arch"
     case "$combo" in
-        linux-x64|linux-arm64|darwin-x64|darwin-arm64|windows-x64|windows-arm64) ;;
+        linux-x64|darwin-x64|windows-x64) ;;
         *) error "Unsupported OS/Arch: $os/$arch" ;;
     esac
 

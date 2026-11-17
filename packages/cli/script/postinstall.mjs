@@ -15,7 +15,7 @@ if (!command) throw new Error("OpenCode package does not declare a binary")
 const sourceCommand = packageJson.opencodeSourceBinary ?? command
 
 const platform = { darwin: "darwin", linux: "linux", win32: "windows" }[os.platform()] ?? os.platform()
-const nodeArch = { x64: "x64", arm64: "arm64", arm: "arm" }[os.arch()] ?? os.arch()
+const nodeArch = os.arch()
 // x64 Node runs emulated on Windows ARM64, but PROCESSOR_IDENTIFIER still names the host CPU.
 const arch =
   platform === "windows" && nodeArch === "x64" && process.env.PROCESSOR_IDENTIFIER?.startsWith("ARM")
@@ -87,25 +87,16 @@ function packageNames() {
   const names =
     platform === "linux"
       ? isMusl()
-        ? arch === "x64"
-          ? baseline
-            ? [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
-            : [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
-          : [`${base}-musl`, base]
-        : arch === "x64"
-          ? baseline
-            ? [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
-            : [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
-          : [base, `${base}-musl`]
-      : arch === "x64"
         ? baseline
-          ? [`${base}-baseline`, base]
-          : [base, `${base}-baseline`]
-        : [base]
-  // Windows 11 on ARM64 can still run the x64 binary under emulation when the native one fails.
-  const x64 = base.replace(/-arm64$/, "-x64")
-  const emulated = platform === "windows" && arch === "arm64" ? [`${x64}-baseline`, x64] : []
-  return [...names, ...emulated].filter((name) => dependencies[name])
+          ? [`${base}-baseline-musl`, `${base}-musl`, `${base}-baseline`, base]
+          : [`${base}-musl`, `${base}-baseline-musl`, base, `${base}-baseline`]
+        : baseline
+          ? [`${base}-baseline`, base, `${base}-baseline-musl`, `${base}-musl`]
+          : [base, `${base}-baseline`, `${base}-musl`, `${base}-baseline-musl`]
+      : baseline
+        ? [`${base}-baseline`, base]
+        : [base, `${base}-baseline`]
+  return names.filter((name) => dependencies[name])
 }
 
 function copyBinary(source) {

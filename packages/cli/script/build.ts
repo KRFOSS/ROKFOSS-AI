@@ -39,20 +39,16 @@ const modelsSnapshot = modelsSnapshotPlugin(await bundledModelsSnapshot())
 
 const allTargets: {
   os: string
-  arch: "arm64" | "x64"
+  arch: "x64"
   abi?: "musl"
   avx2?: false
 }[] = [
-  { os: "linux", arch: "arm64" },
   { os: "linux", arch: "x64" },
   { os: "linux", arch: "x64", avx2: false },
-  { os: "linux", arch: "arm64", abi: "musl" },
   { os: "linux", arch: "x64", abi: "musl" },
   { os: "linux", arch: "x64", abi: "musl", avx2: false },
-  { os: "darwin", arch: "arm64" },
   { os: "darwin", arch: "x64" },
   { os: "darwin", arch: "x64", avx2: false },
-  { os: "win32", arch: "arm64" },
   { os: "win32", arch: "x64" },
   { os: "win32", arch: "x64", avx2: false },
 ]
@@ -248,13 +244,7 @@ async function compileExecutable(item: (typeof allTargets)[number]) {
   if (!release) return
 
   const platform = item.os === "win32" ? "windows" : item.os
-  const name = [
-    "bun",
-    platform,
-    item.arch === "arm64" ? "aarch64" : item.arch,
-    item.abi,
-    item.avx2 === false ? "baseline" : undefined,
-  ]
+  const name = ["bun", platform, item.arch, item.abi, item.avx2 === false ? "baseline" : undefined]
     .filter(Boolean)
     .join("-")
   const cache = path.join(outdir, ".bun", release)

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# validate.sh <file>: fails unless <file> has exactly the shape of nix/hashes.json with three SRI hashes.
+# validate.sh <file>: fails unless <file> has exactly the shape of nix/hashes.json for the supported systems.
 # Used before uploading hash artifacts and when checking a manually prepared bot/nix-hashes branch.
 # Adding a system to the flake means adding it to SYSTEMS here.
 set -euo pipefail
 
 file=${1:?usage: validate.sh <file>}
-SYSTEMS='["aarch64-darwin","aarch64-linux","x86_64-linux"]'
+SYSTEMS='["x86_64-linux"]'
 
 fail() {
   echo "::error::$file: $*" >&2
