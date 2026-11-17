@@ -5,6 +5,7 @@ import { RoomsRequestError, type Auth } from "@opencode/core/plugin/provider/rai
 import {
   callBody,
   callWithApproval,
+  roomToolsGuide,
   contentOf,
   describeTool,
   fetchTools,
@@ -378,5 +379,27 @@ describe("RAI room tools: call over HTTP", () => {
       const error = failed.cause.reasons.find((reason) => reason._tag === "Fail")
       expect(error && "error" in error ? (error.error as RoomsRequestError).code : undefined).toBe("approval_invalid")
     }
+  })
+})
+
+describe("RAI room tools: guide for a bound session", () => {
+  test("names the box tools on offer and tells the local tools apart", () => {
+    const guide = roomToolsGuide(
+      ["rai_shell_run", "rai_shell_read_file", "rai_shell_outputs", "rai_github_me"],
+      ["rai_shell_run", "rai_shell_read_file", "rai_shell_outputs", "rai_github_me", "shell", "read", "webfetch"],
+    )
+    expect(guide).toContain("rai_shell_run")
+    expect(guide).toContain("rai_shell_read_file")
+    expect(guide).toContain("rai_shell_outputs")
+    expect(guide).not.toContain("rai_shell_job_start")
+    expect(guide).toContain("shell, read 도구는 사용자의 컴퓨터")
+    expect(guide).not.toContain("webfetch")
+  })
+
+  test("says nothing about the box when no box tool is offered, and skips the local line without local tools", () => {
+    expect(roomToolsGuide(["rai_github_me"], ["rai_github_me", "shell"])).toBeUndefined()
+    const guide = roomToolsGuide(["rai_shell_run"], ["rai_shell_run"])
+    expect(guide).toContain("rai_shell_run")
+    expect(guide).not.toContain("사용자의 컴퓨터")
   })
 })

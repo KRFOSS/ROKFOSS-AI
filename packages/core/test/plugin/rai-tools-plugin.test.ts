@@ -126,6 +126,9 @@ describe("RAI room tools plugin", () => {
       expect(Object.keys(hidden.tools)).toEqual(["read"])
       const shown = yield* test.hooks.trigger("session", "context", contextEvent(bound, { ...definitions }))
       expect(Object.keys(shown.tools).sort()).toEqual(["rai_fastly_purge", "read"])
+      // Only integrated-system tools here: no box tool to point at, so no note about the box.
+      expect(shown.system).toEqual([])
+      expect(hidden.system).toEqual([])
 
       const refused = yield* Effect.exit(tool.execute({ zone: "example.com" }, context(loose)))
       expect(Exit.isFailure(refused)).toBe(true)

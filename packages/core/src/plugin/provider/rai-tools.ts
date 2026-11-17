@@ -1,4 +1,4 @@
-import { ToolFailure } from "@opencode/ai/effect"
+import { SystemPart, ToolFailure } from "@opencode/ai/effect"
 import type { Context } from "@opencode/plugin/effect/plugin"
 import type { Tool } from "@opencode/schema/tool"
 import { Duration, Effect, FiberSet, type JsonSchema, Option, Schedule, Schema, Semaphore, Stream } from "effect"
@@ -353,6 +353,36 @@ export const postCall = (http: HttpClient.HttpClient, auth: Auth, url: string, b
     return outcome
   })
 
+/** Local tools that act on the user's own computer, as opposed to the room's box. */
+const localToolNames = ["shell", "bash", "read", "write", "edit", "patch", "glob", "grep"]
+
+/**
+ * The note a bound session's model gets: the room's box (the same Linux box the web AI uses, with /work, /project and
+ * the box's own git setup) is reached only through the rai_ tools; the unprefixed tools run on the user's computer.
+ * Only tools that are actually offered are named.
+ */
+export function roomToolsGuide(raiTools: readonly string[], allTools: readonly string[]): string | undefined {
+  const has = (name: string) => raiTools.includes(name)
+  const named = (names: string[]) => names.filter(has).join(", ")
+  const box = [
+    named(["rai_shell_run", "rai_shell_job_start", "rai_shell_job"]) && `명령은 ${named(["rai_shell_run", "rai_shell_job_start", "rai_shell_job"])}`,
+    named(["rai_shell_read_file", "rai_shell_write_file", "rai_shell_edit_file", "rai_search", "rai_fetch"]) &&
+      `파일은 ${named(["rai_shell_read_file", "rai_shell_write_file", "rai_shell_edit_file", "rai_search", "rai_fetch"])}`,
+    named(["rai_shell_outputs"]) && "결과 파일 공유는 rai_shell_outputs",
+  ].filter(Boolean)
+  if (box.length === 0) return undefined
+  const local = localToolNames.filter((name) => allTools.includes(name))
+  return [
+    "이 세션은 ROKFOSS AI 대화방에 묶여 있습니다. 그 방의 터미널 상자 — 웹의 AI 가 쓰는 것과 같은 리눅스 상자로, /work 작업 폴더, /project 프로젝트 자료, 상자 안의 git 설정·인증이 여기에 있습니다 — 는 이름이 rai_ 로 시작하는 도구로만 다룹니다.",
+    `${box.join(", ")} 를 씁니다.`,
+    local.length > 0
+      ? `rai_ 가 붙지 않은 ${local.join(", ")} 도구는 사용자의 컴퓨터(로컬)에서 돌며, 그 상자와는 파일·저장소·인증이 다릅니다. 대화방·상자·/work·/project 의 일에는 rai_ 도구를 쓰고, 로컬 도구로 본 결과를 상자의 상태로 여기지 마세요.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
 export function registerRaiTools(
   ctx: Context,
   http: HttpClient.HttpClient,
@@ -427,12 +457,17 @@ export function registerRaiTools(
       }
     })
 
-    // Hide the tools from sessions that are not bound to a room; execution checks the binding again.
+    // Hide the tools from sessions that are not bound to a room; execution checks the binding again. A bound session
+    // is told which tools reach the room's box, so the model does not take the local shell for the box.
     yield* ctx.session.hook("context", (event) =>
       Effect.gen(function* () {
         const present = Object.keys(event.tools).filter((name) => names.has(name))
         if (present.length === 0) return
-        if (yield* roomOf(event.sessionID)) return
+        if (yield* roomOf(event.sessionID)) {
+          const guide = roomToolsGuide(present, Object.keys(event.tools))
+          if (guide) event.system.push(SystemPart.make(guide))
+          return
+        }
         for (const name of present) delete event.tools[name]
       }),
     )
