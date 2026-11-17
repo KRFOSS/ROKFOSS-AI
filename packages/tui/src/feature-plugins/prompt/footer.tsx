@@ -38,6 +38,18 @@ export function PromptFooter(props: {
     return count ? t(count === 1 ? "{{count}} shell" : "{{count}} shells", { count }) : undefined
   })
   const room = createMemo(() => boundRoomTitle(props.sessionID))
+  // A room-bound session always says whether its local tools are on, with the key that flips them; another session
+  // only says so when they are off.
+  const localToolsLabel = () => {
+    if (!props.sessionID) return undefined
+    const session = props.context.data.session.get(props.sessionID)
+    if (!session) return undefined
+    const off = localToolsDisabled(session.permissions)
+    if (!off && !room()) return undefined
+    const key = props.context.keymap.shortcuts("session.local_tools.toggle")[0]
+    const label = off ? t("Local tools off") : t("Local tools on")
+    return key ? `${label} (${key})` : label
+  }
   const status = createMemo(() => {
     if (!props.sessionID) return []
     const session = props.context.data.session.get(props.sessionID)
@@ -50,7 +62,7 @@ export function PromptFooter(props: {
     const cost = props.context.data.session.cost(props.sessionID)
     return [
       room() ? t("Room {{room}} · recording", { room: room() ?? "" }) : undefined,
-      localToolsDisabled(session.permissions) ? t("Local tools off") : undefined,
+      localToolsLabel(),
       usage ? formatContextUsage(usage.tokens, usage.percent) : undefined,
       cost > 0 ? money.format(cost) : undefined,
     ].filter((item): item is string => Boolean(item))
