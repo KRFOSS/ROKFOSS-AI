@@ -1355,6 +1355,7 @@ export const dict: Dictionary = {
   "Turn local tools on": "로컬 도구 켜기",
   "Local tools off": "로컬 도구 꺼짐",
   "Local tools on": "로컬 도구 켜짐",
+  "{{first}}, then {{next}}": "{{first}} 누른 뒤 {{next}}",
   "Local tools are off for this session": "이 세션의 로컬 도구를 껐습니다",
   "Local tools are on for this session": "이 세션의 로컬 도구를 켰습니다",
   "Turn this session's local tools off or on": "이 세션의 로컬 도구 끄기·켜기",

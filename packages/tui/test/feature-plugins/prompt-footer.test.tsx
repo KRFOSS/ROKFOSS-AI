@@ -248,3 +248,64 @@ function findText(node: Renderable, text: string): TextRenderable | undefined {
     .map((child) => findText(child, text))
     .find((found) => found !== undefined)
 }
+
+test("prompt footer colors the local tools state, spells out the chord, and toggles on click", async () => {
+  const muted = RGBA.fromInts(100, 100, 100)
+  const warning = RGBA.fromInts(220, 160, 40)
+  const success = RGBA.fromInts(40, 200, 90)
+  const dispatched: string[] = []
+  const [permissions, setPermissions] = createSignal([
+    { action: "opencode_local_tools_off", resource: "*", effect: "deny" },
+    { action: "shell", resource: "*", effect: "deny" },
+  ])
+  const context = {
+    location: { directory: "/workspace" },
+    theme: {
+      text: {
+        base: muted,
+        muted,
+        feedback: { warning: { base: warning }, success: { base: success } },
+      },
+    },
+    keymap: {
+      shortcuts: (id: string) => (id === "session.local_tools.toggle" ? ["ctrl+x o"] : []),
+      dispatch: (id: string) => dispatched.push(id),
+    },
+    client: { rpc: () => ({ get: () => Promise.resolve(null), events: { on: () => () => {} } }) },
+    data: {
+      on: () => () => {},
+      session: {
+        family: () => ["session"],
+        status: () => "idle",
+        get: () => ({ id: "session", location: { directory: "/workspace" }, permissions: permissions() }),
+        cost: () => 0,
+        message: { list: () => [] },
+      },
+      shell: { list: () => [] },
+      location: { model: { list: () => [] } },
+    },
+  } as unknown as Context
+  const app = await testRender(
+    () => <PromptFooter context={context} sessionID="session" mode="normal" showDetails={true} />,
+    { width: 80, height: 2 },
+  )
+
+  try {
+    await app.renderOnce()
+    const frame = app.captureCharFrame()
+    expect(frame).toContain("Local tools off (ctrl+x, then o)")
+    const column = frame.split("\n")[0]!.indexOf("Local tools off")
+    const spans = app.captureSpans().lines[0]!.spans
+    const label = spans.find((span) => span.text.includes("Local tools off"))
+    expect(label?.fg.toInts()).toEqual(warning.toInts())
+
+    await app.mockMouse.click(column + 2, 0)
+    expect(dispatched).toEqual(["session.local_tools.toggle"])
+
+    setPermissions([])
+    await app.renderOnce()
+    expect(app.captureCharFrame()).not.toContain("Local tools")
+  } finally {
+    app.renderer.destroy()
+  }
+})

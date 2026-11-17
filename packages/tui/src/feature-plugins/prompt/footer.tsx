@@ -39,17 +39,18 @@ export function PromptFooter(props: {
   })
   const room = createMemo(() => boundRoomTitle(props.sessionID))
   // A room-bound session always says whether its local tools are on, with the key that flips them; another session
-  // only says so when they are off.
-  const localToolsLabel = () => {
+  // only says so when they are off. A leader chord reads as "first key, then the next" so nobody holds ctrl through it.
+  const localTools = createMemo(() => {
     if (!props.sessionID) return undefined
     const session = props.context.data.session.get(props.sessionID)
     if (!session) return undefined
     const off = localToolsDisabled(session.permissions)
     if (!off && !room()) return undefined
     const key = props.context.keymap.shortcuts("session.local_tools.toggle")[0]
-    const label = off ? t("Local tools off") : t("Local tools on")
-    return key ? `${label} (${key})` : label
-  }
+    const [first, ...rest] = key ? key.split(" ") : []
+    const hint = !key ? undefined : rest.length ? t("{{first}}, then {{next}}", { first, next: rest.join(" ") }) : key
+    return { off, label: off ? t("Local tools off") : t("Local tools on"), hint }
+  })
   const status = createMemo(() => {
     if (!props.sessionID) return []
     const session = props.context.data.session.get(props.sessionID)
@@ -61,12 +62,20 @@ export function PromptFooter(props: {
     )
     const cost = props.context.data.session.cost(props.sessionID)
     return [
-      room() ? t("Room {{room}} · recording", { room: room() ?? "" }) : undefined,
-      localToolsLabel(),
       usage ? formatContextUsage(usage.tokens, usage.percent) : undefined,
       cost > 0 ? money.format(cost) : undefined,
     ].filter((item): item is string => Boolean(item))
   })
+  const roomLabel = () => (room() ? t("Room {{room}} · recording", { room: room() ?? "" }) : undefined)
+  const localToolsText = () => {
+    const value = localTools()
+    if (!value) return undefined
+    return value.hint ? `${value.label} (${value.hint})` : value.label
+  }
+  // Every piece of the details row, in order, for measuring and for deciding whether the row shows at all.
+  const details = createMemo(() =>
+    [roomLabel(), localToolsText(), ...status()].filter((item): item is string => Boolean(item)),
+  )
   const live = createMemo(() => Boolean(subagents() || shells()))
   const goal = createGoal(props.context, () => props.sessionID)
   // Prompt hints read as disabled while the session does not own input, e.g. while a side panel is focused.
@@ -74,10 +83,10 @@ export function PromptFooter(props: {
   const shortcut = (id: string) => props.context.keymap.shortcuts(id)[0]
   const layout = createMemo(() => {
     const command = shortcut("command.palette.show")
-    if (status().length === 0) return { usage: false, shortcuts: dimensions().width >= 44 }
+    if (details().length === 0) return { usage: false, shortcuts: dimensions().width >= 44 }
     return promptFooterLayout({
       width: Math.max(0, dimensions().width - 8),
-      usage: status(),
+      usage: details(),
       shortcuts: command ? [`${command} ${t("commands")}`] : [],
     })
   })
@@ -86,7 +95,7 @@ export function PromptFooter(props: {
     <Switch>
       <Match when={props.mode === "normal"}>
         <Switch>
-          <Match when={goal() || live() || status().length > 0}>
+          <Match when={goal() || live() || details().length > 0}>
             <box flexDirection="row" flexShrink={props.showDetails && layout().usage ? 0 : 1} minWidth={0}>
               <Show when={live()}>
                 <box
@@ -118,11 +127,40 @@ export function PromptFooter(props: {
                 </Show>
                 <GoalStatus context={props.context} sessionID={props.sessionID ?? ""} goal={goal} />
               </Show>
-              <Show when={props.showDetails && layout().usage && status().length > 0}>
-                <text fg={props.context.theme.text.muted} wrapMode="none" flexShrink={0}>
-                  <Show when={live() || goal()}> · </Show>
-                  {status().join(" · ")}
-                </text>
+              <Show when={props.showDetails && layout().usage && details().length > 0}>
+                <Show when={roomLabel()}>
+                  {(value) => (
+                    <text fg={props.context.theme.text.muted} wrapMode="none" flexShrink={0}>
+                      <Show when={live() || goal()}> · </Show>
+                      {value()}
+                    </text>
+                  )}
+                </Show>
+                <Show when={localTools()}>
+                  {(value) => (
+                    <box flexShrink={0} onMouseUp={() => props.context.keymap.dispatch("session.local_tools.toggle")}>
+                      <text fg={props.context.theme.text.muted} wrapMode="none">
+                        <Show when={live() || goal() || roomLabel()}> · </Show>
+                        <span
+                          style={{
+                            fg: value().off
+                              ? props.context.theme.text.feedback.warning.base
+                              : props.context.theme.text.feedback.success.base,
+                          }}
+                        >
+                          {value().label}
+                        </span>
+                        <Show when={value().hint}>{(hint) => <> ({hint()})</>}</Show>
+                      </text>
+                    </box>
+                  )}
+                </Show>
+                <Show when={status().length > 0}>
+                  <text fg={props.context.theme.text.muted} wrapMode="none" flexShrink={0}>
+                    <Show when={live() || goal() || roomLabel() || localTools()}> · </Show>
+                    {status().join(" · ")}
+                  </text>
+                </Show>
               </Show>
             </box>
           </Match>
