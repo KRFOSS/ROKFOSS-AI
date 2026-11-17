@@ -18,22 +18,11 @@ permissions:
 jobs:
   bot-scope:
     name: bot-scope
+    if: ${{ (github.head_ref || github.ref_name) == 'bot/nix-hashes' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Check branch
-        id: branch
-        env:
-          HEAD_REF: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
-        run: |
-          if [ "$HEAD_REF" = bot/nix-hashes ]; then
-            echo "bot=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "$HEAD_REF is not a bot branch; nothing to check"
-          fi
-
       - name: Checkout repository
-        if: steps.branch.outputs.bot == 'true'
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -42,7 +31,6 @@ jobs:
           persist-credentials: false
 
       - name: Check changed files
-        if: steps.branch.outputs.bot == 'true'
         env:
           BASE: ${{ github.base_ref || 'dev' }}
         run: |
@@ -58,5 +46,4 @@ jobs:
 
       # Runs dev's validator: the step above proved this branch leaves .github/ unchanged.
       - name: Validate nix/hashes.json
-        if: steps.branch.outputs.bot == 'true'
         run: bash .github/nix-hashes/validate.sh nix/hashes.json

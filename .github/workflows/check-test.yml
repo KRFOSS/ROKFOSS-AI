@@ -61,15 +61,19 @@ env:
   TURBO_SCM_HEAD: ${{ github.sha }}
 
 jobs:
-  # Only the browser suites need this, and pull requests run no browser suites.
+  # Compute the affected package set once for builds, packaging and generated contracts.
   affected:
     name: affected packages
-    if: ${{ !github.event.pull_request.draft && github.event_name != 'pull_request' }}
-    # Never runs on a pull request, so a fork's code cannot reach the self-hosted machine here. It stays hosted
-    # because it gates `e2e`, and a job queued behind the single self-hosted machine would delay those.
+    if: ${{ !github.event.pull_request.draft }}
+    # Uses a hosted runner, including for fork pull requests.
     runs-on: ubuntu-24.04
     outputs:
-      e2e: ${{ steps.packages.outputs.app }}
+      e2e: ${{ steps.packages.outputs.e2e }}
+      build: ${{ steps.packages.outputs.build }}
+      codemode: ${{ steps.packages.outputs.codemode }}
+      sdk: ${{ steps.packages.outputs.sdk }}
+      client: ${{ steps.packages.outputs.client }}
+      protocol: ${{ steps.packages.outputs.protocol }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -86,15 +90,30 @@ jobs:
         id: packages
         run: |
           if [ "$AFFECTED" != "true" ]; then
-            echo "app=true" >> "$GITHUB_OUTPUT"
+            for check in e2e build codemode sdk client protocol; do
+              echo "$check=true" >> "$GITHUB_OUTPUT"
+            done
             exit 0
           fi
-          # packages/stories hosts the component tests, but no app package depends on it.
-          bun x turbo@2.10.2 ls --affected --filter=@opencode/app --filter=@opencode/stories --output=json > affected.json
-          bun -e 'const result = await Bun.file("affected.json").json(); console.log(`app=${result.packages.count > 0}`)' >> "$GITHUB_OUTPUT"
+          bun x turbo@2.10.2 ls --affected --output=json > affected.json
+          bun -e '
+            const result = await Bun.file("affected.json").json()
+            const packages = new Set(result.packages.items.map((item) => item.name))
+            const has = (...names) => names.some((name) => packages.has(`@opencode/${name}`))
+            const checks = {
+              e2e: has("app", "stories"),
+              build: has("cli", "app"),
+              codemode: has("codemode"),
+              sdk: has("sdk"),
+              client: has("client", "httpapi-codegen", "server"),
+              protocol: has("protocol", "server"),
+            }
+            Object.entries(checks).forEach(([name, needed]) => console.log(`${name}=${needed}`))
+          ' >> "$GITHUB_OUTPUT"
 
   unit:
     name: unit (${{ matrix.settings.name }})
+    needs: affected
     if: ${{ !inputs.quarantine && !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
@@ -116,11 +135,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           # Pull requests diff against the merge's first parent; pushes diff against the previous dev head.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
-
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "24"
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
@@ -151,12 +165,12 @@ jobs:
           OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER: ${{ runner.os == 'Windows' && 'true' || 'false' }}
 
       - name: Verify packed codemode package
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.affected.outputs.codemode == 'true'
         working-directory: packages/codemode
         run: bun run pack
 
       - name: Verify packed workerd SDK
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.affected.outputs.sdk == 'true'
         timeout-minutes: 15
         run: |
           if [ "$AFFECTED" = "true" ]; then
@@ -166,19 +180,20 @@ jobs:
           bun turbo verify:package --filter=@opencode/sdk
 
       - name: Check generated client
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.affected.outputs.client == 'true'
         working-directory: packages/client
         run: bun run check:generated
 
       - name: Check generated OpenAPI document
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && needs.affected.outputs.protocol == 'true'
         working-directory: packages/protocol
         run: bun run check:generated
 
   build:
     name: build (${{ matrix.settings.name }})
+    needs: affected
     # Compiling the CLI and smoke-testing its service lifecycle is part of the full tier.
-    if: ${{ !inputs.quarantine && github.event_name != 'pull_request' && !github.event.pull_request.draft }}
+    if: ${{ !inputs.quarantine && github.event_name != 'pull_request' && !github.event.pull_request.draft && needs.affected.outputs.build == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -244,7 +259,7 @@ jobs:
   e2e-suite:
     name: browser tests
     needs: affected
-    if: needs.affected.outputs.e2e == 'true'
+    if: github.event_name != 'pull_request' && needs.affected.outputs.e2e == 'true'
     # Quarantined tests are known red; their legs report without failing the e2e checks.
     continue-on-error: ${{ matrix.quarantine }}
     strategy:
@@ -280,14 +295,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          # Playwright 1.59 hangs while extracting Chromium with Node 24.16.
-          node-version: "24.15"
-
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
+        with:
+          # Keep the browser runtime pinned throughout dependency installation and the tests.
+          node-version: "24.15"
 
       - name: Read Playwright version
         id: playwright-version

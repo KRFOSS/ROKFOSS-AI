@@ -3,9 +3,35 @@ name: check-nix
 on:
   push:
     branches: [dev]
+    paths:
+      - "nix/**"
+      - "flake.nix"
+      - "flake.lock"
+      - "bun.lock"
+      - "bunfig.toml"
+      - ".npmrc"
+      - "package.json"
+      - "packages/**/package.json"
+      - "services/**/package.json"
+      - "patches/**"
+      - ".github/nix-hashes/**"
+      - ".github/workflows/check-nix.yml"
   pull_request:
     branches: [dev]
     types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "nix/**"
+      - "flake.nix"
+      - "flake.lock"
+      - "bun.lock"
+      - "bunfig.toml"
+      - ".npmrc"
+      - "package.json"
+      - "packages/**/package.json"
+      - "services/**/package.json"
+      - "patches/**"
+      - ".github/nix-hashes/**"
+      - ".github/workflows/check-nix.yml"
   workflow_dispatch:
 
 concurrency:

@@ -1,8 +1,13 @@
 name: triage-pr-standards
 
+# Fork maintenance is opt-in; ordinary pull requests never run this workflow.
 on:
-  pull_request_target:
-    types: [opened, edited, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to inspect
+        type: number
+        required: true
 
 jobs:
   check-standards:
@@ -13,9 +18,15 @@ jobs:
     steps:
       - name: Check PR standards
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER),
+            });
             const login = pr.user.login;
 
             // Skip PRs older than Feb 18, 2026 at 6PM EST (Feb 19, 2026 00:00 UTC)
@@ -169,9 +180,15 @@ jobs:
     steps:
       - name: Check PR template compliance
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
         with:
           script: |
-            const pr = context.payload.pull_request;
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: Number(process.env.PR_NUMBER),
+            });
             const login = pr.user.login;
 
             // Skip PRs older than Feb 18, 2026 at 6PM EST (Feb 19, 2026 00:00 UTC)

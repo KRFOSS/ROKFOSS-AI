@@ -37,24 +37,36 @@ jobs:
     outputs:
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
+      matrix: ${{ steps.targets.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - name: Validate requested targets
+      - name: Plan requested targets
+        id: targets
         env:
           REQUESTED: ${{ inputs.targets }}
         run: |
           set -euo pipefail
           requested="${REQUESTED// /}"
-          if [ -z "$requested" ] || [ "$requested" = all ]; then exit 0; fi
+          if [ -z "$requested" ] || [ "$requested" = all ]; then
+            requested="linux-x64,linux-x64-baseline,linux-x64-musl,linux-x64-baseline-musl,windows-x64,windows-x64-baseline"
+          fi
           IFS=',' read -ra targets <<< "$requested"
+          linux_targets=()
+          windows_targets=()
           for target in "${targets[@]}"; do
             case "$target" in
-              linux-x64|linux-x64-baseline|linux-x64-musl|linux-x64-baseline-musl|windows-x64|windows-x64-baseline) ;;
+              linux-x64|linux-x64-baseline|linux-x64-musl|linux-x64-baseline-musl) linux_targets+=("$target") ;;
+              windows-x64|windows-x64-baseline) windows_targets+=("$target") ;;
               *) echo "::error::Unsupported target: $target (only Linux and Windows x64 are enabled)"; exit 1 ;;
             esac
           done
+          matrix=$(jq -cn --arg linux "${linux_targets[*]}" --arg windows "${windows_targets[*]}" '{include: [
+            (if $linux != "" then {group: "linux", os: ["self-hosted", "linux", "x64"], targets: $linux} else empty end),
+            (if $windows != "" then {group: "windows", os: "ubuntu-24.04", targets: $windows} else empty end)
+          ]}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
       - id: release
         env:
           INPUT_TAG: ${{ inputs.tag }}
@@ -81,15 +93,8 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix:
-        # One job per platform family: each target needs its own `bun build --compile` pass, and the
-        # shared install + web-asset build dominates the runtime, so grouping is cheaper than one job
-        # per target and much faster than one job for all six.
-        include:
-          - group: linux
-            os: [self-hosted, linux, x64]
-          - group: windows
-            os: ubuntu-24.04
+      # Allocate runners only for the platform families requested by the manual release.
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -103,39 +108,16 @@ jobs:
       - name: Build
         working-directory: packages/cli
         env:
-          GROUP: ${{ matrix.group }}
+          TARGETS: ${{ matrix.targets }}
           # Without this the binary reports 0.0.0-dev-1 and asks to update to an upstream release.
           OPENCODE_VERSION: ${{ needs.plan.outputs.version }}
           # Cross-compiles by downloading the matching Bun release binary for each target.
           BUN_COMPILE_RELEASE: bun-v1.4.4
           # Read-only; raises the rate limit for Bun release downloads.
           GH_TOKEN: ${{ github.token }}
-          REQUESTED: ${{ inputs.targets }}
         run: |
           set -euo pipefail
-          case "$GROUP" in
-            linux)   group_targets="linux-x64 linux-x64-baseline linux-x64-musl linux-x64-baseline-musl" ;;
-            windows) group_targets="windows-x64 windows-x64-baseline" ;;
-          esac
-
-          targets=""
-          for t in $group_targets; do
-            if [ -z "$REQUESTED" ] || [ "$REQUESTED" = "all" ]; then
-              targets="$targets $t"
-              continue
-            fi
-            case ",${REQUESTED// /}," in
-              *",$t,"*) targets="$targets $t" ;;
-            esac
-          done
-
-          if [ -z "${targets// /}" ] && [ -n "$REQUESTED" ] && [ "$REQUESTED" != "all" ]; then
-            echo "::notice::no $GROUP target was requested; skipping"
-            mkdir -p dist
-            exit 0
-          fi
-
-          for t in $targets; do
+          for t in $TARGETS; do
             echo "::group::build $t"
             # A separate outdir per target: build.ts wipes the outdir on every run.
             OPENCODE_TARGET="$t" bun run build --outdir="dist-one/$t"
