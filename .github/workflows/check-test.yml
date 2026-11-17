@@ -1,29 +1,8 @@
 name: check-test
 
-# Pull requests run the fast tier: the affected unit tests on Linux. The full tier — unit tests on Windows, the
-# compiled builds, and the Playwright suites on both OSes — runs on pushes to dev and beta and on nightly and manual
-# runs. A stable release also runs it through release.yml's gate, with the browser suites on Linux only.
+# The fork skips this test CI on pushes and pull requests (team request): tests no longer run on their own.
+# It still runs by hand (workflow_dispatch) or when another workflow calls it (workflow_call).
 on:
-  push:
-    branches:
-      - dev
-      - beta
-    paths-ignore:
-      - "nix/**"
-      - "flake.nix"
-      - "flake.lock"
-      - ".github/nix-hashes/**"
-      - ".github/workflows/check-nix.yml"
-      - ".github/workflows/bot-nix-hashes.yml"
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore:
-      - "nix/**"
-      - "flake.nix"
-      - "flake.lock"
-      - ".github/nix-hashes/**"
-      - ".github/workflows/check-nix.yml"
-      - ".github/workflows/bot-nix-hashes.yml"
   workflow_dispatch:
     inputs:
       quarantine:
