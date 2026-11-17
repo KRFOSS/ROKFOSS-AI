@@ -11,7 +11,7 @@ Everything else tracks upstream `dev`.
 ## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/ROKFOSS-AI/dev/install.sh | bash
 ```
 
 The installer detects the platform, downloads the matching release asset, verifies it against
@@ -20,14 +20,14 @@ is on `PATH`.
 
 The script itself is developed on `dev`, so the `raw.githubusercontent.com` URL above is always the
 current installer. Each release also carries a snapshot of it:
-`https://github.com/KRFOSS/opencode/releases/latest/download/install.sh`.
+`https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh`.
 
 ```sh
 # a specific release
-curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --version v2.3.0-krfoss.1
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/ROKFOSS-AI/dev/install.sh | bash -s -- --version v2.3.0-krfoss.1
 
 # somewhere else on disk, without touching shell config
-curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash -s -- --dir ~/bin --no-modify-path
+curl -fsSL https://raw.githubusercontent.com/KRFOSS/ROKFOSS-AI/dev/install.sh | bash -s -- --dir ~/bin --no-modify-path
 ```
 
 | Target      | Asset                                                                |

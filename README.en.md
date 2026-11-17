@@ -25,10 +25,10 @@
 
 ### Installation
 
-Install this repository's CLI from [GitHub Releases](https://github.com/KRFOSS/opencode/releases).
+Install this repository's CLI from [GitHub Releases](https://github.com/KRFOSS/ROKFOSS-AI/releases).
 
 ```bash
-curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh | bash
 ```
 
 The installer selects the binary for your platform and installs it to `$HOME/.opencode/bin` by default. On Windows, run it in Git Bash or MSYS2, or download and extract a ZIP from the release assets.
@@ -46,10 +46,10 @@ Use `baseline` for x64 CPUs without AVX2, and `musl` for musl-based systems such
 
 ```bash
 # Run with Nix
-nix run github:KRFOSS/opencode/dev#opencode
+nix run github:KRFOSS/ROKFOSS-AI/dev#opencode
 
 # Install into your Nix profile
-nix profile install github:KRFOSS/opencode/dev#opencode
+nix profile install github:KRFOSS/ROKFOSS-AI/dev#opencode
 ```
 
 The Nix flake targets Linux x86_64.
@@ -59,7 +59,7 @@ The Nix flake targets Linux x86_64.
 To run this repository's version, clone it and install its workspace dependencies with Bun. Use the Bun version specified in the `packageManager` field of [package.json](./package.json) or newer. The upstream install script and published packages install the upstream version.
 
 ```bash
-git clone --branch dev https://github.com/KRFOSS/opencode.git
+git clone --branch dev https://github.com/KRFOSS/ROKFOSS-AI.git
 cd opencode
 bun install
 bun run dev .
@@ -87,7 +87,7 @@ bun run dev:desktop
 You can also run the desktop app with Nix:
 
 ```bash
-nix run github:KRFOSS/opencode/dev#opencode-desktop
+nix run github:KRFOSS/ROKFOSS-AI/dev#opencode-desktop
 ```
 
 The upstream desktop releases are available at [opencode.ai/download](https://opencode.ai/download).

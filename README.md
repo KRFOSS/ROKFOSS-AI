@@ -25,10 +25,10 @@
 
 ### 설치
 
-이 저장소의 CLI는 [GitHub Releases](https://github.com/KRFOSS/opencode/releases)에서 설치할 수 있습니다.
+이 저장소의 CLI는 [GitHub Releases](https://github.com/KRFOSS/ROKFOSS-AI/releases)에서 설치할 수 있습니다.
 
 ```bash
-curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh | bash
 ```
 
 설치 스크립트는 플랫폼에 맞는 바이너리를 선택하고 기본적으로 `$HOME/.opencode/bin`에 설치합니다. Windows에서는 Git Bash 또는 MSYS2에서 실행하거나 릴리즈의 ZIP 파일을 직접 다운로드하여 압축을 푸세요.
@@ -46,10 +46,10 @@ curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.s
 
 ```bash
 # Nix로 실행
-nix run github:KRFOSS/opencode/dev#opencode
+nix run github:KRFOSS/ROKFOSS-AI/dev#opencode
 
 # Nix 프로필에 설치
-nix profile install github:KRFOSS/opencode/dev#opencode
+nix profile install github:KRFOSS/ROKFOSS-AI/dev#opencode
 ```
 
 Nix flake는 Linux x86_64를 대상으로 합니다.
@@ -59,7 +59,7 @@ Nix flake는 Linux x86_64를 대상으로 합니다.
 이 저장소의 버전을 실행하려면 저장소를 복제한 뒤 Bun으로 워크스페이스 의존성을 설치하세요. [package.json](./package.json)의 `packageManager`에 지정된 Bun 버전 이상이 필요합니다. 원본 프로젝트의 설치 스크립트와 배포 패키지는 원본 버전을 설치합니다.
 
 ```bash
-git clone --branch dev https://github.com/KRFOSS/opencode.git
+git clone --branch dev https://github.com/KRFOSS/ROKFOSS-AI.git
 cd opencode
 bun install
 bun run dev .
@@ -87,7 +87,7 @@ bun run dev:desktop
 Nix로 데스크톱 앱을 실행할 수도 있습니다.
 
 ```bash
-nix run github:KRFOSS/opencode/dev#opencode-desktop
+nix run github:KRFOSS/ROKFOSS-AI/dev#opencode-desktop
 ```
 
 원본 프로젝트의 데스크톱 배포판은 [opencode.ai/download](https://opencode.ai/download)에서 받을 수 있습니다.

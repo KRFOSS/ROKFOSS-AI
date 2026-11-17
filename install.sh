@@ -2,14 +2,14 @@
 # ROKFOSS OpenCode installer.
 #
 # Installs a prebuilt `opencode` binary from this fork's GitHub releases:
-#   curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh | bash
 #
 # The archives are built by .github/workflows/release-fork.yml and attached to a release as
 # `opencode-<target>.tar.gz` (Linux) or `opencode-<target>.zip` (macOS, Windows), with a SHA256SUMS
 # file next to them. Nothing here depends on npm or on the upstream opencode.ai endpoints.
 set -euo pipefail
 
-REPO="KRFOSS/opencode"
+REPO="KRFOSS/ROKFOSS-AI"
 APP="opencode"
 
 MUTED='\033[0;2m'
@@ -33,7 +33,7 @@ Options:
         --print-target      Print the detected release asset target and exit
 
 Examples:
-    curl -fsSL https://github.com/KRFOSS/opencode/releases/latest/download/install.sh | bash
+    curl -fsSL https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh | bash
     curl -fsSL .../install.sh | bash -s -- --version v2.3.0-krfoss.1
     ./install.sh --binary /path/to/opencode
 EOF

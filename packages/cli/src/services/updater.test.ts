@@ -11,7 +11,7 @@ describe("updater", () => {
     expect(forkBuild("2.3.0")).toBe(false)
     expect(forkBuild("2.3.0-dev-1")).toBe(false)
     expect(installerUrl("2.3.0-krfoss.2")).toBe(
-      "https://github.com/KRFOSS/opencode/releases/latest/download/install.sh",
+      "https://github.com/KRFOSS/ROKFOSS-AI/releases/latest/download/install.sh",
     )
     expect(installerUrl("2.3.0")).toBe("https://opencode.ai/v2/install")
   })

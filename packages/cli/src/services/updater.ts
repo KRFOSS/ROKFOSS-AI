@@ -51,7 +51,7 @@ const decodeManifestVersion = Schema.decodeUnknownOption(
 // A fork build is a GitHub tag (`v2.3.0-krfoss.2`), while the upstream update service answers with the plain
 // `2.3.0`; semver sorts `2.3.0` above every `2.3.0-krfoss.*`, so a fork copy was told to "update" to its own base
 // version, and running it would have replaced the fork with an upstream build that has no ROKFOSS AI.
-const forkRepository = "KRFOSS/opencode"
+const forkRepository = "KRFOSS/ROKFOSS-AI"
 const forkReleaseUrl = `https://api.github.com/repos/${forkRepository}/releases/latest`
 const forkInstallerUrl = `https://github.com/${forkRepository}/releases/latest/download/install.sh`
 

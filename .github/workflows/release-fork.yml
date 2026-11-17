@@ -2,7 +2,7 @@ name: release-fork
 
 # Builds the fork's CLI binaries and publishes them as GitHub release assets, so users can install
 # without npm:
-#   curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/KRFOSS/ROKFOSS-AI/dev/install.sh | bash
 #
 # This is a fork-only workflow: upstream releases are produced by .github/workflows/release.yml, which
 # needs R2 credentials, signing identities and blacksmith runners this fork does not have.
@@ -278,5 +278,5 @@ jobs:
           echo "### Released $TAG" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          echo "curl -fsSL https://raw.githubusercontent.com/KRFOSS/opencode/dev/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
+          echo "curl -fsSL https://raw.githubusercontent.com/KRFOSS/ROKFOSS-AI/dev/install.sh | bash" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
