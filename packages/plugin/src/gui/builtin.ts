@@ -433,7 +433,7 @@ export function builtinMainContext(ctx: MainContext): BuiltinMainContext {
  *
  * @example
  * ```ts
- * i18n: builtinCatalog({ en, de: () => import("./i18n/de") })
+ * i18n: builtinCatalog({ en, ko: () => import("./i18n/ko") })
  * ```
  */
 export type BuiltinCatalog = {

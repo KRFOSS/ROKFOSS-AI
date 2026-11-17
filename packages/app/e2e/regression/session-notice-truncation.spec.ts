@@ -4,7 +4,7 @@ import { setupTimeline } from "../utils/timeline"
 
 for (const { width, ...profile } of [
   { width: 1400, locale: "en", direction: "ltr" },
-  { width: 390, locale: "ar", direction: "rtl" },
+  { width: 390, locale: "ko", direction: "rtl" },
 ]) {
   test(`keeps notices on one line: ${profile.locale} ${profile.direction} ${width}`, async ({ page }) => {
     const command =
@@ -59,6 +59,7 @@ for (const { width, ...profile } of [
         notices.evaluateAll((nodes) =>
           nodes.map((node) => {
             const style = getComputedStyle(node)
+            // SAFETY: the notice selector matches HTML elements rendered by the timeline.
             const element = node as HTMLElement
 
             return {

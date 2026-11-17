@@ -47,7 +47,7 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
 
     createEffect(() => {
       document.documentElement.lang = tag(store.locale)
-      document.documentElement.dir = dir(store.locale)
+      document.documentElement.dir = dir()
       document.documentElement.dataset.locale = store.locale
       // Remember a language picked by URL, so unprefixed /data links redirect back to it.
       if (fromPathname(window.location.pathname)) document.cookie = cookie(store.locale)

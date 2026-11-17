@@ -97,21 +97,22 @@ test("a settings page survives refresh", async ({ page }) => {
   await expect(page).toHaveURL("/settings?tab=appearance")
 })
 
-// The Arabic dictionary chunks: built (`_assets/ar-<hash>.js`) and dev (`.../i18n/ar.ts`), for the app and the UI.
-const arabic = /\/(?:_assets\/ar-[\w-]+\.js|i18n\/ar\.ts)(?:\?|$)/
+// The Korean dictionary chunks: built (`_assets/ko-<hash>.js`) and dev (`.../i18n/ko.ts`), for the app and the UI.
+const korean = /\/(?:_assets\/ko-[\w-]+\.js|i18n\/ko\.ts)(?:\?|$)/
 
-async function pickArabic(page: Page) {
+async function pickKorean(page: Page) {
   const { settings } = await open(page)
   await settings.locator('[data-action="settings-language"]').click()
-  await page.getByRole("listbox").getByRole("option", { name: "العربية", exact: true }).click()
+  await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["English", "한국어"])
+  await page.getByRole("listbox").getByRole("option", { name: "한국어", exact: true }).click()
 
   return settings
 }
 
-test("a language switch keeps settings on screen and flips direction only with the new strings", async ({ page }) => {
-  const chunks = await holdRoute(page, arabic)
+test("a language switch keeps settings on screen until the new strings load", async ({ page }) => {
+  const chunks = await holdRoute(page, korean)
   const html = page.locator("html")
-  const settings = await pickArabic(page)
+  const settings = await pickKorean(page)
   await chunks.arrived
 
   await expect(settings.getByText("Language", { exact: true })).toBeVisible()
@@ -119,16 +120,16 @@ test("a language switch keeps settings on screen and flips direction only with t
   await expect(html).toHaveAttribute("lang", "en")
 
   chunks.release()
-  await expect(settings.getByText("اللغة", { exact: true })).toBeVisible()
-  await expect(html).toHaveAttribute("dir", "rtl")
-  await expect(html).toHaveAttribute("lang", "ar")
+  await expect(settings.getByText("언어", { exact: true })).toBeVisible()
+  await expect(html).toHaveAttribute("dir", "ltr")
+  await expect(html).toHaveAttribute("lang", "ko")
 })
 
 test("a language whose chunk fails to load keeps English and says so", async ({ page }) => {
-  await page.route(arabic, (route) => route.abort("failed"))
-  const settings = await pickArabic(page)
+  await page.route(korean, (route) => route.abort("failed"))
+  const settings = await pickKorean(page)
 
-  await expect(page.getByText("Failed to load العربية", { exact: true })).toBeVisible()
+  await expect(page.getByText("Failed to load 한국어", { exact: true })).toBeVisible()
   await expect(settings.getByText("Language", { exact: true })).toBeVisible()
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr")
   await expect(settings.locator('[data-action="settings-language"]')).toContainText("English")
@@ -274,7 +275,7 @@ test("request events use real Questions settings without disabling Permissions a
     .toEqual([...previews, expect.stringContaining("alert-01"), expect.stringContaining("alert-01")])
 })
 
-for (const locale of ["en", "ar"]) {
+for (const locale of ["en", "ko"]) {
   test(`background activity alignment stays physical and persists (${locale})`, async ({ page }) => {
     const id = "ses_activity_settings"
     const childID = "ses_activity_settings_child"
@@ -347,7 +348,7 @@ for (const locale of ["en", "ar"]) {
     const capsule = page.locator('[data-slot="session-activity-chip"]')
     const panel = page.locator('[data-slot="session-activity-panel"]')
     await expect(capsule).toBeVisible()
-    await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr")
+    await expect(page.locator("html")).toHaveAttribute("dir", "ltr")
 
     for (const value of ["Center", "Right", "Hidden", "Left", "Right"] as const) {
       await page.keyboard.press("Control+,")

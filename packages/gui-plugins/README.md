@@ -341,7 +341,7 @@ to the displayed repository or worktree instead of adding a second menu item.
 Each registry token has the same id as the public one, so the host reads every item through it. The host builds every context with the built-in members; `builtinContext` and `builtinMainContext` only type them. A plugin bundle's catalog holds every locale inline, and the host rejects a bundle whose catalog has a loader.
 
 ```ts
-i18n: builtinCatalog({ en, de: () => import("./i18n/de") }),
+i18n: builtinCatalog({ en, ko: () => import("./i18n/ko") }),
 ```
 
 ## Ipc: main ↔ window
@@ -799,7 +799,7 @@ export const builtins = compose({
 Your own plugin takes the same steps:
 
 1. **Pick the id.** It is your folder name and your key in both built-in lists, and it prefixes your commands, panel keys, stored keys and Ipc ids. A later rename needs the migrations under [Stored state](#stored-state).
-2. **Define it.** Create `src/<id>/index.ts` with `Plugin.define({ i18n: { en } })`, and `src/<id>/i18n/en.ts` with your copy. Once other locales arrive, load them lazily with `builtinCatalog({ en, de: () => import("./i18n/de") })`.
+2. **Define it.** Create `src/<id>/index.ts` with `Plugin.define({ i18n: { en } })`, and `src/<id>/i18n/en.ts` with your copy. Once other locales arrive, load them lazily with `builtinCatalog({ en, ko: () => import("./i18n/ko") })`.
 3. **Declare the tokens.** Put any token another plugin or your main entry needs in `contract.ts`: a `Contract`, a `Registry` or an `Ipc`, each with an id under your plugin's id.
 4. **Write the window entry.** In `renderer.tsx`, a `Plugin.Setup<typeof definition>` contributes with `ctx.add`, branches each action on `ctx.use(token)()`, runs side work in `createKeyed`, and keeps heavy UI behind `lazy()` with an `onIdle` preload.
 5. **Write the main entry, if you need Node or Electron.** In `main.ts`, a `Plugin.MainSetup` provides your Ipc with `ctx.provide` and tears down with `ctx.onCleanup`.

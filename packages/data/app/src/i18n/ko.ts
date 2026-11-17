@@ -248,3 +248,5 @@ export const dict = {
   "methodology.cite":
     "인용할 때는 OpenCode Data(opencode.ai/data)와 페이지 상단에 표시된 업데이트 시간을 함께 표기해 주세요.",
 } satisfies Record<Key, string>
+
+export default dict

@@ -57,7 +57,7 @@ const fade: StartupEffect[] = [cancel, { type: "start-timer", timer: "fade", tim
 // Everything a returning launch waits for before the app interface mounts.
 const mounted: StartupEvent[] = [
   { type: "theme.applied" },
-  { type: "locale.settled", locale: "de" },
+  { type: "locale.settled", locale: "ko" },
   { type: "plugin-servers.ready" },
   { type: "route.preloaded" },
   { type: "sidecar.ready", data: sidecar },
@@ -165,7 +165,7 @@ describe("desktop startup", () => {
 
     expect(result.state.status).toBe("hydrating")
     expect(selectStartupLocale(result.state)).toBeUndefined()
-    expect(selectStartupLocale(replay(mounted).state)).toBe("de")
+    expect(selectStartupLocale(replay(mounted).state)).toBe("ko")
   })
 
   test("onboards a fresh install on the new-session route", () => {

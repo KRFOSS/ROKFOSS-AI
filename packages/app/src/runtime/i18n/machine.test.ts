@@ -14,11 +14,9 @@ type Dict = { readonly hello: string }
 
 const en: Dict = { hello: "Hello" }
 
-const de: Dict = { hello: "Hallo" }
+const ko: Dict = { hello: "안녕하세요" }
 
-const ar: Dict = { hello: "مرحبا" }
-
-const readyOn = (locale: "en" | "de", dictionary: Dict) =>
+const readyOn = (locale: "en" | "ko", dictionary: Dict) =>
   createLanguageState({ initial: locale, cached: dictionary, fallbackLocale: "en", fallbackDictionary: en }).state
 
 function replay(state: LanguageState<Dict>, events: readonly LanguageEvent<Dict>[]) {
@@ -36,10 +34,10 @@ const shown = (state: LanguageState<Dict>) => ({ locale: selectLocale(state), di
 
 describe("language machine", () => {
   test("a failed chunk for a picked language keeps the current one and says so", () => {
-    const loading = transitionLanguage(readyOn("en", en), { type: "locale.requested", locale: "ar", cached: undefined })
+    const loading = transitionLanguage(readyOn("en", en), { type: "locale.requested", locale: "ko", cached: undefined })
 
     expect(loading.effects).toEqual([
-      { type: "load", attempt: 1, locale: "ar" },
+      { type: "load", attempt: 1, locale: "ko" },
       { type: "timer.start", attempt: 1, timeoutMs: LOCALE_LOAD_TIMEOUT_MS },
     ])
     expect(shown(loading.state)).toEqual({ locale: "en", dictionary: en })
@@ -47,19 +45,19 @@ describe("language machine", () => {
     const failed = transitionLanguage(loading.state, { type: "load.failed", attempt: 1 })
 
     expect(failed.state).toEqual({ status: "ready", issued: 1, locale: "en", dictionary: en })
-    expect(failed.effects).toEqual([{ type: "timer.stop" }, { type: "notify.error", locale: "ar" }])
+    expect(failed.effects).toEqual([{ type: "timer.stop" }, { type: "notify.error", locale: "ko" }])
   })
 
   test("a stored language whose chunk fails at startup falls back to English quietly", () => {
     const boot = createLanguageState<Dict>({
-      initial: "ja",
+      initial: "ko",
       cached: undefined,
       fallbackLocale: "en",
       fallbackDictionary: en,
     })
 
     expect(shown(boot.state)).toEqual({ locale: "en", dictionary: en })
-    expect(boot.effects[0]).toEqual({ type: "load", attempt: 1, locale: "ja" })
+    expect(boot.effects[0]).toEqual({ type: "load", attempt: 1, locale: "ko" })
 
     const failed = transitionLanguage(boot.state, { type: "load.failed", attempt: 1 })
 
@@ -67,48 +65,48 @@ describe("language machine", () => {
     expect(failed.effects).toEqual([{ type: "timer.stop" }])
   })
 
-  test("a switch keeps the previous language and direction until the new dictionary lands, then commits both", () => {
-    const loading = transitionLanguage(readyOn("de", de), { type: "locale.requested", locale: "ar", cached: undefined })
+  test("a switch keeps the previous language until the new dictionary lands, then commits both", () => {
+    const loading = transitionLanguage(readyOn("en", en), { type: "locale.requested", locale: "ko", cached: undefined })
 
-    expect(shown(loading.state)).toEqual({ locale: "de", dictionary: de })
+    expect(shown(loading.state)).toEqual({ locale: "en", dictionary: en })
 
-    const loaded = transitionLanguage(loading.state, { type: "load.succeeded", attempt: 1, dictionary: ar })
+    const loaded = transitionLanguage(loading.state, { type: "load.succeeded", attempt: 1, dictionary: ko })
 
-    expect(shown(loaded.state)).toEqual({ locale: "ar", dictionary: ar })
-    expect(loaded.effects).toEqual([{ type: "timer.stop" }, { type: "persist", locale: "ar" }])
+    expect(shown(loaded.state)).toEqual({ locale: "ko", dictionary: ko })
+    expect(loaded.effects).toEqual([{ type: "timer.stop" }, { type: "persist", locale: "ko" }])
   })
 
   test("a chunk that never answers times out back to the committed language", () => {
     const result = replay(readyOn("en", en), [
-      { type: "locale.requested", locale: "ar", cached: undefined },
+      { type: "locale.requested", locale: "ko", cached: undefined },
       { type: "load.timed-out", attempt: 1 },
     ])
 
     expect(shown(result.state)).toEqual({ locale: "en", dictionary: en })
-    expect(result.effects.slice(-2)).toEqual([{ type: "timer.stop" }, { type: "notify.error", locale: "ar" }])
+    expect(result.effects.slice(-2)).toEqual([{ type: "timer.stop" }, { type: "notify.error", locale: "ko" }])
   })
 
   test.each([
-    { name: "another uncached language", next: { locale: "fr", cached: undefined }, shows: "en" },
-    { name: "a cached language", next: { locale: "de", cached: de }, shows: "de" },
+    { name: "another uncached language", next: { locale: "en", cached: undefined }, shows: "en" },
+    { name: "a cached language", next: { locale: "en", cached: en }, shows: "en" },
   ] as const)("picking $name ignores the earlier load's late result", (input) => {
     const switched = replay(readyOn("en", en), [
-      { type: "locale.requested", locale: "ar", cached: undefined },
+      { type: "locale.requested", locale: "ko", cached: undefined },
       { type: "locale.requested", ...input.next },
     ])
 
     expect(switched.effects).toContainEqual({ type: "timer.stop" })
 
-    const late = transitionLanguage(switched.state, { type: "load.succeeded", attempt: 1, dictionary: ar })
+    const late = transitionLanguage(switched.state, { type: "load.succeeded", attempt: 1, dictionary: ko })
 
     expect(late).toEqual({ state: switched.state, effects: [] })
     expect(selectLocale(late.state)).toBe(input.shows)
   })
 
   test("storage syncing during the user's own pick does not replace it", () => {
-    const loading = transitionLanguage(readyOn("en", en), { type: "locale.requested", locale: "ar", cached: undefined })
+    const loading = transitionLanguage(readyOn("en", en), { type: "locale.requested", locale: "ko", cached: undefined })
 
-    expect(transitionLanguage(loading.state, { type: "locale.synced", locale: "de", cached: de })).toEqual({
+    expect(transitionLanguage(loading.state, { type: "locale.synced", locale: "en", cached: en })).toEqual({
       state: loading.state,
       effects: [],
     })
@@ -116,7 +114,7 @@ describe("language machine", () => {
 
   test("a synced language loads without storing or announcing anything", () => {
     const result = replay(readyOn("en", en), [
-      { type: "locale.synced", locale: "ar", cached: undefined },
+      { type: "locale.synced", locale: "ko", cached: undefined },
       { type: "load.failed", attempt: 1 },
     ])
 
@@ -134,13 +132,13 @@ describe("language machine", () => {
 
   test("disposal stops the load timer, keeps the dictionary readable and ignores later results", () => {
     const disposed = replay(readyOn("en", en), [
-      { type: "locale.requested", locale: "ar", cached: undefined },
+      { type: "locale.requested", locale: "ko", cached: undefined },
       { type: "disposed" },
     ])
 
     expect(disposed.effects.at(-1)).toEqual({ type: "timer.stop" })
     expect(shown(disposed.state)).toEqual({ locale: "en", dictionary: en })
-    expect(transitionLanguage(disposed.state, { type: "load.succeeded", attempt: 1, dictionary: ar })).toEqual({
+    expect(transitionLanguage(disposed.state, { type: "load.succeeded", attempt: 1, dictionary: ko })).toEqual({
       state: disposed.state,
       effects: [],
     })

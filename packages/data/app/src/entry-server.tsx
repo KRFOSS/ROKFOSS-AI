@@ -28,7 +28,7 @@ export default createHandler(
         const stylesheetHref = import.meta.env.DEV ? statsStylesheetUrl : stylesheet?.attrs.href
 
         return (
-          <html lang={tag(locale)} dir={dir(locale)} data-locale={locale}>
+          <html lang={tag(locale)} dir={dir()} data-locale={locale}>
             <head>
               <meta charset="utf-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1" />
