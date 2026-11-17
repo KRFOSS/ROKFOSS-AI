@@ -3,6 +3,7 @@ import { Effect, Stream } from "effect"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http"
 import {
   activeTurn,
+  appendSteer,
   appendText,
   appendThinking,
   authorOf,
@@ -21,6 +22,7 @@ import {
   startTurns,
   storedToMirror,
   toolMark,
+  toolTitle,
   turnDoneBody,
   turnEventBody,
   turnStartBody,
@@ -263,7 +265,8 @@ describe("회차 내용 조립", () => {
     const state = turn()
     appendText(state, "m1:0", "첫째 ")
     appendText(state, "m1:1", "둘째")
-    expect(finalContent(state)).toBe("첫째 둘째")
+    // 단계가 바뀌면 웹에서도 따로 보이게 빈 줄로 나눈다
+    expect(finalContent(state)).toBe("첫째 \n\n둘째")
   })
 
   test("추론 글은 답 본문에 들어가지 않는다", () => {
@@ -483,5 +486,45 @@ describe("웹에서 온 글을 세션에 비추기", () => {
     )
     expect(urls).toEqual([])
     expect(host.calls).toEqual([])
+  })
+})
+
+describe("웹과 같게 보이도록 중계", () => {
+  const turn = () => activeTurn({ sessionID: "s", roomID: "1", turnID: "t", model: "m", provider: "opencode" })
+
+  test("단계가 바뀐 글은 빈 줄로 나눠 보내고 저장한다", () => {
+    const t = turn()
+    appendText(t, "a:0", "확인하겠습니다.")
+    appendText(t, "a:0", " 이어서")
+    appendText(t, "b:0", "로컬이 뒤처져 있습니다.")
+    const sent: string[] = []
+    for (let body = drain(t); body; body = drain(t)) if (body.delta) sent.push(body.delta)
+    expect(sent.join("")).toBe("확인하겠습니다. 이어서\n\n로컬이 뒤처져 있습니다.")
+    expect(finalContent(t)).toBe("확인하겠습니다. 이어서\n\n로컬이 뒤처져 있습니다.")
+  })
+
+  test("도구 표시에 무엇을 했는지 한 줄을 붙인다", () => {
+    expect(toolTitle("shell", { command: "git cherry-pick abc\ngit log" })).toBe("$ git cherry-pick abc\ngit log")
+    expect(toolMark("shell", "start", toolTitle("shell", { command: "git cherry-pick abc\ngit log" }))).toEqual({
+      name: "shell",
+      state: "start",
+      title: "$ git cherry-pick abc",
+    })
+    expect(toolTitle("read", { filePath: "/project/FORK.md" })).toBe("read /project/FORK.md")
+    expect(toolTitle("rai_shell_read_file", { path: "/work/a" })).toBe("shell_read_file /work/a")
+    expect(toolTitle("todowrite", { todos: [] })).toBeUndefined()
+    expect(toolMark("todowrite", "end")).toEqual({ name: "todowrite", state: "end" })
+  })
+
+  test("오픈코드에서 끼워 넣은 글은 따로 한 번에 보낸다", () => {
+    const t = turn()
+    appendText(t, "a:0", "앞 글")
+    appendSteer(t, "그래 잘하고 있어")
+    appendText(t, "a:0", "뒷 글")
+    expect(drain(t)).toEqual({ delta: "앞 글" })
+    expect(drain(t)).toEqual({ steer: "그래 잘하고 있어" })
+    expect(drain(t)).toEqual({ delta: "뒷 글" })
+    expect(turnEventBody({ steer: "그래 잘하고 있어" })).toEqual({ steer: "그래 잘하고 있어" })
+    expect(turnEventBody({ steer: "   " })).toEqual({})
   })
 })

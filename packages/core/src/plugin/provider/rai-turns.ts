@@ -133,19 +133,41 @@ export function turnStartBody(input: { readonly message: string; readonly model:
   return { ok: true, body }
 }
 
-export type ToolMark = { readonly name: string; readonly state: "start" | "end" }
+export type ToolMark = { readonly name: string; readonly state: "start" | "end"; readonly title?: string }
 
 /** A tool mark carries the tool id only: command arguments and file contents must never leave the process. */
-export function toolMark(name: string, state: "start" | "end"): ToolMark | undefined {
+export function toolMark(name: string, state: "start" | "end", title?: string): ToolMark | undefined {
   const trimmed = name.trim()
   if (trimmed === "" || trimmed.length > 64 || /[^\w.:-]/.test(trimmed)) return undefined
-  return { name: trimmed, state }
+  const shown = title?.split(/\r?\n/).find((line) => line.trim() !== "")?.trim().slice(0, 200)
+  return shown ? { name: trimmed, state, title: shown } : { name: trimmed, state }
+}
+
+/**
+ * The line the web shows for a tool call, like the session view does: the command for a shell, the path for a file
+ * tool, the pattern for a search. Only the first line of one argument is sent, never the whole input.
+ */
+export function toolTitle(name: string, input: unknown): string | undefined {
+  const args = input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : {}
+  const pick = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = args[key]
+      if (typeof value === "string" && value.trim() !== "") return value.trim()
+    }
+    return undefined
+  }
+  const base = name.replace(/^rai_/, "")
+  const command = pick("command", "cmd")
+  if (command) return `$ ${command}`
+  const target = pick("filePath", "file_path", "path", "file", "pattern", "url", "query", "description")
+  return target ? `${base} ${target}` : undefined
 }
 
 export type EventBody = {
   readonly delta?: string
   readonly thinking?: string
   readonly tool?: ToolMark
+  readonly steer?: string
 }
 
 /** An empty object is a liveness signal on its own, so an empty body is valid. */
@@ -154,6 +176,7 @@ export function turnEventBody(input: EventBody) {
   if (input.delta !== undefined && input.delta !== "") body.delta = input.delta.slice(0, maxEventChars)
   if (input.thinking !== undefined && input.thinking !== "") body.thinking = input.thinking.slice(0, maxEventChars)
   if (input.tool !== undefined) body.tool = input.tool
+  if (input.steer !== undefined && input.steer.trim() !== "") body.steer = input.steer
   return body
 }
 
@@ -289,7 +312,9 @@ export const sendDone = (http: HttpClient.HttpClient, auth: Auth, roomID: string
     return parseTurnDone(yield* post(http, urls.done, auth, body))
   })
 
-type Queued = { readonly kind: "delta" | "thinking"; readonly text: string } | { readonly kind: "tool"; readonly tool: ToolMark }
+type Queued =
+  | { readonly kind: "delta" | "thinking" | "steer"; readonly text: string }
+  | { readonly kind: "tool"; readonly tool: ToolMark }
 
 export type Turn = {
   readonly sessionID: string
@@ -298,6 +323,12 @@ export type Turn = {
   readonly model: string
   readonly provider: string
   readonly texts: Map<string, string>
+  /** The text part written last, so a new part starts on its own paragraph in the room. */
+  lastTextKey: string | undefined
+  /** Tool call id → tool name: a call's name only travels in its input-started event. */
+  readonly toolNames: Map<string, string>
+  /** Web steers this relay fed into the session; they come back through the prompt hook and are not sent again. */
+  readonly injected: string[]
   readonly queue: Queued[]
   content: string
   stopped: boolean
@@ -319,6 +350,9 @@ export function activeTurn(input: {
   return {
     ...input,
     texts: new Map(),
+    lastTextKey: undefined,
+    toolNames: new Map(),
+    injected: [],
     queue: [],
     content: "",
     stopped: false,
@@ -335,9 +369,20 @@ export function activeTurn(input: {
  * live deltas produced for that ordinal instead of being appended to them.
  */
 export function appendText(turn: Turn, key: string, delta: string) {
+  // A new text part (a later step of the same answer) starts a paragraph, as the session view shows it apart.
+  if (turn.lastTextKey !== undefined && turn.lastTextKey !== key && !turn.texts.has(key))
+    push(turn, { kind: "delta", text: textSeparator })
+  turn.lastTextKey = key
   const previous = turn.texts.get(key) ?? ""
   turn.texts.set(key, (previous + delta).slice(0, maxContentChars))
   push(turn, { kind: "delta", text: delta })
+}
+
+const textSeparator = "\n\n"
+
+/** Something the user typed into the session while this turn runs, recorded into the room where it was typed. */
+export function appendSteer(turn: Turn, text: string) {
+  push(turn, { kind: "steer", text: text.slice(0, maxContentChars) })
 }
 
 export function settleText(turn: Turn, key: string, text: string) {
@@ -362,6 +407,7 @@ export function drain(turn: Turn): EventBody | undefined {
   const first = turn.queue.shift()
   if (!first) return undefined
   if (first.kind === "tool") return { tool: first.tool }
+  if (first.kind === "steer") return { steer: first.text }
   let text = first.text
   while (text.length < maxEventChars) {
     const next = turn.queue[0]
@@ -374,7 +420,7 @@ export function drain(turn: Turn): EventBody | undefined {
 
 export function finalContent(turn: Turn) {
   if (turn.texts.size === 0) return turn.content
-  return [...turn.texts.values()].join("")
+  return [...turn.texts.values()].join(textSeparator)
 }
 
 function withoutSession(set: ReadonlySet<string>, sessionID: string) {
@@ -621,9 +667,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
             turn.retries = 0
             if (reply.value?.stop === true) turn.stopped = true
             for (const steer of reply.value?.steers ?? []) {
-              yield* ctx.session
-                .prompt({ sessionID: turn.sessionID as never, text: `웹에서 온 지시: ${steer.text}`, delivery: "steer" })
-                .pipe(Effect.ignore)
+              const text = `웹에서 온 지시: ${steer.text}`
+              turn.injected.push(text)
+              yield* ctx.session.prompt({ sessionID: turn.sessionID as never, text, delivery: "steer" }).pipe(Effect.ignore)
             }
             if (turn.stopped) {
               // The web asked to stop: interrupt here, so the session ends and `done` can report `stopped`.
@@ -663,9 +709,9 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
               return
             }
             for (const steer of reply.value?.steers ?? []) {
-              yield* ctx.session
-                .prompt({ sessionID: turn.sessionID as never, text: `웹에서 온 지시: ${steer.text}`, delivery: "steer" })
-                .pipe(Effect.ignore)
+              const text = `웹에서 온 지시: ${steer.text}`
+              turn.injected.push(text)
+              yield* ctx.session.prompt({ sessionID: turn.sessionID as never, text, delivery: "steer" }).pipe(Effect.ignore)
             }
           }
         }
@@ -746,7 +792,20 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
         // arrives while this session's turn is being recorded belongs to that turn (a web steer comes back this way too);
         // only a queued prompt waits for the next turn and is remembered for it.
         const sessionID = event.sessionID as unknown as string
-        if (!promptStartsTurn(event.delivery, (yield* Ref.get(turns)).has(sessionID))) return
+        const active = (yield* Ref.get(turns)).get(sessionID)
+        if (!promptStartsTurn(event.delivery, active !== undefined)) {
+          // Typed here into the running turn: the room records it where it was typed, like a web steer. A web steer this
+          // relay fed in comes back here too and is skipped.
+          const typed = event.prompt.text
+          if (!active || typeof typed !== "string" || typed.trim() === "") return
+          const echoed = active.injected.indexOf(typed)
+          if (echoed >= 0) {
+            active.injected.splice(echoed, 1)
+            return
+          }
+          appendSteer(active, typed)
+          return
+        }
         const text = event.prompt.text
         if (typeof text !== "string" || text.trim() === "") return
         yield* Ref.update(pending, (map) => new Map(map).set(sessionID, { text, at: Date.now() }))
@@ -755,7 +814,16 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
 
     const relay = (event: {
       readonly type: string
-      readonly data: { readonly sessionID?: string; readonly assistantMessageID?: string; readonly ordinal?: number; readonly delta?: string; readonly text?: string; readonly tool?: unknown }
+      readonly data: {
+        readonly sessionID?: string
+        readonly assistantMessageID?: string
+        readonly ordinal?: number
+        readonly delta?: string
+        readonly text?: string
+        readonly id?: string
+        readonly name?: string
+        readonly input?: unknown
+      }
     }) =>
       Effect.gen(function* () {
         const sessionID = event.data.sessionID
@@ -781,12 +849,18 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
         if (event.type === "session.text.delta" && typeof event.data.delta === "string") appendText(turn, key, event.data.delta)
         if (event.type === "session.text.ended" && typeof event.data.text === "string") settleText(turn, key, event.data.text)
         if (event.type === "session.reasoning.delta" && typeof event.data.delta === "string") appendThinking(turn, event.data.delta)
-        if (event.type === "session.tool.called") {
-          const mark = toolMark(String((event.data.tool as { name?: unknown } | undefined)?.name ?? ""), "start")
+        // A call's name only travels in its input-started event; the called/ended events carry the call id.
+        if (event.type === "session.tool.input.started" && event.data.id && event.data.name)
+          turn.toolNames.set(event.data.id, event.data.name)
+        if (event.type === "session.tool.called" && event.data.id) {
+          const name = turn.toolNames.get(event.data.id)
+          const mark = name ? toolMark(name, "start", toolTitle(name, event.data.input)) : undefined
           if (mark) markTool(turn, mark)
         }
-        if (event.type === "session.tool.success" || event.type === "session.tool.failed") {
-          const mark = toolMark(String((event.data.tool as { name?: unknown } | undefined)?.name ?? ""), "end")
+        if ((event.type === "session.tool.success" || event.type === "session.tool.failed") && event.data.id) {
+          const name = turn.toolNames.get(event.data.id)
+          turn.toolNames.delete(event.data.id)
+          const mark = name ? toolMark(name, "end") : undefined
           if (mark) markTool(turn, mark)
         }
         if (event.type === "session.execution.succeeded") yield* finish(sessionID, {})
@@ -804,6 +878,7 @@ export const startTurns = (ctx: Context, http: HttpClient.HttpClient) =>
           "session.text.delta",
           "session.text.ended",
           "session.reasoning.delta",
+          "session.tool.input.started",
           "session.tool.called",
           "session.tool.success",
           "session.tool.failed",
