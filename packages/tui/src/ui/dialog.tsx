@@ -68,7 +68,10 @@ export function Dialog(
         paddingTop={props.centered ? 0 : dimensions().height / 4}
         left={0}
         top={0}
-        backgroundColor={RGBA.fromInts(0, 0, 0, 150)}
+        /* @opentui 0.8.4: 텍스트가 터미널의 width 응답 전에 1칸 폭으로 캐시되면,
+           전체 화면 반투명 딤이 한글 같은 2칸 문자의 연속 셀을 잘못 계산해 뒤 글자가 지워진다.
+           딤을 없애 이 경로를 없앤다. 근본 수정은 @opentui 0.9.1이며 현재는 우회책이다. */
+        backgroundColor={undefined}
       >
         <box
           onMouseUp={(e: { stopPropagation(): void }) => {
