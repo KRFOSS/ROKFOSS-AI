@@ -333,4 +333,27 @@ describe("RAI gateway", () => {
       expect(call.url).toBe("https://project.krfoss.org/api/rai/v1/responses")
     }),
   )
+
+  it.effect("sends the RAI system prompt as a developer message, not a system message", () =>
+    Effect.gen(function* () {
+      const prepared = yield* compileRequest(
+        ai.request({ model, system: "You are concise.", prompt: "Hello" }),
+      )
+      const roles = prepared.body.input.map((item) => ("role" in item ? item.role : undefined))
+
+      expect(roles).toContain("developer")
+      expect(roles).not.toContain("system")
+    }),
+  )
+
+  it.effect("keeps the RAI stateless options when a system prompt is present", () =>
+    Effect.gen(function* () {
+      const prepared = yield* compileRequest(
+        ai.request({ model, system: "You are concise.", prompt: "Hello" }),
+      )
+
+      expect(prepared.body.store).toBe(false)
+      expect(prepared.body.include).toEqual(["reasoning.encrypted_content"])
+    }),
+  )
 })
