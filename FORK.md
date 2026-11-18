@@ -102,9 +102,11 @@ the dependency hash. On a native machine, `nix build .#node_modules_updater --no
 computed hash as `got:` in an expected hash-mismatch error. Update only that machine's entry in
 `nix/hashes.json`, then verify with `nix build .#opencode --no-link` and the resulting CLI's `--version`.
 
-Nix supports Linux x86_64 only. `bot-nix-hashes.yml` computes its dependency hash on a native runner. If the recorded hash differs,
-the workflow uploads a `nix-hashes` artifact for manual review and fails the check. It has read-only
-repository permissions and never commits, pushes, creates PRs, or merges them.
+Nix supports Linux x86_64 only. `bot-nix-hashes.yml` computes its dependency hash on a native runner
+after relevant pushes and daily, including after commits marked `[skip ci]`. If the hash differs, a
+separate publish job validates the artifact and commits only `nix/hashes.json` directly to `dev`.
+It uses a normal push, so a concurrent update to `dev` rejects the commit; the next run recomputes it.
+The Actions token needs contents write permission and `dev` must allow the push.
 
 ## Merging upstream
 
