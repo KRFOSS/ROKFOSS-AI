@@ -72,8 +72,6 @@ export const {
     sessionID?: string
     /** Whether message meta names the agent; the app follows its Show agent setting. Defaults to true. */
     agents?: boolean
-    /** Whether the assistant copy control stays visible at rest; the app enables this on dev/local builds. */
-    copyAlwaysVisible?: boolean
     shellRunning?: (id: string) => boolean
     shellOutput?: (input: ShellOutputInput) => Promise<ShellOutputOutput>
     turnDiff?: TurnDiffSource
@@ -95,9 +93,8 @@ export const {
       get agents() {
         return props.agents ?? true
       },
-      get copyAlwaysVisible() {
-        return props.copyAlwaysVisible === true
-      },
+
+
       navigateToSession: props.onNavigateToSession,
       sessionHref: props.onSessionHref,
       shellRunning: props.shellRunning,

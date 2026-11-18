@@ -127,6 +127,7 @@ export function dir() {
   return "ltr" as const
 }
 
+
 function match(input: string): Locale | null {
   const value = input.trim().toLowerCase()
   if (!value) return null
@@ -186,6 +187,7 @@ export function localeFromCookieHeader(header: string | null) {
   if (!raw) return null
   return parseLocale(decodeURIComponent(raw))
 }
+
 
 export function localeFromRequest(request: Request) {
   const fromHeader = parseLocale(request.headers.get(LOCALE_HEADER))

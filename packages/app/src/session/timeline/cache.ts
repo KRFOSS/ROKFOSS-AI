@@ -120,9 +120,8 @@ export function createTimelineCache(
                 get agents() {
                   return agents()
                 },
-                get copyAlwaysVisible() {
-                  return data.copyAlwaysVisible
-                },
+
+
                 navigateToSession: data.navigateToSession,
                 sessionHref: data.sessionHref,
                 readMedia: data.readMedia,
@@ -151,6 +150,10 @@ export function createTimelineCache(
                     },
                     get sessionMenu() {
                       return sessionMenu()
+                    },
+                    // An app-wide setting, so every view follows it, detached or not.
+                    get codeWrap() {
+                      return markdown?.codeWrap
                     },
                   },
                   view,
