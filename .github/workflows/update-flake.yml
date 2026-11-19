@@ -1,0 +1,95 @@
+name: update-flake
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # Monday 09:00 KST
+  workflow_dispatch:
+
+concurrency:
+  group: update-flake-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  update:
+    if: github.repository == 'KRFOSS/ROKFOSS-AI' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: dev
+
+      - name: Setup Nix
+        uses: nixbuild/nix-quick-install-action@2c9db80fb984ceb1bcaa77cdda3fdf8cfba92035 # v34
+
+      - name: Update nixpkgs
+        id: update
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Failed to update nixpkgs or check changed files"' ERR
+          nix --version
+          nix flake update nixpkgs
+          if [ -n "$(git status --porcelain --untracked-files=all -- . ':!flake.lock')" ]; then
+            echo "::error::Unexpected changes outside flake.lock"
+            git status --short
+            exit 1
+          fi
+          if git diff --quiet -- flake.lock; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "flake.lock is already up to date"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate updated flake and build OpenCode
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Flake validation or OpenCode build failed; update will not be pushed"' ERR
+          nix flake metadata --no-update-lock-file
+          nix flake show --all-systems --no-update-lock-file
+          nix eval .#packages.x86_64-linux.opencode.drvPath --raw --no-update-lock-file
+          nix eval .#devShells.x86_64-linux.default.drvPath --raw --no-update-lock-file
+          nix build .#packages.x86_64-linux.opencode --no-link --no-update-lock-file
+
+      - name: Commit and push flake.lock
+        id: push
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Commit or push failed; dev may have advanced or reject direct pushes"' ERR
+          if [ -n "$(git status --porcelain --untracked-files=all -- . ':!flake.lock')" ]; then
+            echo "::error::Unexpected changes outside flake.lock"
+            git status --short
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- flake.lock
+          git commit -m 'chore(nix): update flake.lock'
+          git push origin HEAD:refs/heads/dev
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # GITHUB_TOKEN pushes do not trigger push workflows; request each one once.
+      - name: Dispatch Nix checks
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Failed to dispatch check-nix.yml after the update was pushed"' ERR
+          gh workflow run check-nix.yml --ref dev
+
+      - name: Dispatch Nix hash automation
+        if: always() && steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          trap 'echo "::error::Failed to dispatch bot-nix-hashes.yml after the update was pushed"' ERR
+          gh workflow run bot-nix-hashes.yml --ref dev
