@@ -93,9 +93,49 @@ jobs:
           path: hash.txt
           retention-days: 1
 
+  check:
+    needs: hash
+    runs-on: ubuntu-24.04
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Download hash artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/hashes
+          pattern: hash-*
+
+      - name: Compare hashes
+        id: compare
+        env:
+          HASHES: ${{ runner.temp }}/hashes
+        run: |
+          set -euo pipefail
+
+          for SYSTEM in x86_64-linux; do
+            HASH="$(tr -d '[:space:]' < "$HASHES/hash-${SYSTEM}/hash.txt")"
+            CURRENT="$(if [ -f nix/hashes.json ]; then jq -r --arg sys "$SYSTEM" '.nodeModules[$sys] // ""' nix/hashes.json; fi)"
+            if [ "$HASH" != "$CURRENT" ]; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              echo "### Nix hashes" >> "$GITHUB_STEP_SUMMARY"
+              echo "Status: changed" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "### Nix hashes" >> "$GITHUB_STEP_SUMMARY"
+          echo "Status: no changes" >> "$GITHUB_STEP_SUMMARY"
+
   # Assembles and validates the per-system hashes, then uploads the proposed file for review.
   compute:
-    needs: hash
+    needs: check
+    if: needs.check.outputs.changed == 'true'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -129,16 +169,6 @@ jobs:
 
           cat "$HASH_FILE"
           bash .github/nix-hashes/validate.sh "$HASH_FILE"
-
-          if git diff --quiet -- "$HASH_FILE"; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "### Nix hashes" >> "$GITHUB_STEP_SUMMARY"
-            echo "Status: no changes" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "### Nix hashes" >> "$GITHUB_STEP_SUMMARY"
-            echo "Status: changed" >> "$GITHUB_STEP_SUMMARY"
-          fi
 
       - name: Upload hashes.json
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
